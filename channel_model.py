@@ -5,7 +5,9 @@ import urllib.request
 import urllib.parse
 from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex, Slot, QThread, Signal
 
-# Hilo en segundo plano para precargar el EPG completo al iniciar y no saturar la red
+# ===================================================================
+# 🛠️ REPARADO: PROCESAMIENTO CORRECTO DEL ARRAY MASIVO DE TVHEADEND
+# ===================================================================
 class EpgPreloaderWorker(QThread):
     epg_cache_ready = Signal(dict)
 
@@ -19,22 +21,70 @@ class EpgPreloaderWorker(QThread):
             self.epg_cache_ready.emit(cache)
             return
         try:
-            # Solicitamos la rejilla completa de canales en una sola petición masiva
-            url = f"{self.base_url}/api/epg/events/grid?limit=1000"
+            # 🛠️ REPARADO: Añadimos mode=now para que Tvheadend SOLO nos mande los programas 
+            # que se están emitiendo en este mismo segundo exacto en toda la parrilla.
+            url = f"{self.base_url}/api/epg/events/grid?limit=2000&mode=now"
             req = urllib.request.Request(url, headers={'User-Agent': 'TdtPlayer-Native'})
+            
             with urllib.request.urlopen(req, timeout=3.0) as response:
                 data = json.loads(response.read().decode('utf-8'))
-                if "entries" in data:
-                    for entry in data["entries"]:
-                        ch_name = entry.get("channelName") or entry.get("channel")
+                
+                if "entries" in data and isinstance(data["entries"], list):
+                    # 🛠️ REPARADO: Iteramos elemento por elemento dentro del array de programas
+                    for program in data["entries"]:
+                        # Tvheadend puede guardar el nombre en "channelName" o "channel" según versión
+                        ch_name = program.get("channelName") or program.get("channel")
+                        
                         if ch_name:
-                            cache[ch_name] = {
-                                "title": entry.get("title", "Emisión en directo"),
-                                "description": entry.get("description", entry.get("summary", "Sin descripción detallada disponible."))
+                            # Indexamos el programa usando el nombre del canal como clave única
+                            cache[str(ch_name).strip()] = {
+                                "title": program.get("title", "Emisión en directo"),
+                                "description": program.get("description", program.get("summary", "Sin descripción detallada disponible."))
                             }
+        except Exception as e:
+            print(f"Error en la precarga masiva de la RAM: {e}")
+            
+        self.epg_cache_ready.emit(cache)
+
+
+# ===================================================================
+# MÈTODO DE CONSULTA DENTRO DE LA CLASE ChannelModel:
+# ===================================================================
+    @Slot(str, result='QVariant')
+    def fetch_current_epg(self, channel_name: str) -> dict:
+        if not channel_name:
+            return {"title": "Sin canal", "description": ""}
+            
+        search_name = str(channel_name).strip()
+        
+        # 1. Búsqueda instantánea en la RAM optimizada (Milisegundo 0)
+        if search_name in self._epg_cache:
+            return self._epg_cache[search_name]
+            
+        # 2. Búsqueda de rescate en caliente por API individual si no estaba en la caché
+        try:
+            encoded_name = urllib.parse.quote(search_name)
+            url = f"{self._base_url}/api/epg/events/grid?channel={encoded_name}&mode=now"
+            req = urllib.request.Request(url, headers={'User-Agent': 'TdtPlayer-Native'})
+            
+            with urllib.request.urlopen(req, timeout=0.5) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                # 🛠️ REPARADO: Desglosamos correctamente el primer elemento del array individual
+                if "entries" in data and len(data["entries"]) > 0:
+                    program = data["entries"][0] # Primer programa del modo 'now'
+                    res = {
+                        "title": program.get("title", "Emisión en directo"),
+                        "description": program.get("description", program.get("summary", "Sin descripción detallada disponible."))
+                    }
+                    self._epg_cache[search_name] = res # Guardamos en RAM
+                    return res
         except Exception:
             pass
-        self.epg_cache_ready.emit(cache)
+            
+        return {
+            "title": "Emisión en directo",
+            "description": "Buscando información del evento actual en el flujo de Tvheadend..."
+        }
 
 
 class ChannelModel(QAbstractListModel):
