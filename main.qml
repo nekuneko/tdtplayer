@@ -242,7 +242,7 @@ ApplicationWindow {
             } // Fin de VideoOutput
         } // Fin de videoContainer
         
-        // Capa 2: El Panel Lateral de Canales (CORREGIDO: Convertido a MouseArea para soportar onExited nativo)
+        // Capa 2: El Panel Lateral de Canales (ACTUALIZADO: Con iluminación dinámica al pasar el ratón)
         MouseArea {
             id: sidebar
             anchors.right: parent.right
@@ -253,17 +253,14 @@ ApplicationWindow {
             visible: !window.isFullScreen || sidebarForceOpen
             width: visible ? 290 : 0
 
-            // Habilitamos el hover nativo en la raíz del panel
             hoverEnabled: true
 
-            // Al ser un MouseArea, esto ahora es 100% legal y funciona sin romper la app
             onExited: {
                 if (window.isFullScreen) {
                     sidebarForceOpen = false
                 }
             }
 
-            // Dibujamos el fondo oscuro premium usando un Rectangle interno
             Rectangle {
                 anchors.fill: parent
                 color: "#111827"
@@ -280,13 +277,25 @@ ApplicationWindow {
                 clip: true
 
                 delegate: ItemDelegate {
+                    id: channelItemDelegate
                     width: 290
                     height: 60
                     highlighted: window.currentChannelIndex === index
+                    
+                    // IMPORTANTE: Habilitamos el rastreo del ratón en la fila para activar la propiedad 'hovered'
+                    hoverEnabled: true
 
+                    // ACTUALIZADO: El fondo cambia de color dinámicamente según el estado del canal
                     background: Rectangle {
-                        color: window.currentChannelIndex === index ? "#1E3A8A" : "transparent"
-                        opacity: 0.3
+                        color: channelItemDelegate.highlighted 
+                               ? "#1E3A8A" // Azul si está sintonizado
+                               : (channelItemDelegate.hovered ? "#334155" : "transparent") // Gris Slate si el ratón está encima
+                        opacity: channelItemDelegate.highlighted ? 0.4 : 0.6
+                        
+                        // Animación suave para que la iluminación no cambie de golpe al mover el ratón
+                        Behavior on color {
+                            ColorAnimation { duration: 150 }
+                        }
                     }
 
                     contentItem: RowLayout {
@@ -309,19 +318,32 @@ ApplicationWindow {
                             }
                         }
 
+                        // ACTUALIZADO: El texto brilla en blanco puro si pasas el ratón por encima
                         Text {
                             text: model.name
-                            color: window.currentChannelIndex === index ? "#3B82F6" : "#E2E8F0"
-                            font.bold: window.currentChannelIndex === index
+                            color: channelItemDelegate.highlighted 
+                                   ? "#3B82F6" // Azul eléctrico si está activo
+                                   : (channelItemDelegate.hovered ? "#FFFFFF" : "#E2E8F0") // Blanco en hover, gris claro por defecto
+                            font.bold: channelItemDelegate.highlighted
                             font.pointSize: 11
                             Layout.fillWidth: true
                             elide: Text.ElideRight
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
                         }
 
                         Text {
                             text: model.chNo !== "" ? "CH " + model.chNo : ""
-                            color: window.currentChannelIndex === index ? "#3B82F6" : "#64748B"
+                            color: channelItemDelegate.highlighted 
+                                   ? "#3B82F6" 
+                                   : (channelItemDelegate.hovered ? "#94A3B8" : "#64748B")
                             font.pointSize: 9
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
                         }
                     }
 
