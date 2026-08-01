@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "TdtPlayer: Depurar desde main.py",
+            "type": "debugpy",
+            "request": "launch",
+            // 🚀 CLAVE 1: Forzamos a VS Code a ejecutar siempre tu archivo raíz absoluto
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            // 🚀 CLAVE 2: Le indicamos que el directorio de trabajo actual sea la raíz
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "env": {
+                "PYTHONUNBUFFERED": "1"
+            }
+        }
+    ]
+}
