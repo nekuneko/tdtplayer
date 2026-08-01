@@ -377,7 +377,7 @@ ApplicationWindow {
             } // Fin de VideoOutput
         } // Fin de videoContainer
         
-        // Capa 2: El Panel Lateral de Canales (ACTUALIZADO: Con iluminación dinámica al pasar el ratón)
+                // Capa 2: El Panel Lateral de Canales (CORREGIDO: Scroll Infinito Circular Real mediante Índice Virtual)
         MouseArea {
             id: sidebar
             anchors.right: parent.right
@@ -389,7 +389,6 @@ ApplicationWindow {
             width: visible ? 290 : 0
 
             hoverEnabled: true
-
             onExited: {
                 if (window.isFullScreen) {
                     sidebarForceOpen = false
@@ -408,26 +407,43 @@ ApplicationWindow {
             ListView {
                 id: channelListView
                 anchors.fill: parent
-                model: channelModel
                 clip: true
+
+                // ACTUALIZADO: Forzamos un número virtual alto fijo para activar el scroll infinito real
+                model: 1000000
+
+                // Sincroniza el centrado automático basándose en el desplazamiento virtual intermedio
+                Connections {
+                    target: window
+                    function onCurrentChannelIndexChanged() {
+                        var count = channelModel.rowCount();
+                        if (count === 0) return;
+                        
+                        var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY)
+                        var baseVirtual = currentScrollIndex - (currentScrollIndex % count)
+                        var targetVirtual = baseVirtual + window.currentChannelIndex
+                        
+                        channelListView.positionViewAtIndex(targetVirtual, ListView.Center)
+                    }
+                }
 
                 delegate: ItemDelegate {
                     id: channelItemDelegate
                     width: 290
                     height: 60
-                    highlighted: window.currentChannelIndex === index
-                    
-                    // IMPORTANTE: Habilitamos el rastreo del ratón en la fila para activar la propiedad 'hovered'
                     hoverEnabled: true
+                    
+                    // FÓRMULA ANTIBLOQUEO: Convierte el índice virtual de 1 millón en el índice real de tu M3U
+                    property int realIndex: (channelModel && channelModel.rowCount() > 0) ? (index % channelModel.rowCount()) : 0
+                    
+                    highlighted: window.currentChannelIndex === realIndex
 
-                    // ACTUALIZADO: El fondo cambia de color dinámicamente según el estado del canal
                     background: Rectangle {
                         color: channelItemDelegate.highlighted 
-                               ? "#1E3A8A" // Azul si está sintonizado
-                               : (channelItemDelegate.hovered ? "#334155" : "transparent") // Gris Slate si el ratón está encima
+                               ? "#1E3A8A" 
+                               : (channelItemDelegate.hovered ? "#334155" : "transparent") 
                         opacity: channelItemDelegate.highlighted ? 0.4 : 0.6
                         
-                        // Animación suave para que la iluminación no cambie de golpe al mover el ratón
                         Behavior on color {
                             ColorAnimation { duration: 150 }
                         }
@@ -439,7 +455,10 @@ ApplicationWindow {
                         spacing: 12
                         
                         Image {
-                            source: model.logo !== "" ? model.logo : ""
+                            // Leemos los datos de Python usando el realIndex circular calculado
+                            source: (channelModel && channelModel.rowCount() > 0) 
+                                    ? channelModel.data(channelModel.index(channelItemDelegate.realIndex, 0), Qt.UserRole + 3) 
+                                    : ""
                             sourceSize.width: 35
                             sourceSize.height: 35
                             Layout.preferredWidth: 35
@@ -453,12 +472,13 @@ ApplicationWindow {
                             }
                         }
 
-                        // ACTUALIZADO: El texto brilla en blanco puro si pasas el ratón por encima
                         Text {
-                            text: model.name
+                            text: (channelModel && channelModel.rowCount() > 0) 
+                                  ? channelModel.data(channelModel.index(channelItemDelegate.realIndex, 0), Qt.UserRole + 1) 
+                                  : ""
                             color: channelItemDelegate.highlighted 
-                                   ? "#3B82F6" // Azul eléctrico si está activo
-                                   : (channelItemDelegate.hovered ? "#FFFFFF" : "#E2E8F0") // Blanco en hover, gris claro por defecto
+                                   ? "#3B82F6" 
+                                   : (channelItemDelegate.hovered ? "#FFFFFF" : "#E2E8F0") 
                             font.bold: channelItemDelegate.highlighted
                             font.pointSize: 11
                             Layout.fillWidth: true
@@ -469,8 +489,18 @@ ApplicationWindow {
                             }
                         }
 
+                                                // ACTUALIZADO: Formatea los números para que siempre muestren dos dígitos (ej: CH 00, CH 01)
                         Text {
-                            text: model.chNo !== "" ? "CH " + model.chNo : ""
+                            property string chNoStr: (channelModel && channelModel.rowCount() > 0) 
+                                                     ? channelModel.data(channelModel.index(channelItemDelegate.realIndex, 0), Qt.UserRole + 4) 
+                                                     : ""
+                                                     
+                            // Si la cadena está vacía, calculamos el número según su índice real en la lista
+                            property string finalChNo: chNoStr !== "" ? chNoStr : channelItemDelegate.realIndex.toString()
+
+                            // Aplica la máscara de dos dígitos agregando ceros a la izquierda de forma automática
+                            text: "CH " + finalChNo.padStart(2, '0')
+                            
                             color: channelItemDelegate.highlighted 
                                    ? "#3B82F6" 
                                    : (channelItemDelegate.hovered ? "#94A3B8" : "#64748B")
@@ -480,10 +510,11 @@ ApplicationWindow {
                                 ColorAnimation { duration: 150 }
                             }
                         }
+
                     }
 
                     onClicked: {
-                        window.playChannel(index)
+                        window.playChannel(channelItemDelegate.realIndex)
                         sidebar.sidebarForceOpen = false 
                     }
                 }
@@ -609,6 +640,23 @@ ApplicationWindow {
         fileDialog.open()
     }
 
+    // NUEVO: Temporizador de inicialización para forzar el renderizado del scroll infinito
+    Timer {
+        id: initScrollTimer
+        interval: 100
+        running: false
+        repeat: false
+        onTriggered: {
+            var count = channelModel.rowCount();
+            if (count > 0) {
+                // Posiciona la lista justo en el centro del millón virtual para permitir scroll libre
+                var middleVirtual = 500000 - (500000 % count);
+                channelListView.positionViewAtIndex(middleVirtual, ListView.Beginning);
+                window.playChannel(0);
+            }
+        }
+    }
+
     FileDialog {
         id: fileDialog
         title: "Carga tu lista Tvheadend"
@@ -617,9 +665,14 @@ ApplicationWindow {
             var request = new XMLHttpRequest();
             request.open("GET", fileDialog.selectedFile, false);
             request.send(null);
+            
+            // 1. Procesa el archivo en Python de forma asíncrona
             channelModel.parse_m3u_content(request.responseText);
-            window.playChannel(0);
+            
+            // 2. Dispara el temporizador para calcular el centro de la lista tras el refresco gráfico
+            initScrollTimer.restart();
         }
     }
 }
+
 
