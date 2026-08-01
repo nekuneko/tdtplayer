@@ -26,14 +26,42 @@ ApplicationWindow {
         mediaPlayer.play();
     }
 
+    // Lógica para sintonizar el canal buscando por su número de canal (CH)
+    function playChannelByNumber(numberStr) {
+        var count = channelModel.rowCount();
+        for (var i = 0; i < count; i++) {
+            // El modelo expone chNo. Comparamos cadenas limpias
+            if (channelModel.data(channelModel.index(i, 0), Qt.UserRole + 4) === numberStr) {
+                window.playChannel(i);
+                return;
+            }
+        }
+        // Si no encuentra el número exacto, opcionalmente puedes sintonizar por el índice directo del índice (i + 1)
+        var targetIndex = parseInt(numberStr) - 1;
+        if (!isNaN(targetIndex) && targetIndex >= 0 && targetIndex < count) {
+            window.playChannel(targetIndex);
+        }
+    }
+
+    // Capturador de eventos de teclado global
     Item {
         focus: true
         Keys.onUpPressed: window.playChannel(window.currentChannelIndex - 1)
         Keys.onDownPressed: window.playChannel(window.currentChannelIndex + 1)
-        Keys.onEscapePressed: {
-            if (window.isFullScreen) {
+        
+        Keys.onPressed: (event) => {
+            // Si es un número (0-9) y el popup no está abierto, capturamos el inicio del marcado
+            if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9 && !channelNumPopup.opened) {
+                channelNumPopup.open();
+                numInputField.text = event.text; // Inyecta el primer número pulsado
+                numInputField.forceActiveFocus();
+                event.accepted = true;
+            }
+            // Control de escape genérico para la pantalla completa
+            else if (event.key === Qt.Key_Escape && window.isFullScreen && !channelNumPopup.opened) {
                 window.visibility = Window.Windowed;
                 window.isFullScreen = false;
+                event.accepted = true;
             }
         }
     }
@@ -53,10 +81,9 @@ ApplicationWindow {
             Layout.fillHeight: true
             color: "black"
 
-                        VideoOutput {
+            VideoOutput {
                 id: videoOutput
                 anchors.fill: parent
-                // Fuerza al escalador de la GPU Intel a promediar los campos verticales (Filtro Anti-Entrelazado)
                 fillMode: VideoOutput.PreserveAspectFit
 
                 TapHandler {
@@ -71,7 +98,6 @@ ApplicationWindow {
                     }
                 }
             }
-
         }
 
         Rectangle {
@@ -137,6 +163,122 @@ ApplicationWindow {
         }
     }
 
+    // POPUP FLOTANTE: Marcador Numérico Inteligente
+    Popup {
+        id: channelNumPopup
+        anchors.centerIn: parent
+        width: 240
+        height: 140
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: "#1E293B" // Slate 800 premium
+            border.color: "#3B82F6" // Borde azul corporativo
+            border.width: 2
+            radius: 12
+        }
+
+        onOpened: {
+            numInputField.forceActiveFocus();
+        }
+        
+        onClosed: {
+            numInputField.text = "";
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 12
+
+            Text {
+                text: "Ir al Canal:"
+                color: "white"
+                font.bold: true
+                font.pointSize: 12
+                Layout.alignment: Qt.AlignHCenter
+            }
+
+            TextField {
+                id: numInputField
+                Layout.fillWidth: true
+                horizontalAlignment: TextInput.AlignHCenter
+                font.pointSize: 18
+                font.bold: true
+                color: "white"
+                placeholderText: "0"
+                
+                // Restringe la entrada a solo números
+                validator: RegularExpressionValidator { regularExpression: /[0-9]+/ }
+
+                background: Rectangle {
+                    color: "#0F172A"
+                    radius: 6
+                    border.color: numInputField.activeFocus ? "#3B82F6" : "#475569"
+                }
+
+                // Al pulsar Enter en el popup, sintoniza y se cierra
+                Keys.onReturnPressed: {
+                    if (text.length > 0) {
+                        window.playChannelByNumber(text);
+                    }
+                    channelNumPopup.close();
+                }
+                Keys.onEnterPressed: {
+                    if (text.length > 0) {
+                        window.playChannelByNumber(text);
+                    }
+                    channelNumPopup.close();
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Button {
+                    text: "Cancelar"
+                    Layout.fillWidth: true
+                    onClicked: channelNumPopup.close()
+                    
+                    background: Rectangle {
+                        color: "#475569"
+                        radius: 6
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                }
+
+                Button {
+                    text: "Aceptar"
+                    Layout.fillWidth: true
+                    onClicked: {
+                        if (numInputField.text.length > 0) {
+                            window.playChannelByNumber(numInputField.text);
+                        }
+                        channelNumPopup.close();
+                    }
+
+                    background: Rectangle {
+                        color: "#3B82F6"
+                        radius: 6
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                }
+            }
+        }
+    }
+
     Component.onCompleted: {
         fileDialog.open()
     }
@@ -153,5 +295,4 @@ ApplicationWindow {
             window.playChannel(0);
         }
     }
-
 }
