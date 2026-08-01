@@ -41,9 +41,12 @@ QtObject {
         interval: 300 
         onTriggered: {
             if (root.osdChannelName !== "" && root.model) {
+                // 👇 REPARADO: Almacenamos el diccionario devuelto por Python
                 var epgData = root.model.fetch_current_epg(root.osdChannelName);
-                root.epgTitle = epgData;
-                root.epgDescription = epgData;
+                
+                // Extraemos las propiedades mapeadas por nombre de clave
+                root.epgTitle = epgData.title;
+                root.epgDescription = epgData.description;
             }
         }
     }

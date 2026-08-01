@@ -21,6 +21,23 @@ MouseArea {
     width: visible ? 290 : 0
     hoverEnabled: true
 
+    // ACTUALIZADO: Forzar el cálculo de centrado cuando el ratón sale
+    onExited: {
+        // El panel SOLO se cierra si el ratón abandona físicamente las coordenadas del área
+        if (root.isFullScreen) {
+            root.sidebarForceOpen = false
+        }
+        
+        // Recalcula la posición media de manera estática al retirar el cursor
+        var count = root.model ? root.model.rowCount() : 0;
+        if (count > 0) {
+            var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY)
+            var baseVirtual = currentScrollIndex - (currentScrollIndex % count)
+            var targetVirtual = baseVirtual + root.currentChannelIndex
+            channelListView.positionViewAtIndex(targetVirtual, ListView.Center)
+        }
+    }
+
     // Expone el ListView interno para poder usar positionViewAtIndex desde fuera
     function positionListView(index, mode) {
         channelListView.positionViewAtIndex(index, mode);
@@ -44,6 +61,24 @@ MouseArea {
         anchors.fill: parent
         clip: true
         model: 1000000
+
+        Connections {
+            target: window
+            function onCurrentChannelIndexChanged() {
+                var count = channelModel.rowCount();
+                if (count === 0) return;
+                
+                // 👇 NUEVO: Si el usuario tiene el ratón dentro de la barra lateral, 
+                // NO alteramos el scroll para evitar saltos molestos.
+                if (root.containsMouse) return;
+                
+                var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY)
+                var baseVirtual = currentScrollIndex - (currentScrollIndex % count)
+                var targetVirtual = baseVirtual + window.currentChannelIndex
+                
+                channelListView.positionViewAtIndex(targetVirtual, ListView.Center)
+            }
+        }
 
         delegate: ItemDelegate {
             id: channelItemDelegate
@@ -112,7 +147,9 @@ MouseArea {
             }
 
             onClicked: {
-                root.channelSelected(channelItemDelegate.realIndex);
+                root.channelSelected(channelItemDelegate.realIndex)
+                // ❌ ELIMINA O COMENTA ESTA LÍNEA:
+                // sidebar.sidebarForceOpen = false 
             }
             
             onHoveredChanged: {

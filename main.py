@@ -10,15 +10,17 @@ def main():
     os.environ["QT_XCB_GL_INTEGRATION"] = "xcb_egl"
     os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
     
-    # 2. Tu filtro de desentrelazado yadif que ya teníamos
-    os.environ["QT_MULTIMEDIA_FFMPEG_FILTERS"] = "yadif=mode=send_frame:parity=auto:deint=interlaced"
+    # 2. Forzar el backend multimedia nativo de FFmpeg en Qt6
+    os.environ["QT_MEDIA_BACKEND"] = "ffmpeg"
 
-    # NUEVO: CORRECCIÓN PARA EL ERROR HEVC INTEL (Fuerza la recuperación de hilos y limpia errores de decodificación)
-    os.environ["FFMPEG_HWACCEL_RECOV"] = "1"
+    # 3. CORRECCIÓN DEL ENTLAZADO EN VAAPI INTEL
+    # Configuramos las opciones de FFmpeg para forzar el desentrelazado por hardware
     os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "vaapi"
-
-    #os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = "probesize=5000000;analyzeduration=1000000;fflags=+nobuffer+discardcorrupt"
+    os.environ["FFMPEG_HWACCEL_RECOV"] = "1"
     
+    # Inyectamos el argumento para que el decodificador de VAAPI aplique desentrelazado automático
+    os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = "deint=auto" 
+
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
 

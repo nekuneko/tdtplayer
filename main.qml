@@ -124,13 +124,16 @@ ApplicationWindow {
             
             onChannelSelected: (realIndex) => {
                 ctrl.playChannel(realIndex);
-                sidebar.sidebarForceOpen = false;
             }
+            
+            // 👇 REPARADO: Tratamiento de propiedades JSON al pasar el ratón en caliente
             onChannelHovered: (name) => {
                 ctrl.osdHoveredChannelName = name;
                 var epgData = channelModel.fetch_current_epg(name);
-                ctrl.epgTitle = epgData[0]; 
-                ctrl.epgDescription = epgData[1];
+                
+                ctrl.epgTitle = epgData.title; 
+                ctrl.epgDescription = epgData.description;
+                
                 if (ctrl.isFullScreen) epgDrawer.epgForceOpen = true;
             }
             onExited: {
@@ -164,17 +167,6 @@ ApplicationWindow {
         }
     }
 
-    Connections {
-        target: ctrl
-        function onCurrentChannelIndexChanged() {
-            var count = channelModel.rowCount();
-            if (count === 0) return;
-            var currentScrollIndex = sidebar.getCurrentScrollIndex();
-            var baseVirtual = currentScrollIndex - (currentScrollIndex % count);
-            var targetVirtual = baseVirtual + ctrl.currentChannelIndex;
-            sidebar.positionListView(targetVirtual, ListView.Center);
-        }
-    }
 
     FileDialog {
         id: fileDialog

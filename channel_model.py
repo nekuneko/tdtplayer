@@ -94,21 +94,27 @@ class ChannelModel(QAbstractListModel):
             return self._channels[row].url
         return ""
 
-    # ACTUALIZADO: Usa la IP y Puerto extraídos de tu M3U en lugar de una IP estática
-    @Slot(str, result=list)
-    def fetch_current_epg(self, channel_name: str) -> list:
+    # ACTUALIZADO: Cambiado de result=list a result='QVariant' para devolver un objeto JavaScript legible
+    @Slot(str, result='QVariant')
+    def fetch_current_epg(self, channel_name: str) -> dict:
         import urllib.request
         import urllib.parse
         import json
         
-        # Si no se pudo extraer ninguna URL base válida del archivo .m3u
+        # Respuesta por defecto en caso de fallo o ausencia de datos
+        default_response = {
+            "title": "Emisión en directo",
+            "description": "Buscando información del evento actual en el flujo de Tvheadend..."
+        }
+        
         if not hasattr(self, '_base_url') or not self._base_url:
-            return ["Información de EPG no disponible", "No se detectó la dirección del servidor en el archivo M3U."]
+            return {
+                "title": "Información de EPG no disponible",
+                "description": "No se detectó la dirección del servidor en el archivo M3U."
+            }
         
         try:
             encoded_name = urllib.parse.quote(channel_name)
-            
-            # Construcción dinámica: Usa self._base_url del archivo M3U
             url = f"{self._base_url}/api/epg/events/grid?channel={encoded_name}&mode=now"
             
             req = urllib.request.Request(url, headers={'User-Agent': 'TdtPlayer-Native'})
@@ -116,13 +122,13 @@ class ChannelModel(QAbstractListModel):
                 data = json.loads(response.read().decode('utf-8'))
                 
                 if "entries" in data and len(data["entries"]) > 0:
-                    event = data["entries"][0] # Lee la primera entrada del modo 'now'
-                    title = event.get("title", "Emisión en directo")
-                    description = event.get("description", event.get("summary", "Sin descripción detallada disponible."))
-                    return [title, description]
+                    event = data["entries"][0]
+                    return {
+                        "title": event.get("title", "Emisión en directo"),
+                        "description": event.get("description", event.get("summary", "Sin descripción detallada disponible."))
+                    }
                     
         except Exception as e:
             print(f"Error consultando la API dinámica de Tvheadend: {e}")
             
-        return ["Información de EPG no disponible", "El servidor de Tvheadend no tiene eventos registrados en su guía para este canal en este momento."]
-
+        return default_response
