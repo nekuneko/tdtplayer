@@ -26,19 +26,25 @@ QtObject {
     property bool showVolumeOsd: false
     property real osdPanelOpacity: 0.0
 
-    property Timer osdTimer: Timer { interval: 3000; onTriggered: root.osdPanelOpacity = 0.0 }
+    // 👇 NUEVO: Señal limpia para avisar a los componentes que se está pulsando el teclado
+    signal channelZappedByKeyboard()
+
+    property Timer osdTimer: Timer { 
+        interval: 3000
+        onTriggered: {
+            root.osdPanelOpacity = 0.0;
+        }
+    }
+    
     property Timer volumeOsdTimer: Timer { interval: 2000; onTriggered: root.showVolumeOsd = false }
     property Timer epgPoller: Timer { interval: 300; running: false }
 
-    // 🛠️ REPARADO: El temporizador ahora SOLO controla la apertura del vídeo.
-    // La guía de televisión (EPG) se desvincula de aquí para que cambie al instante sin esperas.
     property Timer zappingTimer: Timer {
-        interval: 250 // Tiempo de cortesía de 250ms para soltar la tecla antes de abrir el vídeo
+        interval: 250 
         running: false
         repeat: false
         onTriggered: {
             if (root.mediaPlayer && root.model && !root.isVoluntarilyStopped) {
-                // Sintonización real de red (Sólo cuando el usuario se detiene)
                 root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex);
                 root.mediaPlayer.play();
             }
@@ -52,23 +58,21 @@ QtObject {
         else if (index >= root.model.rowCount()) index = 0;
         
         root.currentChannelIndex = index;
-        
-        // Paramos inmediatamente el intento de carga de vídeo del canal anterior
         root.zappingTimer.stop();
-        
         root.osdHoveredChannelName = "";
 
-        // 1. ACTUALIZACIÓN VISUAL INMEDIATA DE CABECERA (Milisegundo 0)
+        // 1. ACTUALIZACIÓN VISUAL INMEDIATA (Milisegundo 0)
         root.osdChannelName = root.model.data(root.model.index(index, 0), Qt.UserRole + 1);
         root.osdChannelLogo = root.model.data(root.model.index(index, 0), Qt.UserRole + 3);
         root.osdChannelNo = root.model.data(root.model.index(index, 0), Qt.UserRole + 4);
         
         root.osdTimer.restart();
         root.osdPanelOpacity = 1.0;
+        
+        // 🚀 Emitimos la señal. La UI reaccionará sola sin bloquear este hilo de ejecución
+        root.channelZappedByKeyboard();
 
-        // 🚀 2. ACTUALIZACIÓN INMEDIATA DEL EPG DESDE LA RAM (Milisegundo 0)
-        // Como la consulta tarda 0ms, la extraemos directamente al pulsar la tecla.
-        // Mientras mantengas pulsadas las flechas, el texto de lo que echan cambiará sincronizado canal por canal.
+        // 2. ACTUALIZACIÓN INMEDIATA DEL EPG DESDE LA RAM (Milisegundo 0)
         var epgData = root.model.fetch_current_epg(root.osdChannelName);
         if (epgData && epgData.title !== undefined) {
             root.epgTitle = epgData.title;
@@ -79,12 +83,9 @@ QtObject {
         }
 
         if (root.mediaPlayer) {
-            // Cortamos el flujo de red anterior para que la pantalla no se congele con basura
             root.mediaPlayer.stop();
             root.mediaPlayer.source = "";
-            
             if (!root.isVoluntarilyStopped) {
-                // Planificamos la sintonización del vídeo
                 root.zappingTimer.start();
             } else {
                 root.epgTitle = root.epgTitle + " (En Pausa)";

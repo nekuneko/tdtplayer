@@ -23,9 +23,11 @@ ApplicationWindow {
 
     // Inyección del capturador de teclado desacoplado
     KeyboardHandler {
+        id: globalKeyboardHandler // 👈 NUEVO: Añadimos este ID
         controller: ctrl
         window: window
         channelNumPopup: channelNumPopup
+        focus: true // 👈 NUEVO: Forzamos bandera inicial
     }
 
     FocusScope {
@@ -111,9 +113,6 @@ ApplicationWindow {
             } // Fin de VideoOutput
         } // Fin de videoContainer
 
-        // ===================================================================
-        // 🛠️ REPARADO: CAPA NUEVA DEL EPG SACADA A LA RAÍZ DEL FOCUSSCOPE
-        // ===================================================================
         EpgDrawer {
             id: epgDrawer
             channelName: ctrl.osdChannelName
@@ -123,9 +122,25 @@ ApplicationWindow {
             epgDescription: ctrl.epgDescription
             isFullScreen: ctrl.isFullScreen
             sidebarItem: sidebar 
-            
-            // Forzamos que se dibuje por encima del vídeo de fondo pero por debajo de la barra lateral
             z: 1 
+            
+            // 👇 NUEVO: Temporizador interno e independiente para la persiana del EPG
+            Timer {
+                id: keyboardEpgTimer
+                interval: 3000 // Se esconde tras 3 segundos de inactividad del teclado
+                onTriggered: epgDrawer.epgForceOpen = false
+            }
+
+            // 👇 NUEVO: Escuchamos de forma segura la señal del controlador
+            Connections {
+                target: ctrl
+                function onChannelZappedByKeyboard() {
+                    if (ctrl.isFullScreen) {
+                        epgDrawer.epgForceOpen = true; // Abre la persiana de inmediato
+                        keyboardEpgTimer.restart();     // Reinicia los 3 segundos de cortesía
+                    }
+                }
+            }
         }
 
         // Capa de la Barra Lateral de Canales
@@ -137,13 +152,13 @@ ApplicationWindow {
             
             onChannelSelected: (realIndex) => {
                 ctrl.playChannel(realIndex);
+                // 👇 NUEVO: Tras hacer un clic con el ratón en la barra lateral,
+                // devolvemos el foco al teclado de forma fulminante
+                globalKeyboardHandler.forceActiveFocus();
             }
             
-            // 🛠️ REPARADO: Protegemos el evento Hover contra interferencias del teclado
             onChannelHovered: (name) => {
-                // Si el foco principal de entrada está activo en el capturador de teclado,
-                // significa que el usuario está usando las flechas; ignoramos el ratón para evitar líos.
-                if (mainFocusScope.activeFocus) return;
+                if (globalKeyboardHandler.activeFocus) return; // 🛠️ REPARADO: Filtro con el nuevo ID
 
                 ctrl.osdHoveredChannelName = name;
                 var epgData = channelModel.fetch_current_epg(name);
@@ -160,9 +175,8 @@ ApplicationWindow {
                     epgDrawer.epgForceOpen = false;
                 }
                 
-                // 👇 NUEVO: Al retirar físicamente el ratón de la barra lateral,
-                // devolvemos el foco al capturador de teclado para reactivar el zapping limpio
-                mainFocusScope.forceActiveFocus();
+                // 👇 🛠️ REPARADO: Forzamos el foco de vuelta al manejador de teclado real
+                globalKeyboardHandler.forceActiveFocus();
             }
         }
     } 

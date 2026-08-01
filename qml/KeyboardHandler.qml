@@ -1,20 +1,33 @@
-// KeyboardHandler.qml
+// qml/KeyboardHandler.qml
 import QtQuick
 
 Item {
     id: root
     anchors.fill: parent
+    
+    // 🛠️ REPARADO: Forzamos la prioridad absoluta del foco en este nodo
     focus: true
 
     property var controller: null
     property var window: null
     property var channelNumPopup: null
 
-    Keys.onUpPressed: if (controller) controller.playChannel(controller.currentChannelIndex - 1)
-    Keys.onDownPressed: if (controller) controller.playChannel(controller.currentChannelIndex + 1)
+    // Asegura recuperar el foco de forma automática al renderizar el componente
+    Component.onCompleted: root.forceActiveFocus()
+
+    Keys.onUpPressed: {
+        if (controller) controller.playChannel(controller.currentChannelIndex - 1);
+    }
+    Keys.onDownPressed: {
+        if (controller) controller.playChannel(controller.currentChannelIndex + 1);
+    }
     
-    Keys.onLeftPressed: if (controller) controller.changeVolume(-5)
-    Keys.onRightPressed: if (controller) controller.changeVolume(5)
+    Keys.onLeftPressed: {
+        if (controller) controller.changeVolume(-5);
+    }
+    Keys.onRightPressed: {
+        if (controller) controller.changeVolume(5);
+    }
 
     Keys.onPressed: (event) => {
         if (!controller || !window || !channelNumPopup) return;
