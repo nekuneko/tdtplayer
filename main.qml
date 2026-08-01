@@ -23,6 +23,10 @@ ApplicationWindow {
     // Propiedades optimizadas para el EPG dinámico
     property string epgTitle: "Sintonizando canal..."
     property string epgDescription: "Buscando información del evento actual en el flujo de Tvheadend..."
+    
+    property int currentVolumePercent: 100
+    property bool showVolumeOsd: false
+
 
     function playChannel(index) {
         if (channelModel.rowCount() === 0) return;
@@ -73,6 +77,14 @@ ApplicationWindow {
         onTriggered: osdPanel.opacity = 0.0
     }
 
+    Timer {
+        id: volumeOsdTimer
+        interval: 2000
+        running: false
+        repeat: false
+        onTriggered: window.showVolumeOsd = false
+    }
+
     // ACTUALIZADO: Consulta la API de Tvheadend usando la IP dinámica extraída por Python
     Timer {
         id: epgPoller
@@ -93,15 +105,40 @@ ApplicationWindow {
 
 
 
+    // Capturador de teclado en la raíz (ACTUALIZADO para control de volumen)
     Item {
         anchors.fill: parent
         focus: true
         
         Keys.onUpPressed: window.playChannel(window.currentChannelIndex - 1)
         Keys.onDownPressed: window.playChannel(window.currentChannelIndex + 1)
-        Keys.onLeftPressed: window.playChannel(window.currentChannelIndex - 1)
-        Keys.onRightPressed: window.playChannel(window.currentChannelIndex + 1)
         
+                // RESTAURADO: Control de volumen estándar limpio (0% a 100%)
+        Keys.onLeftPressed: {
+            if (window.currentVolumePercent > 0) {
+                window.currentVolumePercent = Math.max(0, window.currentVolumePercent - 5);
+                mediaPlayer.audioOutput.volume = window.currentVolumePercent / 100.0;
+                
+                volumeOsdTimer.restart();
+                window.showVolumeOsd = true;
+            }
+        }
+        
+        // RESTAURADO: Control de volumen estándar limpio (0% a 100%)
+        Keys.onRightPressed: {
+            if (window.currentVolumePercent < 100) {
+                window.currentVolumePercent = Math.min(100, window.currentVolumePercent + 5);
+                mediaPlayer.audioOutput.volume = window.currentVolumePercent / 100.0;
+                
+                volumeOsdTimer.restart();
+                window.showVolumeOsd = true;
+            }
+        }
+
+
+
+
+
         Keys.onPressed: (event) => {
             if (event.key === Qt.Key_Space) {
                 if (mediaPlayer.playbackState === MediaPlayer.PlayingState) {
@@ -308,7 +345,7 @@ ApplicationWindow {
                     visible: mediaPlayer.playbackState !== MediaPlayer.PlayingState
                 }
                 
-                                // Panel flotante del OSD (ACTUALIZADO: Posicionado arriba a la izquierda)
+                // Panel flotante del OSD (ACTUALIZADO: Posicionado arriba a la izquierda)
                 Rectangle {
                     id: osdPanel
                     
@@ -373,6 +410,53 @@ ApplicationWindow {
                         }
                     }
                 } // Fin de osdPanel
+                
+                // ACTUALIZADO: Indicador visual flotante del volumen (Sintaxis de alineación corregida)
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 200
+                    height: 60
+                    radius: 10
+                    color: "#0F172A" 
+                    opacity: window.showVolumeOsd ? 0.85 : 0.0
+                    border.color: "#3B82F6"
+                    border.width: 1.5
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 150 }
+                    }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 10
+
+                        // Forzamos el centrado de la fila usando un contenedor interno alineado
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 12
+
+                                Text {
+                                    text: window.currentVolumePercent === 0 ? "🔇 " : "🔊 "
+                                    font.pointSize: 16
+                                }
+
+                                Text {
+                                    text: "Volumen: " + window.currentVolumePercent + "%"
+                                    color: "white" // Restaurado a blanco limpio
+                                    font.bold: true
+                                    font.pointSize: 13
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                            }
+                        }
+                    }
+                } // Fin del indicador de volumen        
 
             } // Fin de VideoOutput
         } // Fin de videoContainer
@@ -668,15 +752,22 @@ ApplicationWindow {
         running: false
         repeat: false
         onTriggered: {
-            var count = channelModel.rowCount();
-            if (count > 0) {
-                // Posiciona la lista justo en el centro del millón virtual para permitir scroll libre
-                var middleVirtual = 500000 - (500000 % count);
-                channelListView.positionViewAtIndex(middleVirtual, ListView.Beginning);
-                window.playChannel(0);
+            var c = channelModel.rowCount();
+            if (c > 0) { 
+                var mid = 500000 - (500000 % c); 
+                channelListView.positionViewAtIndex(mid, ListView.Beginning); 
+                
+                // Restauramos los valores limpios por defecto al arrancar
+                mediaPlayer.audioOutput.volume = 1.0;
+                window.currentVolumePercent = 100;
+                channelModel.apply_real_audio_gain(100);
+                
+                window.playChannel(0); 
             }
         }
     }
+
+
 
     FileDialog {
         id: fileDialog
