@@ -62,23 +62,27 @@ MouseArea {
         clip: true
         model: 1000000
 
+        // 🛠️ REPARADO: Se cambió el objetivo de 'window' al ID del controlador 'ctrl'
         Connections {
-            target: window
+            target: ctrl 
+            
+            // Ahora la señal coincide perfectamente porque ctrl (PlaybackController) 
+            // es quien posee la propiedad 'currentChannelIndex'
             function onCurrentChannelIndexChanged() {
-                var count = channelModel.rowCount();
+                var count = root.model ? root.model.rowCount() : 0;
                 if (count === 0) return;
                 
-                // 👇 NUEVO: Si el usuario tiene el ratón dentro de la barra lateral, 
-                // NO alteramos el scroll para evitar saltos molestos.
+                // Si el usuario tiene el ratón dentro de la barra lateral, no alteramos el scroll
                 if (root.containsMouse) return;
                 
                 var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY)
                 var baseVirtual = currentScrollIndex - (currentScrollIndex % count)
-                var targetVirtual = baseVirtual + window.currentChannelIndex
+                var targetVirtual = baseVirtual + ctrl.currentChannelIndex
                 
                 channelListView.positionViewAtIndex(targetVirtual, ListView.Center)
             }
         }
+
 
         delegate: ItemDelegate {
             id: channelItemDelegate

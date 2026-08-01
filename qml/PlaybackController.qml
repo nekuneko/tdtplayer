@@ -51,6 +51,21 @@ QtObject {
         }
     }
 
+    // 👇 NUEVO: Temporizador para retrasar la sintonización del flujo de vídeo (1.2 segundos)
+    property Timer zappingTimer: Timer {
+        interval: 350
+        running: false
+        repeat: false
+        onTriggered: {
+            if (root.mediaPlayer && root.model && !root.isVoluntarilyStopped) {
+                // Aquí se realiza la sintonización real de red de forma segura
+                root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex);
+                root.mediaPlayer.play();
+                root.epgPoller.restart();
+            }
+        }
+    }
+
     // Propiedad puente para la UI
     property real osdPanelOpacity: 0.0
 
@@ -58,15 +73,15 @@ QtObject {
     function playChannel(index) {
         if (!root.model || root.model.rowCount() === 0) return;
         
-        if (index < 0) index = root.model.model.rowCount() - 1;
+        if (index < 0) index = root.model.rowCount() - 1;
         else if (index >= root.model.rowCount()) index = 0;
         
         root.currentChannelIndex = index;
-        root.isVoluntarilyStopped = false;
         
-        root.epgTitle = "Sintonizando canal...";
-        root.epgDescription = "Buscando información del evento actual en el flujo de Tvheadend...";
+        // Cancelamos cualquier sintonización de vídeo previa que estuviese en espera
+        root.zappingTimer.stop();
         
+        // Obtenemos los metadatos básicos del canal de forma instantánea
         root.osdChannelName = root.model.data(root.model.index(index, 0), Qt.UserRole + 1);
         root.osdChannelLogo = root.model.data(root.model.index(index, 0), Qt.UserRole + 3);
         root.osdChannelNo = root.model.data(root.model.index(index, 0), Qt.UserRole + 4);
@@ -74,11 +89,40 @@ QtObject {
         root.osdTimer.restart();
         root.osdPanelOpacity = 1.0;
 
-        if (root.mediaPlayer) {
-            root.mediaPlayer.source = root.model.get_url_at(index);
-            root.mediaPlayer.play();
+        // Solicitamos la guía a Python
+        var epgData = root.model.fetch_current_epg(root.osdChannelName);
+        
+        // 🛠️ REPARADO: Validación estricta para evitar fallos si epgData viene indefinido o corrupto
+        var safeTitle = "Emisión en directo";
+        var safeDescription = "Buscando información del evento actual en el flujo de Tvheadend...";
+        
+        if (epgData && typeof epgData === "object" && epgData.title !== undefined) {
+            safeTitle = epgData.title;
+            safeDescription = epgData.description || "Sin descripción detallada disponible.";
         }
-        root.epgPoller.restart();
+
+        // Asignamos las variables validadas y seguras
+        root.epgTitle = safeTitle;
+        root.epgDescription = safeDescription;
+
+        if (root.mediaPlayer) {
+            if (!root.isVoluntarilyStopped) {
+                // Indicamos visualmente el estado del zapping usando los datos seguros
+                root.epgTitle = "Previsualizando: " + safeTitle;
+                
+                // Frenamos el reproductor viejo para no arrastrar residuos de audio
+                root.mediaPlayer.stop();
+                root.mediaPlayer.source = "";
+                
+                // Disparamos el temporizador de cortesía de 1.2 segundos
+                root.zappingTimer.start();
+            } else {
+                // Si estaba pausado, mantenemos el comportamiento estático previo de la UI
+                root.epgTitle = safeTitle + " (En Pausa)";
+                root.mediaPlayer.stop();
+                root.mediaPlayer.source = ""; 
+            }
+        }
     }
 
     function playChannelByNumber(numberStr) {
