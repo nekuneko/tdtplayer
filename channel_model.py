@@ -21,8 +21,7 @@ class EpgPreloaderWorker(QThread):
             self.epg_cache_ready.emit(cache)
             return
         try:
-            # 🛠️ REPARADO: Añadimos mode=now para que Tvheadend SOLO nos mande los programas 
-            # que se están emitiendo en este mismo segundo exacto en toda la parrilla.
+            from datetime import datetime
             url = f"{self.base_url}/api/epg/events/grid?limit=2000&mode=now"
             req = urllib.request.Request(url, headers={'User-Agent': 'TdtPlayer-Native'})
             
@@ -30,15 +29,26 @@ class EpgPreloaderWorker(QThread):
                 data = json.loads(response.read().decode('utf-8'))
                 
                 if "entries" in data and isinstance(data["entries"], list):
-                    # 🛠️ REPARADO: Iteramos elemento por elemento dentro del array de programas
                     for program in data["entries"]:
-                        # Tvheadend puede guardar el nombre en "channelName" o "channel" según versión
                         ch_name = program.get("channelName") or program.get("channel")
                         
                         if ch_name:
-                            # Indexamos el programa usando el nombre del canal como clave única
+                            # 🕒 NUEVO: Extracción y formateo dinámico de horas de inicio y fin
+                            time_str = ""
+                            start_ts = program.get("start")
+                            stop_ts = program.get("stop")
+                            
+                            if start_ts and stop_ts:
+                                start_dt = datetime.fromtimestamp(start_ts)
+                                stop_dt = datetime.fromtimestamp(stop_ts)
+                                time_str = f"[{start_dt.strftime('%H:%M')} - {stop_dt.strftime('%H:%M')}] "
+
+                            title = program.get("title", "Emisión en directo")
+                            # Acoplamos el horario justo al principio del título del programa
+                            full_title = f"{time_str}{title}"
+
                             cache[str(ch_name).strip()] = {
-                                "title": program.get("title", "Emisión en directo"),
+                                "title": full_title,
                                 "description": program.get("description", program.get("summary", "Sin descripción detallada disponible."))
                             }
         except Exception as e:
@@ -48,7 +58,7 @@ class EpgPreloaderWorker(QThread):
 
 
 # ===================================================================
-# MÈTODO DE CONSULTA DENTRO DE LA CLASE ChannelModel:
+# ACTUALIZADO: MÉTODO DE RESCATE CON HORARIOS
 # ===================================================================
     @Slot(str, result='QVariant')
     def fetch_current_epg(self, channel_name: str) -> dict:
@@ -57,26 +67,37 @@ class EpgPreloaderWorker(QThread):
             
         search_name = str(channel_name).strip()
         
-        # 1. Búsqueda instantánea en la RAM optimizada (Milisegundo 0)
         if search_name in self._epg_cache:
             return self._epg_cache[search_name]
             
-        # 2. Búsqueda de rescate en caliente por API individual si no estaba en la caché
         try:
+            from datetime import datetime
             encoded_name = urllib.parse.quote(search_name)
             url = f"{self._base_url}/api/epg/events/grid?channel={encoded_name}&mode=now"
             req = urllib.request.Request(url, headers={'User-Agent': 'TdtPlayer-Native'})
             
             with urllib.request.urlopen(req, timeout=0.5) as response:
                 data = json.loads(response.read().decode('utf-8'))
-                # 🛠️ REPARADO: Desglosamos correctamente el primer elemento del array individual
                 if "entries" in data and len(data["entries"]) > 0:
-                    program = data["entries"][0] # Primer programa del modo 'now'
+                    program = data["entries"][0]
+                    
+                    # 🕒 NUEVO: El mismo formateo de horas para el método de rescate
+                    time_str = ""
+                    start_ts = program.get("start")
+                    stop_ts = program.get("stop")
+                    if start_ts and stop_ts:
+                        start_dt = datetime.fromtimestamp(start_ts)
+                        stop_dt = datetime.fromtimestamp(stop_ts)
+                        time_str = f"[{start_dt.strftime('%H:%M')} - {stop_dt.strftime('%H:%M')}] "
+
+                    title = program.get("title", "Emisión en directo")
+                    full_title = f"{time_str}{title}"
+
                     res = {
-                        "title": program.get("title", "Emisión en directo"),
+                        "title": full_title,
                         "description": program.get("description", program.get("summary", "Sin descripción detallada disponible."))
                     }
-                    self._epg_cache[search_name] = res # Guardamos en RAM
+                    self._epg_cache[search_name] = res
                     return res
         except Exception:
             pass

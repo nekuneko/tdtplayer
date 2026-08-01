@@ -67,7 +67,13 @@ ApplicationWindow {
                     anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
                     height: ctrl.isFullScreen ? 40 : 0 
                     hoverEnabled: true
-                    onEntered: { if (ctrl.isFullScreen) epgDrawer.epgForceOpen = true }
+                    
+                    // 🛠️ REPARADO: Al entrar el ratón, encendemos la propiedad del componente directamente
+                    onEntered: { 
+                        if (ctrl.isFullScreen) {
+                            epgDrawer.epgForceOpen = true 
+                        }
+                    }
                 }
 
                 // ❌ (ELIMINADO DE AQUÍ EL EpgDrawer)
@@ -104,6 +110,31 @@ ApplicationWindow {
                     channelNo: ctrl.osdChannelNo
                     isFullScreen: ctrl.isFullScreen
                     opacity: ctrl.osdPanelOpacity 
+                }
+
+                // 🛠️ REPARADO: Desplazamiento por margen absoluto con interpolación fluida
+                ClockWidget {
+                    id: clockWidget
+                    anchors.top: parent.top
+                    anchors.right: parent.right // Mantenemos el anclaje fijo y estable
+                    
+                    // Separación vertical estándar según el formato de pantalla
+                    anchors.topMargin: ctrl.isFullScreen ? 40 : 20
+                    
+                    // 🛠️ REPARADO: Si la barra lateral está visible en pantalla completa,
+                    // sumamos su ancho real (290px) al margen base (40px) para empujar el reloj a la izquierda.
+                    // Si estamos en ventana, el margen es de 20px fijos porque el contenedor ya está encogido.
+                    anchors.rightMargin: (sidebar.visible && ctrl.isFullScreen && sidebar.width > 0)
+                                   ? (sidebar.width + 40)
+                                   : (ctrl.isFullScreen ? 40 : 20)
+                    
+                    opacity: ctrl.clockOpacity 
+                    
+                    // 🛠️ REPARADO: Aplicamos una animación numérica sobre el margen. 
+                    // Al abrir la barra lateral con el ratón, el reloj viajará suavemente a la izquierda.
+                    Behavior on anchors.rightMargin {
+                        NumberAnimation { duration: 220; easing.type: Easing.OutQuad }
+                    }
                 }
                 
                 VolumeIndicator {
@@ -152,13 +183,13 @@ ApplicationWindow {
             
             onChannelSelected: (realIndex) => {
                 ctrl.playChannel(realIndex);
-                // 👇 NUEVO: Tras hacer un clic con el ratón en la barra lateral,
-                // devolvemos el foco al teclado de forma fulminante
                 globalKeyboardHandler.forceActiveFocus();
             }
             
+            // 🛠️ REPARADO: Filtro corregido. Si el usuario está manteniendo presionadas 
+            // las flechas, el zappingTimer estará activo en QML; si está quieto, el ratón recupera prioridad.
             onChannelHovered: (name) => {
-                if (globalKeyboardHandler.activeFocus) return; // 🛠️ REPARADO: Filtro con el nuevo ID
+                if (ctrl.zappingTimer.running) return; // Evita interferencias mientras se pulsa rápido
 
                 ctrl.osdHoveredChannelName = name;
                 var epgData = channelModel.fetch_current_epg(name);
@@ -175,7 +206,14 @@ ApplicationWindow {
                     epgDrawer.epgForceOpen = false;
                 }
                 
-                // 👇 🛠️ REPARADO: Forzamos el foco de vuelta al manejador de teclado real
+                // Limpiamos los textos flotantes para que la guía recupere el canal reproduciéndose
+                ctrl.osdHoveredChannelName = "";
+                var currentEpg = channelModel.fetch_current_epg(ctrl.osdChannelName);
+                if (currentEpg && currentEpg.title !== undefined) {
+                    ctrl.epgTitle = currentEpg.title;
+                    ctrl.epgDescription = currentEpg.description;
+                }
+
                 globalKeyboardHandler.forceActiveFocus();
             }
         }

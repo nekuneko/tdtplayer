@@ -25,6 +25,14 @@ QtObject {
     property int currentVolumePercent: 100
     property bool showVolumeOsd: false
     property real osdPanelOpacity: 0.0
+    
+    // 🛠️ REPARADO: Condición universal e infalible para la opacidad del reloj.
+    // El reloj se encenderá (1.0) si el cartel del canal está activo en pantalla (osdPanelOpacity > 0),
+    // O si la barra lateral derecha está visible en pantalla (ya sea fija en ventana o abierta por ratón en full),
+    // O si el panel inferior del EPG está desplegado visualmente. De lo contrario, se oculta (0.0).
+    property real clockOpacity: (osdPanelOpacity > 0.0 
+                                 || (sidebar && sidebar.visible && sidebar.width > 0) 
+                                 || (epgDrawer && epgDrawer.visible && epgDrawer.height > 0)) ? 1.0 : 0.0
 
     // 👇 NUEVO: Señal limpia para avisar a los componentes que se está pulsando el teclado
     signal channelZappedByKeyboard()
