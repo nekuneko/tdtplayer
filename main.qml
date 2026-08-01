@@ -308,13 +308,20 @@ ApplicationWindow {
                     visible: mediaPlayer.playbackState !== MediaPlayer.PlayingState
                 }
                 
-                // Panel flotante del OSD (CORREGIDO: Eliminado maxHeight problemático)
+                                // Panel flotante del OSD (ACTUALIZADO: Posicionado arriba a la izquierda)
                 Rectangle {
                     id: osdPanel
-                    anchors.bottom: parent.bottom
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottomMargin: window.isFullScreen ? 40 : 20
-                    width: parent.width * 0.8 
+                    
+                    // CORRECCIÓN DE ANCLAJES: Movido de la parte inferior a la parte superior izquierda
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    
+                    // Margen de separación dinámico para que no se pegue al borde del monitor en pantalla completa
+                    anchors.topMargin: window.isFullScreen ? 40 : 20
+                    anchors.leftMargin: window.isFullScreen ? 40 : 20
+                    
+                    // Reducimos el ancho para que sea un cuadro compacto arriba a la izquierda en vez de una barra ancha
+                    width: 380 
                     height: 85
                     radius: 12
                     color: "#1E293B" 
@@ -329,14 +336,14 @@ ApplicationWindow {
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 15
-                        spacing: 20
+                        spacing: 15
 
                         Image {
                             source: window.osdChannelLogo !== "" ? window.osdChannelLogo : ""
-                            sourceSize.width: 55
-                            sourceSize.height: 55
-                            Layout.preferredWidth: 55
-                            Layout.preferredHeight: 55
+                            sourceSize.width: 45 // Escalado ligeramente más compacto para la esquina
+                            sourceSize.height: 45
+                            Layout.preferredWidth: 45
+                            Layout.preferredHeight: 45
                             fillMode: Image.PreserveAspectFit
                             onStatusChanged: {
                                 if (status === Image.Error) {
@@ -353,19 +360,20 @@ ApplicationWindow {
                                 text: window.osdChannelName
                                 color: "white"
                                 font.bold: true
-                                font.pointSize: 16
+                                font.pointSize: 14 // Fuente ajustada para balancear el diseño compacto
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
 
                             Text {
-                                text: window.osdChannelNo !== "" ? "Canal Informativo • CH " + window.osdChannelNo : "Tvheadend Stream"
+                                text: window.osdChannelNo !== "" ? "CH " + window.osdChannelNo : "Tvheadend Stream"
                                 color: "#94A3B8"
                                 font.pointSize: 10
                             }
                         }
                     }
                 } // Fin de osdPanel
+
             } // Fin de VideoOutput
         } // Fin de videoContainer
         
