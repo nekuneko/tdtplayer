@@ -47,6 +47,21 @@ MouseArea {
         return channelListView.indexAt(0, channelListView.contentY);
     }
 
+    // 👇 NUEVO: Función para sincronizar la vista cuando se navega estrictamente con teclado
+    function forceKeyboardScrollSync() {
+        var count = root.model ? root.model.rowCount() : 0;
+        if (count === 0) return;
+        
+        var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY);
+        var baseVirtual = currentScrollIndex - (currentScrollIndex % count);
+        var targetVirtual = baseVirtual + root.currentChannelIndex;
+        
+        // Desplaza el ListView de forma que el elemento activo se mantenga visible en el centro
+        channelListView.positionViewAtIndex(targetVirtual, ListView.Center);
+    }
+
+    
+
     Rectangle {
         anchors.fill: parent
         color: "#111827"

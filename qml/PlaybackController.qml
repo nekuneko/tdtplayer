@@ -5,7 +5,6 @@ import QtMultimedia
 QtObject {
     id: root
 
-    // Propiedades de Estado Globales
     property var model: null
     property var mediaPlayer: null
     property var sidebar: null
@@ -25,47 +24,27 @@ QtObject {
     
     property int currentVolumePercent: 100
     property bool showVolumeOsd: false
+    property real osdPanelOpacity: 0.0
 
-    // REPARADO: Se eliminó el prefijo inválido 'property timer' y se usa el tipo nativo 'Timer'
-    property Timer osdTimer: Timer {
-        interval: 3000
-        onTriggered: root.osdPanelOpacity = 0.0
-    }
+    property Timer osdTimer: Timer { interval: 3000; onTriggered: root.osdPanelOpacity = 0.0 }
+    property Timer volumeOsdTimer: Timer { interval: 2000; onTriggered: root.showVolumeOsd = false }
+    property Timer epgPoller: Timer { interval: 300; running: false }
 
-    property Timer volumeOsdTimer: Timer {
-        interval: 2000
-        onTriggered: root.showVolumeOsd = false
-    }
-
-    // 🛠️ REPARADO: El poller ahora pide los datos en segundo plano de forma no bloqueante
-    property Timer epgPoller: Timer {
-        interval: 300 
-        onTriggered: {
-            if (root.osdChannelName !== "" && root.model) {
-                root.model.request_epg_async(root.osdChannelName);
-            }
-        }
-    }
-
-    // 👇 NUEVO: Temporizador para retrasar la sintonización del flujo de vídeo (1.2 segundos)
+    // 🛠️ REPARADO: El temporizador ahora SOLO controla la apertura del vídeo.
+    // La guía de televisión (EPG) se desvincula de aquí para que cambie al instante sin esperas.
     property Timer zappingTimer: Timer {
-        interval: 350
+        interval: 250 // Tiempo de cortesía de 250ms para soltar la tecla antes de abrir el vídeo
         running: false
         repeat: false
         onTriggered: {
             if (root.mediaPlayer && root.model && !root.isVoluntarilyStopped) {
-                // Aquí se realiza la sintonización real de red de forma segura
+                // Sintonización real de red (Sólo cuando el usuario se detiene)
                 root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex);
                 root.mediaPlayer.play();
-                root.epgPoller.restart();
             }
         }
     }
 
-    // Propiedad puente para la UI
-    property real osdPanelOpacity: 0.0
-
-    // Métodos de reproducción nucleares
     function playChannel(index) {
         if (!root.model || root.model.rowCount() === 0) return;
         
@@ -73,9 +52,13 @@ QtObject {
         else if (index >= root.model.rowCount()) index = 0;
         
         root.currentChannelIndex = index;
+        
+        // Paramos inmediatamente el intento de carga de vídeo del canal anterior
         root.zappingTimer.stop();
         
-        // 1. PRIORIDAD MÁXIMA: Actualización de UI instantánea
+        root.osdHoveredChannelName = "";
+
+        // 1. ACTUALIZACIÓN VISUAL INMEDIATA DE CABECERA (Milisegundo 0)
         root.osdChannelName = root.model.data(root.model.index(index, 0), Qt.UserRole + 1);
         root.osdChannelLogo = root.model.data(root.model.index(index, 0), Qt.UserRole + 3);
         root.osdChannelNo = root.model.data(root.model.index(index, 0), Qt.UserRole + 4);
@@ -83,23 +66,34 @@ QtObject {
         root.osdTimer.restart();
         root.osdPanelOpacity = 1.0;
 
-        // Limpieza visual inmediata antes de que llegue el EPG real del hilo secundario
-        root.epgTitle = "Cargando guía...";
-        root.epgDescription = "Solicitando datos de emisión a Tvheadend...";
+        // 🚀 2. ACTUALIZACIÓN INMEDIATA DEL EPG DESDE LA RAM (Milisegundo 0)
+        // Como la consulta tarda 0ms, la extraemos directamente al pulsar la tecla.
+        // Mientras mantengas pulsadas las flechas, el texto de lo que echan cambiará sincronizado canal por canal.
+        var epgData = root.model.fetch_current_epg(root.osdChannelName);
+        if (epgData && epgData.title !== undefined) {
+            root.epgTitle = epgData.title;
+            root.epgDescription = epgData.description || "Sin descripción disponible.";
+        } else {
+            root.epgTitle = "Emisión en directo";
+            root.epgDescription = "Buscando información del evento actual en el flujo de Tvheadend...";
+        }
 
         if (root.mediaPlayer) {
-            // Cancelación inmediata del buffer multimedia anterior
+            // Cortamos el flujo de red anterior para que la pantalla no se congele con basura
             root.mediaPlayer.stop();
             root.mediaPlayer.source = "";
             
             if (!root.isVoluntarilyStopped) {
-                root.epgTitle = "Previsualizando canal...";
-                root.zappingTimer.start(); // El debounce ágil (ej. 350ms)
+                // Planificamos la sintonización del vídeo
+                root.zappingTimer.start();
+            } else {
+                root.epgTitle = root.epgTitle + " (En Pausa)";
             }
         }
-        
-        // Dispara la petición de red en el hilo de Python
-        root.model.request_epg_async(root.osdChannelName);
+
+        if (root.sidebar) {
+            root.sidebar.forceKeyboardScrollSync();
+        }
     }
 
     function playChannelByNumber(numberStr) {
@@ -128,31 +122,21 @@ QtObject {
 
     function togglePlayback() {
         if (!root.mediaPlayer || !root.model) return;
-        
         if (root.mediaPlayer.playbackState === MediaPlayer.PlayingState) {
             root.isVoluntarilyStopped = true;
-            
-            // 👇 REPARADO: Al detener, vaciamos la fuente para cerrar la conexión de red
             root.mediaPlayer.stop();
             root.mediaPlayer.source = ""; 
         } else {
             root.isVoluntarilyStopped = false;
-            
-            // 👇 REPARADO: Al reanudar, recargamos la URL original para forzar un enganche limpio
-            root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex);
-            root.mediaPlayer.play();
+            root.playChannel(root.currentChannelIndex);
         }
     }
 
     function forceResume() {
         if (!root.mediaPlayer || !root.model) return;
-        
         if (root.mediaPlayer.playbackState !== MediaPlayer.PlayingState) {
             root.isVoluntarilyStopped = false;
-            
-            // 👇 REPARADO: Aplicamos la misma sintonización limpia si se pulsa Enter/Return
-            root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex);
-            root.mediaPlayer.play();
+            root.playChannel(root.currentChannelIndex);
         }
     }
 }

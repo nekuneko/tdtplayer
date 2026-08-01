@@ -134,41 +134,37 @@ ApplicationWindow {
             model: channelModel
             currentChannelIndex: ctrl.currentChannelIndex
             isFullScreen: ctrl.isFullScreen
-            z: 2 // Un nivel por encima del EPG para que encajen las sombras limpiamente
             
             onChannelSelected: (realIndex) => {
                 ctrl.playChannel(realIndex);
             }
+            
+            // 🛠️ REPARADO: Protegemos el evento Hover contra interferencias del teclado
             onChannelHovered: (name) => {
+                // Si el foco principal de entrada está activo en el capturador de teclado,
+                // significa que el usuario está usando las flechas; ignoramos el ratón para evitar líos.
+                if (mainFocusScope.activeFocus) return;
+
                 ctrl.osdHoveredChannelName = name;
                 var epgData = channelModel.fetch_current_epg(name);
-                ctrl.epgTitle = epgData.title; 
-                ctrl.epgDescription = epgData.description;
+                if (epgData && epgData.title !== undefined) {
+                    ctrl.epgTitle = epgData.title; 
+                    ctrl.epgDescription = epgData.description;
+                }
                 if (ctrl.isFullScreen) epgDrawer.epgForceOpen = true;
             }
+            
             onExited: {
                 if (ctrl.isFullScreen) {
                     sidebar.sidebarForceOpen = false;
                     epgDrawer.epgForceOpen = false;
                 }
+                
+                // 👇 NUEVO: Al retirar físicamente el ratón de la barra lateral,
+                // devolvemos el foco al capturador de teclado para reactivar el zapping limpio
+                mainFocusScope.forceActiveFocus();
             }
         }
-
-        Connections {
-        target: channelModel
-        
-        // 🛠️ REPARADO: Cuando el hilo secundario de Python termina la petición HTTP,
-        // inyectamos los textos del EPG directamente en el controlador
-        function onEpgReceived(channelName, title, description) {
-            // Solo actualizamos la pantalla si los datos recibidos corresponden al canal que el usuario está viendo actualmente
-            if (channelName === ctrl.osdChannelName || channelName === ctrl.osdHoveredChannelName) {
-                ctrl.epgTitle = title;
-                ctrl.epgDescription = description;
-            }
-        }
-    }
-
-        
     } 
 
     ChannelNumPopup {

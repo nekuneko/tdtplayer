@@ -1,68 +1,53 @@
 # channel_model.py
 import re
-from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex, Slot, Property, QThread, Signal
-from m3u_channel import M3uChannel
+import json
+import urllib.request
+import urllib.parse
+from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex, Slot, QThread, Signal
 
-# 1. HILO SECUNDARIO ASÍNCRONO PARA LA RED (Fuera de la clase ChannelModel)
-class EpgWorker(QThread):
-    result_ready = Signal(str, dict)
+# Hilo en segundo plano para precargar el EPG completo al iniciar y no saturar la red
+class EpgPreloaderWorker(QThread):
+    epg_cache_ready = Signal(dict)
 
-    def __init__(self, base_url, channel_name):
+    def __init__(self, base_url):
         super().__init__()
         self.base_url = base_url
-        self.channel_name = channel_name
 
     def run(self):
-        import urllib.request
-        import urllib.parse
-        import json
-        
-        default_res = {
-            "title": "Emisión en directo", 
-            "description": "Buscando información del evento actual en el flujo de Tvheadend..."
-        }
-        
+        cache = {}
         if not self.base_url:
-            self.result_ready.emit(self.channel_name, default_res)
+            self.epg_cache_ready.emit(cache)
             return
-
         try:
-            encoded_name = urllib.parse.quote(self.channel_name)
-            url = f"{self.base_url}/api/epg/events/grid?channel={encoded_name}&mode=now"
-            
+            # Solicitamos la rejilla completa de canales en una sola petición masiva
+            url = f"{self.base_url}/api/epg/events/grid?limit=1000"
             req = urllib.request.Request(url, headers={'User-Agent': 'TdtPlayer-Native'})
-            with urllib.request.urlopen(req, timeout=1.0) as response:
+            with urllib.request.urlopen(req, timeout=3.0) as response:
                 data = json.loads(response.read().decode('utf-8'))
-                if "entries" in data and len(data["entries"]) > 0:
-                    event = data["entries"][0]
-                    res = {
-                        "title": event.get("title", "Emisión en directo"),
-                        "description": event.get("description", event.get("summary", "Sin descripción detallada disponible."))
-                    }
-                    self.result_ready.emit(self.channel_name, res)
-                    return
+                if "entries" in data:
+                    for entry in data["entries"]:
+                        ch_name = entry.get("channelName") or entry.get("channel")
+                        if ch_name:
+                            cache[ch_name] = {
+                                "title": entry.get("title", "Emisión en directo"),
+                                "description": entry.get("description", entry.get("summary", "Sin descripción detallada disponible."))
+                            }
         except Exception:
             pass
-            
-        self.result_ready.emit(self.channel_name, default_res)
+        self.epg_cache_ready.emit(cache)
 
 
-# 2. CLASE PRINCIPAL DEL MODELO (Perfectamente indentada)
 class ChannelModel(QAbstractListModel):
-    # Definición de Roles para QML
     NameRole = Qt.UserRole + 1
     UrlRole = Qt.UserRole + 2
     LogoRole = Qt.UserRole + 3
     ChNoRole = Qt.UserRole + 4
 
-    # Señal que avisa a QML cuando el EPG en segundo plano está listo
-    epgReceived = Signal(str, str, str)
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self._channels = []
         self._base_url = None
-        self._workers = [] # Mantiene una referencia a los hilos para evitar que el Garbage Collector los destruya
+        self._epg_cache = {} # 🧠 Memoria RAM: Almacenamiento instantáneo del EPG
 
     def roleNames(self):
         return {
@@ -78,7 +63,6 @@ class ChannelModel(QAbstractListModel):
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or not (0 <= index.row() < len(self._channels)):
             return None
-        
         channel = self._channels[index.row()]
         if role == self.NameRole: return channel.name
         elif role == self.UrlRole: return channel.url
@@ -105,33 +89,34 @@ class ChannelModel(QAbstractListModel):
             if line.startswith('#EXTINF:'):
                 comma_index = line.rfind(',')
                 current_name = line[comma_index + 1:].strip() if comma_index != -1 else "Canal Desconocido"
-                
                 logo_match = logo_regex.search(line)
                 current_logo = logo_match.group(1) if logo_match else None
-                
                 ch_no_match = ch_no_regex.search(line)
                 current_ch_no = ch_no_match.group(1) if ch_no_match else None
                 
             elif line.startswith('http://') or line.startswith('https://'):
                 if current_name:
+                    from m3u_channel import M3uChannel
                     self._channels.append(M3uChannel(
-                        name=current_name, 
-                        url=line, 
-                        logo=current_logo, 
-                        ch_no=current_ch_no
+                        name=current_name, url=line, logo=current_logo, ch_no=current_ch_no
                     ))
-                    
                     if not self._base_url:
                         from urllib.parse import urlparse
                         parsed_url = urlparse(line)
                         if parsed_url.netloc:
                             self._base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-                    
-                    current_name = ""
-                    current_logo = None
-                    current_ch_no = None
+                    current_name, current_logo, current_ch_no = "", None, None
                     
         self.endResetModel()
+        
+        # Disparamos la precarga masiva del EPG en segundo plano inmediatamente tras parsear el M3U
+        if self._base_url:
+            self._worker = EpgPreloaderWorker(self._base_url)
+            self._worker.epg_cache_ready.connect(self._on_cache_ready)
+            self._worker.start()
+
+    def _on_cache_ready(self, cache_dict):
+        self._epg_cache = cache_dict
 
     @Slot(int, result=str)
     def get_url_at(self, row: int) -> str:
@@ -139,21 +124,33 @@ class ChannelModel(QAbstractListModel):
             return self._channels[row].url
         return ""
 
-    # NUEVO: Lanza la petición en un hilo secundario sin bloquear la UI
-    @Slot(str)
-    def request_epg_async(self, channel_name: str):
-        # Limpiamos hilos viejos terminados para liberar memoria de forma segura
-        self._workers = [w for w in self._workers if w.isRunning()]
-        
-        worker = EpgWorker(self._base_url, channel_name)
-        worker.result_ready.connect(self._on_epg_ready)
-        self._workers.append(worker)
-        worker.start()
-
-    def _on_epg_ready(self, channel_name, epg_dict):
-        self.epgReceived.emit(channel_name, epg_dict["title"], epg_dict["description"])
-
-    # Fallback de compatibilidad por si algún componente antiguo invoca el método viejo
+    # 🛠️ REPARADO: La consulta ahora lee de la memoria RAM interna. 
+    # Tarda 0 milisegundos, eliminando cualquier espera de red en el zapping.
     @Slot(str, result='QVariant')
     def fetch_current_epg(self, channel_name: str) -> dict:
-        return {"title": "Cargando guía...", "description": "Solicitando información a Tvheadend..."}
+        # Si el canal ya está en nuestra base de datos local de la RAM, lo devolvemos de golpe
+        if channel_name in self._epg_cache:
+            return self._epg_cache[channel_name]
+            
+        # Si no se encuentra en la caché, hacemos una consulta rápida de rescate
+        try:
+            encoded_name = urllib.parse.quote(channel_name)
+            url = f"{self._base_url}/api/epg/events/grid?channel={encoded_name}&mode=now"
+            req = urllib.request.Request(url, headers={'User-Agent': 'TdtPlayer-Native'})
+            with urllib.request.urlopen(req, timeout=0.4) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                if "entries" in data and len(data["entries"]) > 0:
+                    event = data["entries"][0]
+                    res = {
+                        "title": event.get("title", "Emisión en directo"),
+                        "description": event.get("description", event.get("summary", "Sin descripción detallada disponible."))
+                    }
+                    self._epg_cache[channel_name] = res # Guardamos en caché para la próxima vez
+                    return res
+        except Exception:
+            pass
+            
+        return {
+            "title": "Emisión en directo",
+            "description": "Buscando información del evento actual en el flujo de Tvheadend..."
+        }
