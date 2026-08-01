@@ -15,10 +15,12 @@ ApplicationWindow {
     property int currentChannelIndex: 0
     property bool isFullScreen: false
     property bool isVoluntarilyStopped: false
+    
     property string osdChannelName: ""
     property string osdChannelLogo: ""
     property string osdChannelNo: ""
 
+    // Función de sintonización circular infinita
     function playChannel(index) {
         if (channelModel.rowCount() === 0) return;
         
@@ -28,12 +30,10 @@ ApplicationWindow {
         currentChannelIndex = index;
         isVoluntarilyStopped = false;
         
-        // Lee los metadatos del canal sintonizado desde tu modelo de Python
         osdChannelName = channelModel.data(channelModel.index(index, 0), Qt.UserRole + 1);
         osdChannelLogo = channelModel.data(channelModel.index(index, 0), Qt.UserRole + 3);
         osdChannelNo = channelModel.data(channelModel.index(index, 0), Qt.UserRole + 4);
         
-        // Muestra el panel y reinicia la cuenta atrás de 3 segundos
         osdTimer.restart();
         osdPanel.opacity = 1.0;
 
@@ -41,33 +41,40 @@ ApplicationWindow {
         mediaPlayer.play();
     }
 
-    // Lógica para sintonizar el canal buscando por su número de canal (CH)
+    // Sintonizador directo buscando el CH del canal
     function playChannelByNumber(numberStr) {
         var count = channelModel.rowCount();
         for (var i = 0; i < count; i++) {
-            // El modelo expone chNo. Comparamos cadenas limpias
             if (channelModel.data(channelModel.index(i, 0), Qt.UserRole + 4) === numberStr) {
                 window.playChannel(i);
                 return;
             }
         }
-        // Si no encuentra el número exacto, opcionalmente puedes sintonizar por el índice directo del índice (i + 1)
         var targetIndex = parseInt(numberStr) - 1;
         if (!isNaN(targetIndex) && targetIndex >= 0 && targetIndex < count) {
             window.playChannel(targetIndex);
         }
     }
 
-    // Capturador de eventos de teclado global
+    Timer {
+        id: osdTimer
+        interval: 3000
+        running: false
+        repeat: false
+        onTriggered: osdPanel.opacity = 0.0
+    }
+
+    // Capturador de teclado blindado en la raíz (Soluciona el marcado numérico)
     Item {
+        anchors.fill: parent
         focus: true
+        
         Keys.onUpPressed: window.playChannel(window.currentChannelIndex - 1)
         Keys.onDownPressed: window.playChannel(window.currentChannelIndex + 1)
         Keys.onLeftPressed: window.playChannel(window.currentChannelIndex - 1)
         Keys.onRightPressed: window.playChannel(window.currentChannelIndex + 1)
         
         Keys.onPressed: (event) => {
-            // ACTUALIZADO: Control de la barra espaciadora gestionando la bandera voluntaria
             if (event.key === Qt.Key_Space) {
                 if (mediaPlayer.playbackState === MediaPlayer.PlayingState) {
                     window.isVoluntarilyStopped = true;
@@ -78,41 +85,45 @@ ApplicationWindow {
                 }
                 event.accepted = true;
             }
-            // ACTUALIZADO: Enter también apaga la bandera voluntaria al reanudar
             else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && mediaPlayer.playbackState !== MediaPlayer.PlayingState && !channelNumPopup.opened) {
                 window.isVoluntarilyStopped = false;
                 mediaPlayer.play();
                 event.accepted = true;
             }
-            // Marcador numérico (0-9)
             else if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9 && !channelNumPopup.opened) {
                 channelNumPopup.open();
                 numInputField.text = event.text;
                 numInputField.forceActiveFocus();
                 event.accepted = true;
             }
-            // Control de escape para pantalla completa
             else if (event.key === Qt.Key_Escape && window.isFullScreen && !channelNumPopup.opened) {
-                window.visibility = Window.Windowed;
-                window.isFullScreen = false;
+                if (sidebar.sidebarForceOpen) {
+                    sidebar.sidebarForceOpen = false;
+                } else {
+                    window.visibility = Window.Windowed;
+                    window.isFullScreen = false;
+                }
                 event.accepted = true;
             }
         }
     }
 
-    MediaPlayer {
-        id: mediaPlayer
-        audioOutput: AudioOutput {}
-        videoOutput: videoOutput
-    }
-
-    RowLayout {
+    FocusScope {
+        id: mainFocusScope
         anchors.fill: parent
-        spacing: 0
 
+        MediaPlayer {
+            id: mediaPlayer
+            audioOutput: AudioOutput {}
+            videoOutput: videoOutput
+        }
+        // Capa 1: El Reproductor de Vídeo (Ocupa siempre toda la pantalla o ventana)
         Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            id: videoContainer
+            anchors.left: parent.left
+            anchors.right: (sidebar.visible && !window.isFullScreen) ? sidebar.left : parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
             color: "black"
 
             VideoOutput {
@@ -132,26 +143,45 @@ ApplicationWindow {
                     }
                 }
                 
-                // NUEVO: Cartel de fondo que aparece SOLO cuando el stream no se está reproduciendo
-                                // ACTUALIZADO: Texto dinámico que distingue entre detención voluntaria y sintonización de buffer
+                // Zona interactiva en el borde derecho: Hover en pantalla completa
+                MouseArea {
+                    id: rightEdgeSwipeArea
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: window.isFullScreen ? 50 : 0 
+                    hoverEnabled: true
+                    
+                    onEntered: {
+                        if (window.isFullScreen) {
+                            sidebar.sidebarForceOpen = true
+                        }
+                    }
+                }
+
+                // Zona invisible sobre el vídeo para cerrar el menú haciendo clic fuera
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.rightMargin: sidebar.width
+                    visible: window.isFullScreen && sidebar.sidebarForceOpen
+                    onClicked: sidebar.sidebarForceOpen = false
+                }
+
+                // Cartel de fondo para estados de pausa o buffer
                 Text {
                     anchors.centerIn: parent
                     text: window.isVoluntarilyStopped 
                           ? "Stream Detenido\nPulse Espacio o Enter para reanudar" 
                           : "Sintonizando canal...\nCargando flujo de Tvheadend"
-                    color: window.isVoluntarilyStopped ? "#94A3B8" : "#3B82F6" // Gris para detenido, azul eléctrico para carga
+                    color: window.isVoluntarilyStopped ? "#94A3B8" : "#3B82F6"
                     font.pointSize: window.isFullScreen ? 18 : 14
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
                     lineHeight: 1.3
-                    
-                    // Visible si el reproductor no está reproduciendo activamente (parado, cargando o en error)
                     visible: mediaPlayer.playbackState !== MediaPlayer.PlayingState
                 }
-
-
                 
-                // NUEVO: El banner translúcido inferior del OSD
+                // Panel flotante del OSD (CORREGIDO: Eliminado maxHeight problemático)
                 Rectangle {
                     id: osdPanel
                     anchors.bottom: parent.bottom
@@ -208,17 +238,40 @@ ApplicationWindow {
                             }
                         }
                     }
-                } // Fin del Rectangle osdPanel
+                } // Fin de osdPanel
             } // Fin de VideoOutput
-
-        }
-
-        Rectangle {
+        } // Fin de videoContainer
+        
+        // Capa 2: El Panel Lateral de Canales (CORREGIDO: Convertido a MouseArea para soportar onExited nativo)
+        MouseArea {
             id: sidebar
-            Layout.preferredWidth: 290
-            Layout.fillHeight: true
-            color: "#111827"
-            visible: !window.isFullScreen
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            
+            property bool sidebarForceOpen: false
+            visible: !window.isFullScreen || sidebarForceOpen
+            width: visible ? 290 : 0
+
+            // Habilitamos el hover nativo en la raíz del panel
+            hoverEnabled: true
+
+            // Al ser un MouseArea, esto ahora es 100% legal y funciona sin romper la app
+            onExited: {
+                if (window.isFullScreen) {
+                    sidebarForceOpen = false
+                }
+            }
+
+            // Dibujamos el fondo oscuro premium usando un Rectangle interno
+            Rectangle {
+                anchors.fill: parent
+                color: "#111827"
+            }
+
+            Behavior on width {
+                NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
+            }
 
             ListView {
                 id: channelListView
@@ -227,7 +280,7 @@ ApplicationWindow {
                 clip: true
 
                 delegate: ItemDelegate {
-                    width: parent.width
+                    width: 290
                     height: 60
                     highlighted: window.currentChannelIndex === index
 
@@ -237,6 +290,8 @@ ApplicationWindow {
                     }
 
                     contentItem: RowLayout {
+                        width: 270
+                        anchors.centerIn: parent
                         spacing: 12
                         
                         Image {
@@ -270,13 +325,16 @@ ApplicationWindow {
                         }
                     }
 
-                    onClicked: window.playChannel(index)
+                    onClicked: {
+                        window.playChannel(index)
+                        sidebar.sidebarForceOpen = false 
+                    }
                 }
             }
         }
-    }
+    } // Fin de mainFocusScope
 
-    // POPUP FLOTANTE: Marcador Numérico Inteligente
+    // POPUP MODAL: Marcador Numérico Inteligente
     Popup {
         id: channelNumPopup
         anchors.centerIn: parent
@@ -287,8 +345,8 @@ ApplicationWindow {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         background: Rectangle {
-            color: "#1E293B" // Slate 800 premium
-            border.color: "#3B82F6" // Borde azul corporativo
+            color: "#1E293B"
+            border.color: "#3B82F6"
             border.width: 2
             radius: 12
         }
@@ -323,7 +381,6 @@ ApplicationWindow {
                 color: "white"
                 placeholderText: "0"
                 
-                // Restringe la entrada a solo números
                 validator: RegularExpressionValidator { regularExpression: /[0-9]+/ }
 
                 background: Rectangle {
@@ -332,7 +389,6 @@ ApplicationWindow {
                     border.color: numInputField.activeFocus ? "#3B82F6" : "#475569"
                 }
 
-                // Al pulsar Enter en el popup, sintoniza y se cierra
                 Keys.onReturnPressed: {
                     if (text.length > 0) {
                         window.playChannelByNumber(text);
@@ -396,15 +452,6 @@ ApplicationWindow {
         fileDialog.open()
     }
 
-    // NUEVO: Temporizador invisible de 3 segundos que oculta el panel al terminar
-    Timer {
-        id: osdTimer
-        interval: 3000
-        running: false
-        repeat: false
-        onTriggered: osdPanel.opacity = 0.0
-    }
-
     FileDialog {
         id: fileDialog
         title: "Carga tu lista Tvheadend"
@@ -413,19 +460,9 @@ ApplicationWindow {
             var request = new XMLHttpRequest();
             request.open("GET", fileDialog.selectedFile, false);
             request.send(null);
-            
-            // 1. Procesa y rellena la lista de canales en Python
             channelModel.parse_m3u_content(request.responseText);
-            
-            // 2. Fuerza el foco global en la vista para recibir las teclas
-            channelListView.forceActiveFocus();
-            
-            // 3. Sintoniza y reproduce el primer canal (Índice 0) de inmediato
             window.playChannel(0);
         }
     }
-
-
-       
-
 }
+

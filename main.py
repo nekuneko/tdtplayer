@@ -6,11 +6,18 @@ from PySide6.QtQml import QQmlApplicationEngine
 from channel_model import ChannelModel
 
 def main():
+    # 1. Fuerza el backend EGL para la GPU Intel
     os.environ["QT_XCB_GL_INTEGRATION"] = "xcb_egl"
-    # SOLUCIÓN AL ERROR DE XMLHTTPREQUEST: Permite leer el archivo .m3u local
     os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
-    # FORZAR DESENTRELAZADO EN EL BACKEND DE FFMPEG DE QT6
+    
+    # 2. Tu filtro de desentrelazado yadif que ya teníamos
     os.environ["QT_MULTIMEDIA_FFMPEG_FILTERS"] = "yadif=mode=send_frame:parity=auto:deint=interlaced"
+
+    # NUEVO: CORRECCIÓN PARA EL ERROR HEVC INTEL (Fuerza la recuperación de hilos y limpia errores de decodificación)
+    os.environ["FFMPEG_HWACCEL_RECOV"] = "1"
+    os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "vaapi"
+
+    #os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = "probesize=5000000;analyzeduration=1000000;fflags=+nobuffer+discardcorrupt"
     
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
