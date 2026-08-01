@@ -49,6 +49,9 @@ ApplicationWindow {
         Keys.onUpPressed: window.playChannel(window.currentChannelIndex - 1)
         Keys.onDownPressed: window.playChannel(window.currentChannelIndex + 1)
         
+        Keys.onLeftPressed: window.playChannel(window.currentChannelIndex - 1)
+        Keys.onRightPressed: window.playChannel(window.currentChannelIndex + 1)
+        
         Keys.onPressed: (event) => {
             // Si es un número (0-9) y el popup no está abierto, capturamos el inicio del marcado
             if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9 && !channelNumPopup.opened) {
@@ -295,4 +298,7 @@ ApplicationWindow {
             window.playChannel(0);
         }
     }
+
+       
+
 }
