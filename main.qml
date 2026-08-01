@@ -154,6 +154,20 @@ ApplicationWindow {
             }
         }
 
+        Connections {
+        target: channelModel
+        
+        // 🛠️ REPARADO: Cuando el hilo secundario de Python termina la petición HTTP,
+        // inyectamos los textos del EPG directamente en el controlador
+        function onEpgReceived(channelName, title, description) {
+            // Solo actualizamos la pantalla si los datos recibidos corresponden al canal que el usuario está viendo actualmente
+            if (channelName === ctrl.osdChannelName || channelName === ctrl.osdHoveredChannelName) {
+                ctrl.epgTitle = title;
+                ctrl.epgDescription = description;
+            }
+        }
+    }
+
         
     } 
 
