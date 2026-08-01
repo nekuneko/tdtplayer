@@ -53,9 +53,11 @@ ApplicationWindow {
             Layout.fillHeight: true
             color: "black"
 
-            VideoOutput {
+                        VideoOutput {
                 id: videoOutput
                 anchors.fill: parent
+                // Fuerza al escalador de la GPU Intel a promediar los campos verticales (Filtro Anti-Entrelazado)
+                fillMode: VideoOutput.PreserveAspectFit
 
                 TapHandler {
                     onDoubleTapped: {
@@ -69,6 +71,7 @@ ApplicationWindow {
                     }
                 }
             }
+
         }
 
         Rectangle {

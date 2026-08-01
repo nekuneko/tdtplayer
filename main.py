@@ -9,6 +9,8 @@ def main():
     os.environ["QT_XCB_GL_INTEGRATION"] = "xcb_egl"
     # SOLUCIÓN AL ERROR DE XMLHTTPREQUEST: Permite leer el archivo .m3u local
     os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
+    # FORZAR DESENTRELAZADO EN EL BACKEND DE FFMPEG DE QT6
+    os.environ["QT_MULTIMEDIA_FFMPEG_FILTERS"] = "yadif=mode=send_frame:parity=auto:deint=interlaced"
     
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
