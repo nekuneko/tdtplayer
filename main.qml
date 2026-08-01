@@ -413,10 +413,18 @@ ApplicationWindow {
             var request = new XMLHttpRequest();
             request.open("GET", fileDialog.selectedFile, false);
             request.send(null);
+            
+            // 1. Procesa y rellena la lista de canales en Python
             channelModel.parse_m3u_content(request.responseText);
+            
+            // 2. Fuerza el foco global en la vista para recibir las teclas
+            channelListView.forceActiveFocus();
+            
+            // 3. Sintoniza y reproduce el primer canal (Índice 0) de inmediato
             window.playChannel(0);
         }
     }
+
 
        
 
