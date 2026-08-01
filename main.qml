@@ -14,6 +14,9 @@ ApplicationWindow {
 
     property int currentChannelIndex: 0
     property bool isFullScreen: false
+    property string osdChannelName: ""
+    property string osdChannelLogo: ""
+    property string osdChannelNo: ""
 
     function playChannel(index) {
         if (channelModel.rowCount() === 0) return;
@@ -22,6 +25,16 @@ ApplicationWindow {
         else if (index >= channelModel.rowCount()) index = 0;
         
         currentChannelIndex = index;
+        
+        // Lee los metadatos del canal sintonizado desde tu modelo de Python
+        osdChannelName = channelModel.data(channelModel.index(index, 0), Qt.UserRole + 1);
+        osdChannelLogo = channelModel.data(channelModel.index(index, 0), Qt.UserRole + 3);
+        osdChannelNo = channelModel.data(channelModel.index(index, 0), Qt.UserRole + 4);
+        
+        // Muestra el panel y reinicia la cuenta atrás de 3 segundos
+        osdTimer.restart();
+        osdPanel.opacity = 1.0;
+
         mediaPlayer.source = channelModel.get_url_at(index);
         mediaPlayer.play();
     }
@@ -84,7 +97,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             color: "black"
 
-            VideoOutput {
+                        VideoOutput {
                 id: videoOutput
                 anchors.fill: parent
                 fillMode: VideoOutput.PreserveAspectFit
@@ -100,7 +113,67 @@ ApplicationWindow {
                         }
                     }
                 }
-            }
+                
+                // NUEVO: El banner translúcido inferior del OSD
+                Rectangle {
+                    id: osdPanel
+                    anchors.bottom: parent.bottom
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottomMargin: window.isFullScreen ? 40 : 20
+                    width: parent.width * 0.8 
+                    height: 85
+                    radius: 12
+                    color: "#1E293B" 
+                    border.color: "#3B82F6" 
+                    border.width: 1.5
+                    opacity: 0.0 
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 300 }
+                    }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 15
+                        spacing: 20
+
+                        Image {
+                            source: window.osdChannelLogo !== "" ? window.osdChannelLogo : ""
+                            sourceSize.width: 55
+                            sourceSize.height: 55
+                            Layout.preferredWidth: 55
+                            Layout.preferredHeight: 55
+                            fillMode: Image.PreserveAspectFit
+                            onStatusChanged: {
+                                if (status === Image.Error) {
+                                    source = "image://theme/media-playback-start"
+                                }
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+
+                            Text {
+                                text: window.osdChannelName
+                                color: "white"
+                                font.bold: true
+                                font.pointSize: 16
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+
+                            Text {
+                                text: window.osdChannelNo !== "" ? "Canal Informativo • CH " + window.osdChannelNo : "Tvheadend Stream"
+                                color: "#94A3B8"
+                                font.pointSize: 10
+                            }
+                        }
+                    }
+                } // Fin del Rectangle osdPanel
+            } // Fin de VideoOutput
+
         }
 
         Rectangle {
@@ -284,6 +357,15 @@ ApplicationWindow {
 
     Component.onCompleted: {
         fileDialog.open()
+    }
+
+    // NUEVO: Temporizador invisible de 3 segundos que oculta el panel al terminar
+    Timer {
+        id: osdTimer
+        interval: 3000
+        running: false
+        repeat: false
+        onTriggered: osdPanel.opacity = 0.0
     }
 
     FileDialog {
