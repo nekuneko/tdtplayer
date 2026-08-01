@@ -1,4 +1,4 @@
-// EpgDrawer.qml
+// qml/EpgDrawer.qml
 import QtQuick
 import QtQuick.Layouts
 
@@ -11,10 +11,16 @@ MouseArea {
     property string epgDescription: ""
     property bool isFullScreen: false
     property bool epgForceOpen: false
+    property var sidebarItem: null
 
+    // 🛠️ REPARADO: Anclajes atados a la ventana absoluta de la app de extremo a extremo
     anchors.left: parent.left
-    anchors.right: parent.right
     anchors.bottom: parent.bottom
+    
+    // Calcula la coordenada derecha milimétricamente usando el borde izquierdo del sidebar
+    anchors.right: (sidebarItem && sidebarItem.visible && (sidebarItem.width > 0)) 
+                   ? sidebarItem.left 
+                   : parent.right
     
     visible: !root.isFullScreen || root.epgForceOpen
     height: visible ? 130 : 0 
@@ -28,6 +34,10 @@ MouseArea {
 
     Behavior on height {
         NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
+    }
+
+    Behavior on anchors.right {
+        AnchorAnimation { duration: 200; easing.type: Easing.OutQuad }
     }
 
     Rectangle {

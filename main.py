@@ -6,6 +6,9 @@ from PySide6.QtQml import QQmlApplicationEngine
 from channel_model import ChannelModel
 
 def main():
+
+    os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = "probesize=5000000;analyzeduration=1000000;fflags=+nobuffer+discardcorrupt"
+    
     # 1. Fuerza el backend EGL para la GPU Intel
     os.environ["QT_XCB_GL_INTEGRATION"] = "xcb_egl"
     os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
@@ -18,9 +21,6 @@ def main():
     os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "vaapi"
     os.environ["FFMPEG_HWACCEL_RECOV"] = "1"
     
-    # Inyectamos el argumento para que el decodificador de VAAPI aplique desentrelazado automático
-    os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = "deint=auto" 
-
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
 

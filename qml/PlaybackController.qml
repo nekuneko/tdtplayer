@@ -106,19 +106,31 @@ QtObject {
     }
 
     function togglePlayback() {
-        if (!root.mediaPlayer) return;
+        if (!root.mediaPlayer || !root.model) return;
+        
         if (root.mediaPlayer.playbackState === MediaPlayer.PlayingState) {
             root.isVoluntarilyStopped = true;
+            
+            // 👇 REPARADO: Al detener, vaciamos la fuente para cerrar la conexión de red
             root.mediaPlayer.stop();
+            root.mediaPlayer.source = ""; 
         } else {
             root.isVoluntarilyStopped = false;
+            
+            // 👇 REPARADO: Al reanudar, recargamos la URL original para forzar un enganche limpio
+            root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex);
             root.mediaPlayer.play();
         }
     }
 
     function forceResume() {
-        if (root.mediaPlayer && root.mediaPlayer.playbackState !== MediaPlayer.PlayingState) {
+        if (!root.mediaPlayer || !root.model) return;
+        
+        if (root.mediaPlayer.playbackState !== MediaPlayer.PlayingState) {
             root.isVoluntarilyStopped = false;
+            
+            // 👇 REPARADO: Aplicamos la misma sintonización limpia si se pulsa Enter/Return
+            root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex);
             root.mediaPlayer.play();
         }
     }

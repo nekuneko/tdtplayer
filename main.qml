@@ -37,12 +37,15 @@ ApplicationWindow {
             audioOutput: AudioOutput {}
             videoOutput: videoOutput
         }
-
+        
+        // Capa 1: El contenedor del vídeo estricto
         Rectangle {
             id: videoContainer
             anchors.left: parent.left
+            // 🛠️ REPARADO: El vídeo ahora ignora la barra lateral si está en pantalla completa
             anchors.right: (sidebar.visible && !ctrl.isFullScreen) ? sidebar.left : parent.right
-            anchors.top: parent.top; anchors.bottom: parent.bottom
+            anchors.top: parent.top
+            anchors.bottom: (epgDrawer.visible && !ctrl.isFullScreen) ? epgDrawer.top : parent.bottom
             color: "black"
 
             VideoOutput {
@@ -65,15 +68,7 @@ ApplicationWindow {
                     onEntered: { if (ctrl.isFullScreen) epgDrawer.epgForceOpen = true }
                 }
 
-                EpgDrawer {
-                    id: epgDrawer
-                    channelName: ctrl.osdChannelName
-                    channelNo: ctrl.osdChannelNo
-                    hoveredChannelName: ctrl.osdHoveredChannelName
-                    epgTitle: ctrl.epgTitle
-                    epgDescription: ctrl.epgDescription
-                    isFullScreen: ctrl.isFullScreen
-                }
+                // ❌ (ELIMINADO DE AQUÍ EL EpgDrawer)
 
                 MouseArea {
                     id: rightEdgeSwipeArea
@@ -106,34 +101,49 @@ ApplicationWindow {
                     channelLogo: ctrl.osdChannelLogo
                     channelNo: ctrl.osdChannelNo
                     isFullScreen: ctrl.isFullScreen
-                    opacity: ctrl.osdPanelOpacity // Atado al timer del controlador
+                    opacity: ctrl.osdPanelOpacity 
                 }
                 
                 VolumeIndicator {
                     volumePercent: ctrl.currentVolumePercent
                     showOsd: ctrl.showVolumeOsd
                 }        
-            } 
-        } 
+            } // Fin de VideoOutput
+        } // Fin de videoContainer
 
+        // ===================================================================
+        // 🛠️ REPARADO: CAPA NUEVA DEL EPG SACADA A LA RAÍZ DEL FOCUSSCOPE
+        // ===================================================================
+        EpgDrawer {
+            id: epgDrawer
+            channelName: ctrl.osdChannelName
+            channelNo: ctrl.osdChannelNo
+            hoveredChannelName: ctrl.osdHoveredChannelName
+            epgTitle: ctrl.epgTitle
+            epgDescription: ctrl.epgDescription
+            isFullScreen: ctrl.isFullScreen
+            sidebarItem: sidebar 
+            
+            // Forzamos que se dibuje por encima del vídeo de fondo pero por debajo de la barra lateral
+            z: 1 
+        }
+
+        // Capa de la Barra Lateral de Canales
         ChannelSidebar {
             id: sidebar
             model: channelModel
             currentChannelIndex: ctrl.currentChannelIndex
             isFullScreen: ctrl.isFullScreen
+            z: 2 // Un nivel por encima del EPG para que encajen las sombras limpiamente
             
             onChannelSelected: (realIndex) => {
                 ctrl.playChannel(realIndex);
             }
-            
-            // 👇 REPARADO: Tratamiento de propiedades JSON al pasar el ratón en caliente
             onChannelHovered: (name) => {
                 ctrl.osdHoveredChannelName = name;
                 var epgData = channelModel.fetch_current_epg(name);
-                
                 ctrl.epgTitle = epgData.title; 
                 ctrl.epgDescription = epgData.description;
-                
                 if (ctrl.isFullScreen) epgDrawer.epgForceOpen = true;
             }
             onExited: {
@@ -143,6 +153,8 @@ ApplicationWindow {
                 }
             }
         }
+
+        
     } 
 
     ChannelNumPopup {
