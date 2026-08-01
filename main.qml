@@ -14,6 +14,7 @@ ApplicationWindow {
 
     property int currentChannelIndex: 0
     property bool isFullScreen: false
+    property bool isVoluntarilyStopped: false
     property string osdChannelName: ""
     property string osdChannelLogo: ""
     property string osdChannelNo: ""
@@ -25,6 +26,7 @@ ApplicationWindow {
         else if (index >= channelModel.rowCount()) index = 0;
         
         currentChannelIndex = index;
+        isVoluntarilyStopped = false;
         
         // Lee los metadatos del canal sintonizado desde tu modelo de Python
         osdChannelName = channelModel.data(channelModel.index(index, 0), Qt.UserRole + 1);
@@ -61,19 +63,35 @@ ApplicationWindow {
         focus: true
         Keys.onUpPressed: window.playChannel(window.currentChannelIndex - 1)
         Keys.onDownPressed: window.playChannel(window.currentChannelIndex + 1)
-        
         Keys.onLeftPressed: window.playChannel(window.currentChannelIndex - 1)
         Keys.onRightPressed: window.playChannel(window.currentChannelIndex + 1)
         
         Keys.onPressed: (event) => {
-            // Si es un número (0-9) y el popup no está abierto, capturamos el inicio del marcado
-            if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9 && !channelNumPopup.opened) {
+            // ACTUALIZADO: Control de la barra espaciadora gestionando la bandera voluntaria
+            if (event.key === Qt.Key_Space) {
+                if (mediaPlayer.playbackState === MediaPlayer.PlayingState) {
+                    window.isVoluntarilyStopped = true;
+                    mediaPlayer.stop();
+                } else {
+                    window.isVoluntarilyStopped = false;
+                    mediaPlayer.play();
+                }
+                event.accepted = true;
+            }
+            // ACTUALIZADO: Enter también apaga la bandera voluntaria al reanudar
+            else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && mediaPlayer.playbackState !== MediaPlayer.PlayingState && !channelNumPopup.opened) {
+                window.isVoluntarilyStopped = false;
+                mediaPlayer.play();
+                event.accepted = true;
+            }
+            // Marcador numérico (0-9)
+            else if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9 && !channelNumPopup.opened) {
                 channelNumPopup.open();
-                numInputField.text = event.text; // Inyecta el primer número pulsado
+                numInputField.text = event.text;
                 numInputField.forceActiveFocus();
                 event.accepted = true;
             }
-            // Control de escape genérico para la pantalla completa
+            // Control de escape para pantalla completa
             else if (event.key === Qt.Key_Escape && window.isFullScreen && !channelNumPopup.opened) {
                 window.visibility = Window.Windowed;
                 window.isFullScreen = false;
@@ -97,7 +115,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             color: "black"
 
-                        VideoOutput {
+            VideoOutput {
                 id: videoOutput
                 anchors.fill: parent
                 fillMode: VideoOutput.PreserveAspectFit
@@ -113,6 +131,25 @@ ApplicationWindow {
                         }
                     }
                 }
+                
+                // NUEVO: Cartel de fondo que aparece SOLO cuando el stream no se está reproduciendo
+                                // ACTUALIZADO: Texto dinámico que distingue entre detención voluntaria y sintonización de buffer
+                Text {
+                    anchors.centerIn: parent
+                    text: window.isVoluntarilyStopped 
+                          ? "Stream Detenido\nPulse Espacio o Enter para reanudar" 
+                          : "Sintonizando canal...\nCargando flujo de Tvheadend"
+                    color: window.isVoluntarilyStopped ? "#94A3B8" : "#3B82F6" // Gris para detenido, azul eléctrico para carga
+                    font.pointSize: window.isFullScreen ? 18 : 14
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    lineHeight: 1.3
+                    
+                    // Visible si el reproductor no está reproduciendo activamente (parado, cargando o en error)
+                    visible: mediaPlayer.playbackState !== MediaPlayer.PlayingState
+                }
+
+
                 
                 // NUEVO: El banner translúcido inferior del OSD
                 Rectangle {
