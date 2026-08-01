@@ -377,7 +377,7 @@ ApplicationWindow {
             } // Fin de VideoOutput
         } // Fin de videoContainer
         
-                // Capa 2: El Panel Lateral de Canales (CORREGIDO: Scroll Infinito Circular Real mediante Índice Virtual)
+        // Capa 2: El Panel Lateral de Canales 
         MouseArea {
             id: sidebar
             anchors.right: parent.right
@@ -389,9 +389,12 @@ ApplicationWindow {
             width: visible ? 290 : 0
 
             hoverEnabled: true
+
+            // ACTUALIZADO: Al sacar el ratón del menú lateral, esconde tanto el menú como el EPG inferior
             onExited: {
                 if (window.isFullScreen) {
                     sidebarForceOpen = false
+                    epgDrawer.epgForceOpen = false // NUEVO: Cierra la persiana del EPG de forma sincronizada
                 }
             }
 
@@ -517,8 +520,26 @@ ApplicationWindow {
                         window.playChannel(channelItemDelegate.realIndex)
                         sidebar.sidebarForceOpen = false 
                     }
-                }
-            }
+                    
+                    // ACTUALIZADO: Cambia dinámicamente el EPG inferior al pasar el ratón por encima de la fila
+                    onHoveredChanged: {
+                        if (hovered && (channelModel && channelModel.rowCount() > 0)) {
+                            var hoveredChannelName = channelModel.data(channelModel.index(channelItemDelegate.realIndex, 0), Qt.UserRole + 1);
+                            
+                            if (hoveredChannelName !== "") {
+                                var epgData = channelModel.fetch_current_epg(hoveredChannelName);
+                                window.epgTitle = epgData[0];
+                                window.epgDescription = epgData[1];
+                                
+                                // NUEVO: Si estás en pantalla completa y exploras la lista, abre el EPG inferior automáticamente
+                                if (window.isFullScreen) {
+                                    epgDrawer.epgForceOpen = true
+                                }
+                            }
+                        }
+                    }
+                } // Fin de ItemDelegate
+            } // Fin de ListVi
         }
     } // Fin de mainFocusScope
 
