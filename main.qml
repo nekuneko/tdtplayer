@@ -19,6 +19,7 @@ ApplicationWindow {
     property string osdChannelName: ""
     property string osdChannelLogo: ""
     property string osdChannelNo: ""
+    property string osdHoveredChannelName: ""
 
     // Propiedades optimizadas para el EPG dinámico
     property string epgTitle: "Sintonizando canal..."
@@ -260,7 +261,7 @@ ApplicationWindow {
                         border.width: 1
                     }
 
-                    // Contenido del EPG
+                                        // Contenido del EPG (CORREGIDO: Apunta al canal bajo el ratón en caliente)
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 15
@@ -269,40 +270,27 @@ ApplicationWindow {
                         RowLayout {
                             Layout.fillWidth: true
                             
+                            // ACTUALIZADO: Lee 'osdHoveredChannelName' para cambiar el nombre al vuelo con el ratón
                             Text {
-                                text: "EN ANTEPROYECTO (EPG NATIVO):"
-                                color: "#3B82F6"
+                                text: (window.osdHoveredChannelName !== "" ? window.osdHoveredChannelName : window.osdChannelName) + (window.osdChannelNo !== "" ? " (CH " + window.osdChannelNo.padStart(2, '0') + ")" : "")
+                                color: "#3B82F6" 
                                 font.bold: true
-                                font.pointSize: 9
+                                font.pointSize: 10
                             }
                             
                             Text {
-                                text: " • Canal " + window.osdChannelNo
+                                text: " • GUÍA DE PROGRAMACIÓN (EPG)"
                                 color: "#64748B"
                                 font.pointSize: 9
-                                visible: window.osdChannelNo !== ""
                             }
                         }
 
-                        Text {
-                            text: window.epgTitle
-                            color: "white"
-                            font.bold: true
-                            font.pointSize: 14
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            text: window.epgDescription
-                            color: "#94A3B8"
-                            font.pointSize: 10
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            maximumLineCount: 2
-                            elide: Text.ElideRight
-                        }
+                        Text { text: window.epgTitle; color: "white"; font.bold: true; font.pointSize: 14; Layout.fillWidth: true; elide: Text.ElideRight }
+                        Text { text: window.epgDescription; color: "#94A3B8"; font.pointSize: 10; Layout.fillWidth: true; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight }
                     }
+
+
+
                 }
                 // ===================================================================
 
@@ -605,23 +593,26 @@ ApplicationWindow {
                         sidebar.sidebarForceOpen = false 
                     }
                     
-                    // ACTUALIZADO: Cambia dinámicamente el EPG inferior al pasar el ratón por encima de la fila
+                    // ACTUALIZADO: Cambia el EPG y el nombre del canal en la cabecera al pasar el ratón
                     onHoveredChanged: {
                         if (hovered && (channelModel && channelModel.rowCount() > 0)) {
                             var hoveredChannelName = channelModel.data(channelModel.index(channelItemDelegate.realIndex, 0), Qt.UserRole + 1);
                             
                             if (hoveredChannelName !== "") {
+                                // ACTUALIZACIÓN CLAVE: Inyectamos el nombre del canal en el letrero dinámico del EPG
+                                window.osdHoveredChannelName = hoveredChannelName;
+                                
                                 var epgData = channelModel.fetch_current_epg(hoveredChannelName);
-                                window.epgTitle = epgData[0];
+                                window.epgTitle = epgData[0]; 
                                 window.epgDescription = epgData[1];
                                 
-                                // NUEVO: Si estás en pantalla completa y exploras la lista, abre el EPG inferior automáticamente
                                 if (window.isFullScreen) {
                                     epgDrawer.epgForceOpen = true
                                 }
                             }
                         }
                     }
+
                 } // Fin de ItemDelegate
             } // Fin de ListVi
         }
