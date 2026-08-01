@@ -36,11 +36,14 @@ class ChannelModel(QAbstractListModel):
         elif role == self.ChNoRole: return channel.ch_no or ""
         return None
 
+        # ... Mantén tus métodos roleNames, rowCount y data EXACTAMENTE IGUAL ...
+
     @Slot(str)
     def parse_m3u_content(self, content: str):
-        """Algoritmo de parseo equivalente al de Flutter usando RegExp"""
+        """Algoritmo de parseo que ahora también detecta la dirección del servidor"""
         self.beginResetModel()
         self._channels = []
+        self._base_url = None  # Inicializa la URL base de Tvheadend
         
         lines = content.split('\n')
         logo_regex = re.compile(r'tvg-logo="([^"]+)"')
@@ -70,6 +73,15 @@ class ChannelModel(QAbstractListModel):
                         logo=current_logo, 
                         ch_no=current_ch_no
                     ))
+                    
+                    # NUEVO: Extrae de forma automática la IP y el Puerto de la primera URL que encuentre
+                    if not self._base_url:
+                        from urllib.parse import urlparse
+                        parsed_url = urlparse(line)
+                        if parsed_url.netloc:
+                            # Guarda "http://192.168.1.10:9981" o cualquier dominio del archivo .m3u
+                            self._base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+                    
                     current_name = ""
                     current_logo = None
                     current_ch_no = None
@@ -81,3 +93,36 @@ class ChannelModel(QAbstractListModel):
         if 0 <= row < len(self._channels):
             return self._channels[row].url
         return ""
+
+    # ACTUALIZADO: Usa la IP y Puerto extraídos de tu M3U en lugar de una IP estática
+    @Slot(str, result=list)
+    def fetch_current_epg(self, channel_name: str) -> list:
+        import urllib.request
+        import urllib.parse
+        import json
+        
+        # Si no se pudo extraer ninguna URL base válida del archivo .m3u
+        if not hasattr(self, '_base_url') or not self._base_url:
+            return ["Información de EPG no disponible", "No se detectó la dirección del servidor en el archivo M3U."]
+        
+        try:
+            encoded_name = urllib.parse.quote(channel_name)
+            
+            # Construcción dinámica: Usa self._base_url del archivo M3U
+            url = f"{self._base_url}/api/epg/events/grid?channel={encoded_name}&mode=now"
+            
+            req = urllib.request.Request(url, headers={'User-Agent': 'TdtPlayer-Native'})
+            with urllib.request.urlopen(req, timeout=2.0) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                
+                if "entries" in data and len(data["entries"]) > 0:
+                    event = data["entries"][0] # Lee la primera entrada del modo 'now'
+                    title = event.get("title", "Emisión en directo")
+                    description = event.get("description", event.get("summary", "Sin descripción detallada disponible."))
+                    return [title, description]
+                    
+        except Exception as e:
+            print(f"Error consultando la API dinámica de Tvheadend: {e}")
+            
+        return ["Información de EPG no disponible", "El servidor de Tvheadend no tiene eventos registrados en su guía para este canal en este momento."]
+

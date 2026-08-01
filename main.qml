@@ -20,7 +20,10 @@ ApplicationWindow {
     property string osdChannelLogo: ""
     property string osdChannelNo: ""
 
-    // Función de sintonización circular infinita
+    // Propiedades optimizadas para el EPG dinámico
+    property string epgTitle: "Sintonizando canal..."
+    property string epgDescription: "Buscando información del evento actual en el flujo de Tvheadend..."
+
     function playChannel(index) {
         if (channelModel.rowCount() === 0) return;
         
@@ -29,6 +32,10 @@ ApplicationWindow {
         
         currentChannelIndex = index;
         isVoluntarilyStopped = false;
+        
+        // Reiniciamos los textos de la guía para el nuevo canal sintonizado
+        epgTitle = "Sintonizando canal..."
+        epgDescription = "Buscando información del evento actual en el flujo de Tvheadend..."
         
         osdChannelName = channelModel.data(channelModel.index(index, 0), Qt.UserRole + 1);
         osdChannelLogo = channelModel.data(channelModel.index(index, 0), Qt.UserRole + 3);
@@ -39,9 +46,11 @@ ApplicationWindow {
 
         mediaPlayer.source = channelModel.get_url_at(index);
         mediaPlayer.play();
+        
+        // Arrancamos el escáner del buffer de la guía de televisión
+        epgPoller.restart();
     }
 
-    // Sintonizador directo buscando el CH del canal
     function playChannelByNumber(numberStr) {
         var count = channelModel.rowCount();
         for (var i = 0; i < count; i++) {
@@ -64,7 +73,26 @@ ApplicationWindow {
         onTriggered: osdPanel.opacity = 0.0
     }
 
-    // Capturador de teclado blindado en la raíz (Soluciona el marcado numérico)
+    // ACTUALIZADO: Consulta la API de Tvheadend usando la IP dinámica extraída por Python
+    Timer {
+        id: epgPoller
+        interval: 300 
+        running: false
+        repeat: false
+        onTriggered: {
+            if (window.osdChannelName !== "") {
+                // Llamamos a Python para que traiga el arreglo [Título, Descripción]
+                var epgData = channelModel.fetch_current_epg(window.osdChannelName);
+                
+                // Extraemos la posición 0 para el Título y la posición 1 para la sinopsis
+                window.epgTitle = epgData[0];
+                window.epgDescription = epgData[1];
+            }
+        }
+    }
+
+
+
     Item {
         anchors.fill: parent
         focus: true
@@ -117,6 +145,7 @@ ApplicationWindow {
             audioOutput: AudioOutput {}
             videoOutput: videoOutput
         }
+
         // Capa 1: El Reproductor de Vídeo (Ocupa siempre toda la pantalla o ventana)
         Rectangle {
             id: videoContainer
@@ -142,6 +171,104 @@ ApplicationWindow {
                         }
                     }
                 }
+
+                                // ================= DRWER INFERIOR DE EPG NATIVO =================
+                // Zona interactiva invisible en el borde inferior (Hover en pantalla completa)
+                MouseArea {
+                    id: bottomEdgeArea
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: window.isFullScreen ? 40 : 0 // Zona activa de 40 píxeles abajo
+                    hoverEnabled: true
+                    
+                    // Al posar el ratón abajo, abre la persiana del EPG
+                    onEntered: {
+                        if (window.isFullScreen) {
+                            epgDrawer.epgForceOpen = true
+                        }
+                    }
+                }
+
+                // El contenedor visual del Drawer de EPG (Se comporta como MouseArea para onExited)
+                MouseArea {
+                    id: epgDrawer
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    
+                    property bool epgForceOpen: false
+                    // Visible en modo ventana o si pasas el ratón abajo en pantalla completa
+                    visible: !window.isFullScreen || epgForceOpen
+                    height: visible ? 130 : 0 // Altura del Drawer inferior
+                    
+                    hoverEnabled: true
+                    // Al sacar el ratón del panel inferior, se esconde automáticamente
+                    onExited: {
+                        if (window.isFullScreen) {
+                            epgForceOpen = false
+                        }
+                    }
+
+                    Behavior on height {
+                        NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
+                    }
+
+                    // Fondo translúcido premium Slate 900
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "#0F172A"
+                        opacity: 0.95
+                        border.color: "#3B82F6"
+                        border.width: 1
+                    }
+
+                    // Contenido del EPG
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 15
+                        spacing: 6
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            
+                            Text {
+                                text: "EN ANTEPROYECTO (EPG NATIVO):"
+                                color: "#3B82F6"
+                                font.bold: true
+                                font.pointSize: 9
+                            }
+                            
+                            Text {
+                                text: " • Canal " + window.osdChannelNo
+                                color: "#64748B"
+                                font.pointSize: 9
+                                visible: window.osdChannelNo !== ""
+                            }
+                        }
+
+                        Text {
+                            text: window.epgTitle
+                            color: "white"
+                            font.bold: true
+                            font.pointSize: 14
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            text: window.epgDescription
+                            color: "#94A3B8"
+                            font.pointSize: 10
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+                // ===================================================================
+
                 
                 // Zona interactiva en el borde derecho: Hover en pantalla completa
                 MouseArea {
