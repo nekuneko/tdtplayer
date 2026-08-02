@@ -107,8 +107,20 @@ ApplicationWindow {
                     }
                 }
 
-                // ❌ (ELIMINADO DE AQUÍ EL EpgDrawer)
-
+                // 👇 NUEVO: Zona interactiva invisible en el borde izquierdo (Hover en pantalla completa)
+                MouseArea {
+                    id: leftEdgeSwipeArea
+                    anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+                    width: 50 // Banda interactiva de 50 píxeles a la izquierda de la pantalla
+                    hoverEnabled: true
+                    
+                    // Al entrar el ratón a la izquierda, congelamos los otros menús y abrimos configuración
+                    onEntered: { 
+                        ctrl.openConfigAndCollapseOthers();
+                        configSidebar.sidebarForceOpen = true;
+                    }
+                }
+                
                 MouseArea {
                     id: rightEdgeSwipeArea
                     anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
@@ -117,10 +129,37 @@ ApplicationWindow {
                     onEntered: { if (ctrl.isFullScreen) sidebar.sidebarForceOpen = true }
                 }
 
+                // ===================================================================
+                // CAPA INVISIBLE 1: Cierra la barra de canales (Derecha) al hacer clic fuera
+                // ===================================================================
                 MouseArea {
-                    anchors.fill: parent; anchors.rightMargin: sidebar.width
+                    anchors.fill: parent
+                    
+                    // Deja libre el espacio ocupado por la barra derecha para poder hacer clics en los canales
+                    anchors.rightMargin: sidebar.width 
+                    
+                    // Solo actúa si estamos en pantalla completa y el menú derecho está desplegado
                     visible: ctrl.isFullScreen && sidebar.sidebarForceOpen
+                    
                     onClicked: sidebar.sidebarForceOpen = false
+                }
+
+                // ===================================================================
+                // CAPA INVISIBLE 2: Cierra el menú de configuración (Izquierda) al hacer clic fuera
+                // ===================================================================
+                MouseArea {
+                    anchors.fill: parent
+                    
+                    // Deja libre el espacio ocupado por la barra izquierda para poder pulsar sus opciones
+                    anchors.leftMargin: configSidebar.width 
+                    
+                    // Actúa SIEMPRE (en ventana o full screen) si el menú izquierdo está desplegado
+                    visible: configSidebar.visible
+                    
+                    onClicked: {
+                        configSidebar.sidebarForceOpen = false;
+                        ctrl.restorePanelsAfterConfig(); // Restaura las barras que se habían cerrado
+                    }
                 }
 
                 Text {
@@ -186,20 +225,21 @@ ApplicationWindow {
             sidebarItem: sidebar 
             z: 1 
             
-            // 👇 NUEVO: Temporizador interno e independiente para la persiana del EPG
+            // Filtro de bloqueo de conmutación exclusivo universal
+            visible: !ctrl.isConfigMenuOpen && (!ctrl.isFullScreen || epgDrawer.epgForceOpen)
+
             Timer {
                 id: keyboardEpgTimer
-                interval: 3000 // Se esconde tras 3 segundos de inactividad del teclado
+                interval: 3000 
                 onTriggered: epgDrawer.epgForceOpen = false
             }
 
-            // 👇 NUEVO: Escuchamos de forma segura la señal del controlador
             Connections {
                 target: ctrl
                 function onChannelZappedByKeyboard() {
                     if (ctrl.isFullScreen) {
-                        epgDrawer.epgForceOpen = true; // Abre la persiana de inmediato
-                        keyboardEpgTimer.restart();     // Reinicia los 3 segundos de cortesía
+                        epgDrawer.epgForceOpen = true; 
+                        keyboardEpgTimer.restart();     
                     }
                 }
             }
@@ -211,6 +251,8 @@ ApplicationWindow {
             model: channelModel
             currentChannelIndex: ctrl.currentChannelIndex
             isFullScreen: ctrl.isFullScreen
+            visible: !ctrl.isConfigMenuOpen && (!ctrl.isFullScreen || sidebar.sidebarForceOpen)
+
             
             onChannelSelected: (realIndex) => {
                 ctrl.playChannel(realIndex);
@@ -250,6 +292,17 @@ ApplicationWindow {
                 }
 
                 globalKeyboardHandler.forceActiveFocus();
+            }
+        }
+
+        // Componente del nuevo menú de configuración izquierdo (Declarado antes del vídeo para capas)
+        ConfigSidebar {
+            id: configSidebar
+            isFullScreen: ctrl.isFullScreen
+            onImportRequested: fileDialog.open() // El botón ahora activa la carga
+        
+            onMouseExitedSidebar: {
+                ctrl.restorePanelsAfterConfig();
             }
         }
     } 

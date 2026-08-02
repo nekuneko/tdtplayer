@@ -25,7 +25,13 @@ QtObject {
     property int currentVolumePercent: 100
     property bool showVolumeOsd: false
     property real osdPanelOpacity: 0.0
-    
+    property bool keyboardActiveOsd: false
+
+    property bool backupSidebarVisible: false
+    property bool backupEpgVisible: false
+    property bool isConfigMenuOpen: false
+
+
     // 🛠️ REPARADO: Condición universal e infalible para la opacidad del reloj.
     // El reloj se encenderá (1.0) si el cartel del canal está activo en pantalla (osdPanelOpacity > 0),
     // O si la barra lateral derecha está visible en pantalla (ya sea fija en ventana o abierta por ratón en full),
@@ -146,6 +152,34 @@ QtObject {
         if (root.mediaPlayer.playbackState !== MediaPlayer.PlayingState) {
             root.isVoluntarilyStopped = false;
             root.playChannel(root.currentChannelIndex);
+        }
+    }
+
+    function openConfigAndCollapseOthers() {
+        root.isConfigMenuOpen = true
+        
+        if (root.sidebar && root.epgDrawer) {
+            root.backupSidebarVisible = root.sidebar.sidebarForceOpen;
+            root.backupEpgVisible = root.epgDrawer.epgForceOpen;
+            
+            root.sidebar.sidebarForceOpen = false;
+            root.epgDrawer.epgForceOpen = false;
+        }
+    }
+
+    function restorePanelsAfterConfig() {
+        root.isConfigMenuOpen = false; // Libera el bloqueo del resto de componentes
+        
+        if (root.sidebar && root.epgDrawer) {
+            // Restauramos las banderas previas guardadas en la memoria RAM
+            root.sidebar.sidebarForceOpen = root.backupSidebarVisible;
+            root.epgDrawer.epgForceOpen = root.backupEpgVisible;
+            
+            // 🛠️ REPARADO: Si el usuario está en pantalla completa, nos aseguramos de que
+            // la persiana inferior recupere un estado apagado por defecto para que no se quede abierta.
+            if (root.isFullScreen) {
+                root.epgDrawer.epgForceOpen = false;
+            }
         }
     }
 }

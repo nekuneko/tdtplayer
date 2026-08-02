@@ -85,3 +85,84 @@ REQUISITOS TÉCNICOS Y ARQUITECTURA (CÓMO LO HACE)
 - EpgDrawer.qml implementa la persiana informativa inferior independiente y saca sus anclajes directos a la raíz del área útil de la ventana.
 - ChannelSidebar.qml es la zona derecha con el ListView. Implementa la función forceKeyboardScrollSync en modo Contain para la paginación por bloques del teclado, y forceCenterScrollSync en modo Center para el recentrado del ratón.
 - ChannelNumPopup.qml es un Popup modal que fuerza el foco en un TextField protegido con RegularExpressionValidator.
+
+
+===================================================================
+1. LA ESTRATEGIA TÉCNICA: PYDEPLOY_QT O PY4A
+===================================================================
+
+No necesitas tocar tus archivos QML. Para ejecutar el código Python en Android junto con PySide6, se utiliza un compilador cruzado que empaqueta un intérprete de Python optimizado dentro del APK.
+
+Las dos herramientas estándar para hacerlo sin recodificar son:
+
+A) PyDeployQu (Herramienta oficial de Qt)
+- Diseñada específicamente para proyectos de PySide6.
+- Lee tu script 'main.py' y empaqueta las librerías necesarias automáticamente.
+
+B) Python-for-Android (p4a) + PySide6
+- Compila Python y tus scripts en una librería nativa (.so) que Android puede ejecutar.
+
+
+===================================================================
+2. ADAPTACIONES MÍNIMAS EN EL CÓDIGO (QUÉ SÍ DEBES CAMBIAR)
+===================================================================
+
+Aunque no reescribas la app, debes aplicar tres pequeños cambios de compatibilidad en tus scripts actuales:
+
+A) Las Variables de Entorno Gráficas (main.py)
+- En Android no existe el servidor de ventanas X11 ni XCB. Debes desactivar o condicionar las líneas de XCB para que solo se ejecuten en Linux:
+  
+  if sys.platform == "linux" and not os.path.exists("/system/build.prop"):
+      os.environ["QT_XCB_GL_INTEGRATION"] = "xcb_egl"
+      os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "vaapi"
+
+B) Cambiar la aceleración por hardware multimedia
+- Android no utiliza VAAPI (eso es exclusivo de Intel/AMD en Linux). Android utiliza la aceleración nativa MediaCodec a través de los códecs del sistema operativo. Qt Multimedia lo gestiona solo, por lo que en Android debes omitir configurar "vaapi" y dejar que el backend por defecto tome el control.
+
+C) Las rutas de archivos locales (main.qml / main.py)
+- En Android, el FileDialog para buscar el archivo .m3u debe apuntar al almacenamiento del teléfono (ej: "/storage/emulated/0/..."). Además, debes asegurarte de solicitar los permisos de lectura en el archivo de configuración del APK (AndroidManifest.xml).
+
+===================================================================
+3. PASO A PASO PARA COMPILAR TU APK EN LINUX
+===================================================================
+
+Dado que estás desarrollando en Linux (/home/neku/...), tienes el entorno ideal para compilar hacia Android. Los pasos requeridos son:
+
+PASO 1: Instalar las herramientas de Android
+- Descarga e instala Android Studio.
+- Desde su gestor (SDK Manager), instala el SDK de Android, la herramienta NDK (Native Development Kit) y CMake.
+
+PASO 2: Instalar la herramienta de empaquetado
+- En tu entorno virtual (.venv), instala la herramienta de despliegue:
+  pip install pydeployqt
+
+PASO 3: Crear el archivo de configuración (pydeployqt.toml)
+- Es un archivo de texto plano donde le indicas a la herramienta dónde están tus archivos. Su estructura básica es:
+  
+  [app]
+  name = "TdtPlayer"
+  package = "org.neku.tdtplayer"
+  main_script = "main.py"
+  qml_dirs = ["qml"]
+  assets = ["main.qml"]
+  
+  [android]
+  sdk_path = "/home/neku/Android/Sdk"
+  ndk_path = "/home/neku/Android/Sdk/ndk/XXXX"
+
+PASO 4: Compilar
+- Ejecutas el comando de compilación en tu terminal:
+  pydeployqt deploy android
+- La herramienta procesará tus archivos .py y .qml, incluirá los binarios de PySide6 para la arquitectura del procesador del móvil (ARM64) y generará un archivo "TdtPlayer.apk" listo para instalar en tu teléfono o Android TV.
+
+
+===================================================================
+4. LA ALTERNATIVA MÁS EFICIENTE SI BUSCAS MÁXIMO RENDIMIENTO
+===================================================================
+
+Si al empaquetar Python en Android notas que el APK pesa demasiado (suele ocupar más de 80MB porque incluye todo el intérprete de Python dentro), la alternativa más inteligente y con cero reescritura de interfaz es:
+
+- Mantener tus archivos QML (la UI, el reloj, el sidebar, las animaciones, etc.) intactos al 100%.
+- Traducir únicamente tu archivo "channel_model.py" (el parseo del M3U y la petición HTTP a Tvheadend) a C++. Son apenas 150 líneas de código Python muy fáciles de convertir a funciones estándar de C++ (usando QNetworkAccessManager para el EPG).
+
+Al hacer esto, compilarías un proyecto nativo C++/QML puro desde Android Studio. El APK pesaría apenas 15MB, el zapping sería instantáneo y la app volaría incluso en dispositivos Android TV de gama baja o Fire TV Sticks muy antiguos.
