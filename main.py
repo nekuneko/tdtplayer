@@ -2,11 +2,10 @@
 import sys
 import os
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQml import QQmlApplicationEngine, QQmlContext
 from channel_model import ChannelModel
 
 def main():
-
     os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = "probesize=5000000;analyzeduration=1000000;fflags=+nobuffer+discardcorrupt"
     
     # 1. Fuerza el backend EGL para la GPU Intel
@@ -17,12 +16,16 @@ def main():
     os.environ["QT_MEDIA_BACKEND"] = "ffmpeg"
 
     # 3. CORRECCIÓN DEL ENTLAZADO EN VAAPI INTEL
-    # Configuramos las opciones de FFmpeg para forzar el desentrelazado por hardware
     os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "vaapi"
     os.environ["FFMPEG_HWACCEL_RECOV"] = "1"
     
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
+
+    # 🚀 OPTIMIZACIÓN DE RUTAS: Asegura que Qt6 encuentre tus nuevos archivos .qml modularizados
+    base_dir = os.path.dirname(__file__)
+    qml_dir = os.path.join(base_dir, "qml") if os.path.exists(os.path.join(base_dir, "qml")) else base_dir
+    engine.addImportPath(qml_dir)
 
     def handle_qml_warnings(warnings):
         for warning in warnings:
@@ -30,9 +33,11 @@ def main():
     engine.warnings.connect(handle_qml_warnings)
 
     channel_model = ChannelModel()
-    engine.rootContext().setContextProperty("channelModel", channel_model)
+    
+    context = engine.rootContext()
+    context.setContextProperty("channelModel", channel_model)
 
-    qml_file = os.path.join(os.path.dirname(__file__), "main.qml")
+    qml_file = os.path.join(base_dir, "main.qml")
     engine.load(qml_file)
 
     if not engine.rootObjects():

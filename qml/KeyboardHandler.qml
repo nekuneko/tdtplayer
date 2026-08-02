@@ -5,9 +5,10 @@ Item {
     id: root
     anchors.fill: parent
     
-    // 🛠️ REPARADO: Forzamos la prioridad absoluta del foco en este nodo
+    // Forzamos la prioridad absoluta del foco en este nodo
     focus: true
 
+    // Propiedades requeridas para inyectar las dependencias externas
     property var controller: null
     property var window: null
     property var channelNumPopup: null
@@ -15,43 +16,77 @@ Item {
     // Asegura recuperar el foco de forma automática al renderizar el componente
     Component.onCompleted: root.forceActiveFocus()
 
+    // ===================================================================
+    // 📺 MÓDULO 1: CONTROL RÁPIDO DE ZAPPING (CANALES)
+    // ===================================================================
     Keys.onUpPressed: {
-        if (controller) controller.playChannel(controller.currentChannelIndex - 1);
-    }
-    Keys.onDownPressed: {
-        if (controller) controller.playChannel(controller.currentChannelIndex + 1);
+        if (root.controller) {
+            root.controller.playChannel(root.controller.currentChannelIndex - 1);
+        }
     }
     
+    Keys.onDownPressed: {
+        if (root.controller) {
+            root.controller.playChannel(root.controller.currentChannelIndex + 1);
+        }
+    }
+    
+    // ===================================================================
+    // 🔊 MÓDULO 2: CONTROL RÁPIDO DE AUDIO (VOLUMEN)
+    // ===================================================================
     Keys.onLeftPressed: {
-        if (controller) controller.changeVolume(-5);
+        if (root.controller) {
+            root.controller.changeVolume(-5);
+        }
     }
+    
     Keys.onRightPressed: {
-        if (controller) controller.changeVolume(5);
+        if (root.controller) {
+            root.controller.changeVolume(5);
+        }
     }
 
+    // ===================================================================
+    // ⚙️ MÓDULO 3: ACCIONES AVANZADAS Y ATAJOS DE SISTEMA
+    // ===================================================================
     Keys.onPressed: (event) => {
-        if (!controller || !window || !channelNumPopup) return;
+        if (!root.controller || !root.window || !root.channelNumPopup) return;
 
-        if (event.key === Qt.Key_Space) {
-            controller.togglePlayback();
-            event.accepted = true;
-        }
-        else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !channelNumPopup.opened) {
-            controller.forceResume();
-            event.accepted = true;
-        }
-        else if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9 && !channelNumPopup.opened) {
-            channelNumPopup.openWithText(event.text);
-            event.accepted = true;
-        }
-        else if (event.key === Qt.Key_Escape && controller.isFullScreen && !channelNumPopup.opened) {
-            if (controller.sidebar && controller.sidebar.sidebarForceOpen) {
-                controller.sidebar.sidebarForceOpen = false;
-            } else {
-                window.visibility = Window.Windowed;
-                controller.isFullScreen = false;
-            }
-            event.accepted = true;
+        switch (event.key) {
+            case Qt.Key_Space:
+                root.controller.togglePlayback();
+                event.accepted = true;
+                break;
+
+            case Qt.Key_Return:
+            case Qt.Key_Enter:
+                if (!root.channelNumPopup.opened) {
+                    root.controller.forceResume();
+                    event.accepted = true;
+                }
+                break;
+
+            case Qt.Key_Escape:
+                if (root.controller.isFullScreen && !root.channelNumPopup.opened) {
+                    if (root.controller.sidebar && root.controller.sidebar.sidebarForceOpen) {
+                        root.controller.sidebar.sidebarForceOpen = false;
+                    } else {
+                        root.window.visibility = Window.Windowed;
+                        root.controller.isFullScreen = false;
+                    }
+                    event.accepted = true;
+                }
+                break;
+
+            default:
+                // Captura dinámica del teclado numérico (0 al 9) para el zapping directo
+                if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9) {
+                    if (!root.channelNumPopup.opened) {
+                        root.channelNumPopup.openWithText(event.text);
+                        event.accepted = true;
+                    }
+                }
+                break;
         }
     }
 }

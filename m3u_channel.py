@@ -1,8 +1,10 @@
 # m3u_channel.py
+from dataclasses import dataclass
+from typing import Optional
 
+@dataclass
 class M3uChannel:
-    def __init__(self, name: str, url: str, logo: str = None, ch_no: str = None):
-        self.name = name
-        self.url = url
-        self.logo = logo
-        self.ch_no = ch_no
+    name: str
+    url: str
+    logo: Optional[str] = None
+    ch_no: Optional[str] = None
