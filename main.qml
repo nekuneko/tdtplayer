@@ -50,6 +50,37 @@ ApplicationWindow {
             anchors.bottom: (epgDrawer.visible && !ctrl.isFullScreen) ? epgDrawer.top : parent.bottom
             color: "black"
 
+            // 👇 NUEVO: Temporizador para ocultar el cursor tras 0.5 segundos de inactividad
+            Timer {
+                id: mouseInactivityTimer
+                interval: 500 // Tiempo en milisegundos (0.5 segundos)
+                running: true 
+                repeat: false
+                onTriggered: {
+                    // Esconde el puntero del ratón cambiando la forma del cursor a "None"
+                    videoMouseTracker.cursorShape = Qt.BlankCursor
+                }
+            }
+
+            // 👇 NUEVO: Área interactiva transparente para capturar el movimiento del ratón
+            MouseArea {
+                id: videoMouseTracker
+                anchors.fill: parent
+                hoverEnabled: true
+                
+                // Mantiene el orden de capas para no pisar los clics de los botones OSD o el doble tap
+                z: -1 
+
+                // Cada vez que la coordenada X o Y del ratón cambia (el usuario mueve el ratón)
+                onPositionChanged: {
+                    // 1. Restauramos el puntero normal de inmediato
+                    videoMouseTracker.cursorShape = Qt.ArrowCursor
+                    
+                    // 2. Reiniciamos la cuenta atrás de los 2.5 segundos
+                    mouseInactivityTimer.restart()
+                }
+            }
+            
             VideoOutput {
                 id: videoOutput
                 anchors.fill: parent
@@ -204,6 +235,10 @@ ApplicationWindow {
                 if (ctrl.isFullScreen) {
                     sidebar.sidebarForceOpen = false;
                     epgDrawer.epgForceOpen = false;
+
+                    // 🛠️ REPARADO: El recentrado automático de la lista al medio 
+                    // de la pantalla SÓLO se ejecuta si estamos en pantalla completa.
+                    sidebar.forceCenterScrollSync();
                 }
                 
                 // Limpiamos los textos flotantes para que la guía recupere el canal reproduciéndose

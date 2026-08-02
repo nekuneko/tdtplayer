@@ -47,16 +47,55 @@ MouseArea {
         return channelListView.indexAt(0, channelListView.contentY);
     }
 
-    // 👇 NUEVO: Función para sincronizar la vista cuando se navega estrictamente con teclado
+    // 🛠️ REPARADO: Sintonización de saltos por bloque (Paginación limpia)
     function forceKeyboardScrollSync() {
         var count = root.model ? root.model.rowCount() : 0;
         if (count === 0) return;
         
+        // 1. Calculamos cuántos canales caben visibles en la pantalla actualmente
+        // Cada fila de tu ItemDelegate mide exactamente 60 píxeles de alto
+        var visibleCount = Math.floor(channelListView.height / 60);
+        
+        // 2. Obtenemos el índice del canal virtual que está arriba del todo en el scroll actual
+        var firstVisibleVirtual = channelListView.indexAt(0, channelListView.contentY);
+        
+        // 3. Calculamos la posición del canal que está abajo del todo en la pantalla
+        var lastVisibleVirtual = firstVisibleVirtual + visibleCount - 1;
+        
+        // 4. Convertimos nuestro índice real en el índice virtual exacto que se está renderizando
+        var baseVirtual = firstVisibleVirtual - (firstVisibleVirtual % count);
+        var targetVirtual = baseVirtual + root.currentChannelIndex;
+        
+        // Corrección matemática por si el índice virtual salta de ciclo modular
+        if (targetVirtual < firstVisibleVirtual && (targetVirtual + count) <= lastVisibleVirtual + count) {
+            targetVirtual += count;
+        } else if (targetVirtual > lastVisibleVirtual && (targetVirtual - count) >= firstVisibleVirtual - count) {
+            targetVirtual -= count;
+        }
+
+        // 🚀 5. EVALUACIÓN DE CRUCE DE LÍMITES VISIBLES
+        if (targetVirtual > lastVisibleVirtual) {
+            // Si vas BAJANDO y pisas el canal que se sale por abajo, 
+            // la lista se desplaza para poner ese canal ARRIBA DEL TODO (Beginning)
+            channelListView.positionViewAtIndex(targetVirtual, ListView.Beginning);
+        } 
+        else if (targetVirtual < firstVisibleVirtual) {
+            // Si vas SUBIENDO y pisas el canal que se sale por arriba, 
+            // la lista se desplaza para poner ese canal ABAJO DEL TODO (End)
+            channelListView.positionViewAtIndex(targetVirtual, ListView.End);
+        }
+        
+        // Si estás moviéndote por el medio de la lista sin tocar los bordes,
+        // no se ejecuta ninguna orden y la lista se queda completamente clavada y quieta.
+    }
+
+    // Recuerda mantener tu otra función forceCenterScrollSync() idéntica para el ratón
+    function forceCenterScrollSync() {
+        var count = root.model ? root.model.rowCount() : 0;
+        if (count === 0) return;
         var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY);
         var baseVirtual = currentScrollIndex - (currentScrollIndex % count);
         var targetVirtual = baseVirtual + root.currentChannelIndex;
-        
-        // Desplaza el ListView de forma que el elemento activo se mantenga visible en el centro
         channelListView.positionViewAtIndex(targetVirtual, ListView.Center);
     }
 

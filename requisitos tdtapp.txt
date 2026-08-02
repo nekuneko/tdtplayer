@@ -12,46 +12,40 @@ REQUISITOS FUNCIONALES (QUÉ HACE LA APP)
 - Extrae el número de dial o posición asignada (tvg-chno).
 
 2. REPRODUCCIÓN MULTIMEDIA
-- Reproduce los canales de televisión usando el motor de Qt.
+- Reproduce los canales de televisión usando el motor de Qt (MediaPlayer).
 - Aplica desentrelazado de vídeo automático directo en la pantalla.
 - Elimina las líneas horizontales de peine de la señal TDT.
 - Soporta aceleración gráfica por hardware (VAAPI en GPUs Intel).
 - Decodifica flujos de vídeo pesados sin saturar el procesador.
-- Pausa y reanuda el vídeo pulsando Espacio o Enter.
+- Al pausar el directo (Espacio) se cierra el socket de red, y al reanudar se sintoniza el flujo desde cero para evitar frames corruptos.
 - Pasa a pantalla completa haciendo doble clic sobre el vídeo.
+- Si cambias de canal estando el vídeo pausado voluntariamente, mantiene el reproductor multimedia detenido pero actualiza la interfaz.
 
-3. INTERFAZ OSD INFORMATIVA
-- Muestra un banner flotante arriba a la izquierda por 3 segundos.
+3. INTERFAZ OSD INFORMATIVA Y HUD
+- Muestra un banner flotante arriba a la izquierda por 3 segundos al cambiar de canal.
 - El banner muestra el logotipo, nombre y número de dial.
-- Muestra un letrero translúcido en el centro al cambiar el volumen.
-- El letrero central indica el porcentaje exacto de audio.
-- Abre un buscador modal en el centro al pulsar teclas numéricas.
-- El buscador permite escribir un dial para saltar de canal.
+- Muestra un letrero translúcido en el centro al cambiar el volumen, indicando el porcentaje exacto de audio.
+- Abre un buscador modal en el centro al pulsar teclas numéricas para escribir un dial y saltar de canal.
+- Muestra un reloj digital dinámico arriba a la derecha de forma fija en modo ventana, y de forma flotante sincronizada en pantalla completa.
+- Oculta de forma automática el cursor del ratón tras 2.5 segundos de inactividad en pantalla completa.
 
 4. BARRA LATERAL DE CANALES
 - Muestra la lista de canales en el lateral derecho de la pantalla.
 - En modo ventana la lista se queda visible de forma fija.
-- En pantalla completa la lista de canales se oculta por defecto.
-- Se despliega al pasar el ratón por el borde derecho de la pantalla.
-- La zona activa de detección del ratón mide 50 píxeles.
-- Se queda abierta de forma fija mientras el ratón siga dentro.
-- Se cierra sola al llevar el ratón hacia el centro del vídeo.
+- En pantalla completa la lista de canales se oculta por defecto y se despliega al pasar el ratón por el borde derecho (zona de 50 píxeles).
+- Se queda abierta de forma fija mientras el ratón siga dentro, y se cierra al llevarlo hacia el centro del vídeo.
+- Al salir el ratón en pantalla completa, la lista se recentra al medio sobre el canal actual. En modo ventana, la lista no se mueve.
 
-5. NAVEGACIÓN EN BUCLE Y SCROLL INFINITO
-- Implementa un sistema de sintonización circular de canales.
-- Al avanzar desde el último canal salta automáticamente al primero.
-- Al retroceder desde el primer canal salta automáticamente al último.
-- La barra lateral tiene un scroll virtual infinito continuo.
-- Simula un millón de filas ficticias para no tocar nunca un tope.
-- La lista se queda quieta y no da saltos si se usa el ratón.
-- Solo se centra en el canal activo cuando el ratón sale de la barra.
+5. NAVEGACIÓN EN BUCLE Y SCROLL VIRTUAL POR BLOQUES
+- Implementa un sistema de sintonización circular infinita de canales.
+- La barra lateral tiene un scroll virtual continuo simulando un millón de filas ficticias para no tocar nunca un tope.
+- Al navegar con teclado la lista se queda quieta. El scroll da un salto por bloques (paginación) solo si el selector va a cruzar el último elemento visible por abajo (lo posiciona arriba del todo) o el primero por arriba (lo posiciona abajo del todo).
 
-6. GUÍA DE PROGRAMACIÓN DINAMICA (EPG)
-- Detecta la dirección IP y puerto del servidor Tvheadend.
-- Extrae la dirección base de la primera URL del archivo M3U.
-- Muestra una persiana inferior con el título y sinopsis actual.
-- Actualiza la guía de televisión en caliente al pasar el ratón.
-- No hace falta hacer clic para ver la guía del canal apuntado.
+6. GUÍA DE PROGRAMACIÓN INTEGRADA (EPG)
+- Detecta la dirección IP y puerto del servidor Tvheadend desde la primera URL del archivo M3U.
+- Muestra una persiana inferior con el título y sinopsis actual del programa que se despliega de forma sincronizada con el zapping y los menús.
+- Al cambiar de canal, la persiana inferior del EPG muestra los títulos y sinopsis en tiempo real de forma instantánea en el milisegundo cero sin arrastrar textos antiguos.
+- Actualiza la guía de televisión en caliente al pasar el ratón sobre los canales (hover), bloqueándose automáticamente si usas las flechas.
 
 
 ===================================================================
@@ -62,58 +56,32 @@ REQUISITOS TÉCNICOS Y ARQUITECTURA (CÓMO LO HACE)
 - Separa la interfaz gráfica de la lógica de procesamiento interno.
 - El núcleo de datos y las conexiones de red se programan en Python.
 - El control de estados y temporizadores se hace en un control de QML.
-- El diseño visual y captura de teclas se hace en archivos QML.
+- El diseño visual y captura de teclas se hace en archivos QML modulares.
 
 2. COMPONENTES DEL NÚCLEO (PYTHON)
-- m3u_channel.py guarda la clase pura de datos M3uChannel.
-- Modula las variables name, url, logo y ch_no por canal.
-- channel_model.py contiene la clase principal ChannelModel.
-- Hereda de QAbstractListModel para indexar la lista en memoria.
-- Define identificadores de rol (NameRole, UrlRole, LogoRole, ChNoRole).
-- Permite a QML leer miles de registros de forma directa y rápida.
-- parse_m3u_content usa expresiones regulares (re.compile).
-- Extrae los metadatos de las etiquetas y guarda el host del servidor.
-- fetch_current_epg está marcado con la etiqueta @Slot de Qt.
-- Realiza una petición web HTTP sincrónica a la API de Tvheadend.
-- Devuelve un diccionario estructurado al entorno de QML.
+- m3u_channel.py guarda la clase pura de datos M3uChannel (name, url, logo, ch_no).
+- channel_model.py contiene la clase principal ChannelModel que hereda de QAbstractListModel e indexa la lista en memoria RAM.
+- Define identificadores de rol (NameRole, UrlRole, LogoRole, ChNoRole) para que QML lea miles de registros de forma directa.
+- parse_m3u_content usa expresiones regulares para extraer metadatos, guarda el host del servidor e inicia la precarga del EPG.
+- Un hilo secundario (EpgPreloaderWorker) realiza una petición masiva inicial en segundo plano al arrancar para rellenar una caché en RAM.
+- fetch_current_epg (Slot) realiza una lectura instantánea de la memoria RAM local en 0ms y calcula las horas en formato local "[HH:MM - HH:MM]".
 
 3. ORQUESTADOR DE LÓGICA (PLAYBACKCONTROLLER.QML)
-- Es un objeto lógico puro de QML (QtObject) sin gráficos.
-- Centraliza las variables de estado de todo el reproductor de vídeo.
-- Aloja los temporizadores del sistema (Timer) en un solo sitio.
-- Usa un reloj de 3000ms para desvanecer el panel OSD del canal.
-- Usa un reloj de 2000ms para ocultar el indicador de volumen.
-- Usa un reloj de 300ms (epgPoller) para interrogar a Python.
-- El retardo evita saturar el servidor con peticiones repetitivas.
-- Contiene la función playChannel para cambiar la fuente del vídeo.
-- Contiene changeVolume para mapear el audio hacia AudioOutput.
-- Contiene togglePlayback para conmutar los estados del vídeo.
+- Es un objeto lógico puro de QML (QtObject) sin gráficos que centraliza las variables de estado.
+- Aloja los temporizadores del sistema: osdTimer (3000ms), volumeOsdTimer (2000ms) y zappingTimer (250ms).
+- El zappingTimer actúa como debounce exclusivamente para retrasar la sintonización del vídeo en red, liberando la consulta del EPG.
+- Emite una señal limpia channelZappedByKeyboard() para avisar a los componentes de la interfaz de que el teclado está activo.
+- Contiene las funciones playChannel, changeVolume, togglePlayback y forceResume.
 
 4. GESTOR DE ENTRADAS DE DISPOSITIVO (KEYBOARDHANDLER.QML)
-- Es un componente invisible que captura el foco del teclado.
-- Traduce las pulsaciones de hardware en comandos de control.
-- Las flechas verticales llaman a los cambios de canal de la app.
-- Las flechas horizontales modifican el volumen de 5 en 5 por ciento.
-- La barra espaciadora pausa o reanuda el flujo multimedia.
-- Los caracteres del 0 al 9 abren y rellenan el marcador modal.
+- Es un componente enfocado estrictamente en capturar y retener el foco del teclado (focus: true) de manera inmune a clics del ratón.
+- Traduce las pulsaciones físicas en comandos lógicos del controlador: flechas verticales cambian de canal, horizontales modifican el volumen de 5 en 5, espacio pausa, y del 0 al 9 abren el popup numérico.
 
 5. MAQUETACIÓN VISUAL MODULARIZADA (COMPONENTES QML)
-- main.qml es el lienzo raíz que configura la ventana principal.
-- Carga el archivo M3U con un objeto asíncrono XMLHttpRequest.
-- La bandera async en true evita congelamientos al leer el texto.
-- OsdPanel.qml estructura el diseño del cuadro superior izquierdo.
-- Usa un contenedor RowLayout para alinear el logo y los textos.
-- VolumeIndicator.qml renderiza el cuadro central del volumen.
-- Aplica un color de fondo translúcido oscuro Slate 900.
-- EpgDrawer.qml implementa la persiana informativa inferior.
-- Gestiona la animación con un nodo Behavior on height de QML.
-- Usa una curva de interpolación de salida de tipo Easing.OutQuad.
-- ChannelSidebar.qml es la zona derecha con un objeto ListView.
-- Configura la propiedad model en un valor fijo de 1,000,000.
-- Calcula el índice real con aritmética modular (index % rowCount).
-- El evento onHoveredChanged detecta el paso del ratón en las celdas.
-- Inyecta el nombre del canal apuntado en el motor de consultas EPG.
-- ChannelNumPopup.qml es una ventana flotante de tipo Popup modal.
-- Fuerza el foco del teclado sobre un campo de texto TextField.
-- Usa un filtro RegularExpressionValidator para prohibir letras.
-- Solo permite escribir números enteros para la selección de diales.
+- main.qml es el lienzo raíz. Carga el archivo M3U asíncronamente (XMLHttpRequest, async: true) y aloja el temporizador del EPG en pantalla completa.
+- OsdPanel.qml estructura el diseño del cuadro de información superior izquierdo mediante un RowLayout.
+- VolumeIndicator.qml renderiza el cuadro central del volumen con un color de fondo translúcido oscuro Slate 900.
+- ClockWidget.qml renderiza el reloj digital. Modifica su opacidad según las banderas de los menús y calcula su anchors.rightMargin de forma dinámica sumando el ancho de la barra lateral (sidebar.width + 40) en pantalla completa para desplazarse de forma fluida a la izquierda.
+- EpgDrawer.qml implementa la persiana informativa inferior independiente y saca sus anclajes directos a la raíz del área útil de la ventana.
+- ChannelSidebar.qml es la zona derecha con el ListView. Implementa la función forceKeyboardScrollSync en modo Contain para la paginación por bloques del teclado, y forceCenterScrollSync en modo Center para el recentrado del ratón.
+- ChannelNumPopup.qml es un Popup modal que fuerza el foco en un TextField protegido con RegularExpressionValidator.
