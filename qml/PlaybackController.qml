@@ -14,7 +14,7 @@ QtObject {
     property bool backupSidebarVisible: false; property bool backupEpgVisible: false; property bool isConfigMenuOpen: false
 
     // Modificadores de visibilidad automáticos y Señales
-    property real clockOpacity: (osdPanelOpacity > 0.0 || (sidebar && sidebar.visible && sidebar.width > 0) || (epgDrawer && epgDrawer.visible && epgDrawer.height > 0)) ? 1.0 : 0.0
+    property real clockOpacity: (!root.isVoluntarilyStopped) ? 1.0 : 0.0
     signal channelZappedByKeyboard()
 
     // Temporizadores del OSD y buffer de zapping

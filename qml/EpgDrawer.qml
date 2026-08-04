@@ -27,9 +27,8 @@ MouseArea {
     hoverEnabled: true
     
     onExited: {
-        if (root.isFullScreen) {
-            root.epgForceOpen = false
-        }
+        root.epgForceOpen = false
+        
     }
 
     // Animaciones de interfaz suaves

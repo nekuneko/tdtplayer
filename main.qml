@@ -1,6 +1,7 @@
 // main.qml
 import QtQuick
 import QtQuick.Controls
+import QtMultimedia
 import QtQuick.Dialogs
 import "qml"
 
@@ -9,17 +10,15 @@ ApplicationWindow {
     width: 1024; height: 768; visible: true
     title: "Tvheadend Native Player"
 
-    // Orquestador lógico de la aplicación
     PlaybackController {
         id: ctrl
         model: channelModel
-        mediaPlayer: playerView.mediaPlayer // Apunta al reproductor modular
+        mediaPlayer: playerView.mediaPlayer
         sidebar: sidebar
         epgDrawer: epgDrawer
-        onChannelZappedByKeyboard: if (isFullScreen) { epgDrawer.epgForceOpen = true; keyboardEpgTimer.restart() }
+        onChannelZappedByKeyboard: { epgDrawer.epgForceOpen = true; keyboardEpgTimer.restart() }
     }
 
-    // Capturador de teclado
     KeyboardHandler {
         id: globalKeyboardHandler
         controller: ctrl; window: window; channelNumPopup: channelNumPopup; focus: true
@@ -29,7 +28,7 @@ ApplicationWindow {
         id: mainFocusScope
         anchors.fill: parent
 
-        // 📺 Sub-vista modularizada del reproductor de vídeo
+        // 📺 REPARADO: El vídeo ahora SIEMPRE llena la pantalla/ventana por completo
         VideoPlayerView {
             id: playerView
             window: window
@@ -38,27 +37,26 @@ ApplicationWindow {
             epgDrawerItem: epgDrawer
             configSidebarItem: configSidebar
             globalKeyboardHandlerItem: globalKeyboardHandler
-
-            // SOLUClÓN: Los anclajes adaptativos se calculan aquí, donde SÍ son hermanos del sidebar y epgDrawer
-            anchors.left: parent.left
-            anchors.right: (sidebar.visible && !ctrl.isFullScreen) ? sidebar.left : parent.right
-            anchors.top: parent.top
-            anchors.bottom: (epgDrawer.visible && !ctrl.isFullScreen) ? epgDrawer.top : parent.bottom
+            anchors.fill: parent 
         }
 
         EpgDrawer {
             id: epgDrawer
             channelName: ctrl.osdChannelName; channelNo: ctrl.osdChannelNo; hoveredChannelName: ctrl.osdHoveredChannelName
             epgTitle: ctrl.epgTitle; epgDescription: ctrl.epgDescription; isFullScreen: ctrl.isFullScreen; sidebarItem: sidebar; z: 1 
-            visible: !ctrl.isConfigMenuOpen && (!ctrl.isFullScreen || epgDrawer.epgForceOpen)
+            
+            // UNIFICADO: Ahora el panel inferior siempre es flotante condicional
+            visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
 
             Timer { id: keyboardEpgTimer; interval: 3000; onTriggered: epgDrawer.epgForceOpen = false }
         }
 
         ChannelSidebar {
             id: sidebar
-            model: channelModel; currentChannelIndex: ctrl.currentChannelIndex; isFullScreen: ctrl.isFullScreen
-            visible: !ctrl.isConfigMenuOpen && (!ctrl.isFullScreen || sidebar.sidebarForceOpen)
+            model: channelModel; currentChannelIndex: ctrl.currentChannelIndex; isFullScreen: ctrl.isFullScreen; z: 1
+            
+            // UNIFICADO: La barra derecha siempre está oculta por defecto en ventana y en full
+            visible: !ctrl.isConfigMenuOpen && sidebar.sidebarForceOpen
             
             onChannelSelected: (realIndex) => { ctrl.playChannel(realIndex); globalKeyboardHandler.forceActiveFocus() }
             
@@ -67,11 +65,13 @@ ApplicationWindow {
                 ctrl.osdHoveredChannelName = name
                 var epgData = channelModel.fetch_current_epg(name)
                 if (epgData && epgData.title !== undefined) { ctrl.epgTitle = epgData.title; ctrl.epgDescription = epgData.description }
-                if (ctrl.isFullScreen) epgDrawer.epgForceOpen = true
+                epgDrawer.epgForceOpen = true
             }
             
             onExited: {
-                if (ctrl.isFullScreen) { sidebar.sidebarForceOpen = false; epgDrawer.epgForceOpen = false; sidebar.forceCenterScrollSync() }
+                sidebar.sidebarForceOpen = false
+                epgDrawer.epgForceOpen = false
+                sidebar.forceCenterScrollSync()
                 ctrl.osdHoveredChannelName = ""
                 var currentEpg = channelModel.fetch_current_epg(ctrl.osdChannelName)
                 if (currentEpg && currentEpg.title !== undefined) { ctrl.epgTitle = currentEpg.title; ctrl.epgDescription = currentEpg.description }
@@ -81,7 +81,7 @@ ApplicationWindow {
 
         ConfigSidebar {
             id: configSidebar
-            isFullScreen: ctrl.isFullScreen
+            isFullScreen: ctrl.isFullScreen; z: 2
             onImportRequested: fileDialog.open()
             onMouseExitedSidebar: ctrl.restorePanelsAfterConfig()
         }
