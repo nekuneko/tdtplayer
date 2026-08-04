@@ -49,41 +49,36 @@ FocusScope {
             anchors.fill: parent
             fillMode: VideoOutput.PreserveAspectFit
 
-            // 🚀 SOLUCOIN: Respuesta instantánea sin retrasos por hardware
+            // Gestor de gestos unificado en caliente
             TapHandler {
                 id: videoGestureHandler
                 gesturePolicy: TapHandler.ReleaseWithinBounds
                 
                 onTapped: {
                     if (videoGestureHandler.tapCount === 2) {
-                        // 1. Conmutamos la pantalla completa de inmediato
+                        // 1. Conmutamos la pantalla completa de forma instantánea
                         window.visibility = controller.isFullScreen ? Window.Windowed : Window.FullScreen
                         controller.isFullScreen = !controller.isFullScreen
                         
-                        // 2. CORRECCIÓN EN CALIENTE: Al ser el segundo clic, el primero pausó el vídeo 
-                        // por accidente. Volvemos a llamar a togglePlayback para restaurar el stream al instante.
-                        controller.togglePlayback()
+                        // 2. SOLUCIÓN: Reanudamos el buffer de vídeo inmediatamente. 
+                        // Al no vaciar la URL en el controlador, la reproducción continúa sin cortes de red.
+                        controller.cancelAccidentalPause()
                     } 
                     else if (videoGestureHandler.tapCount === 1) {
-                        // Responde en el milisegundo cero, sin retrasos artificiales
+                        // Respuesta inmediata al hacer un solo clic
                         controller.togglePlayback()
                     }
                 }
             }
 
-            // 🚀 NUEVA FUNCIÓN: Zapping mediante la rueda del ratón (Milisegundo 0)
+            // Zapping mediante la rueda del ratón
             WheelHandler {
                 id: mouseWheelZapper
-                // Intercepta únicamente los desplazamientos en el eje vertical
                 orientation: Qt.Vertical
-                
                 onWheel: (event) => {
-                    // event.angleDelta.y devuelve valores positivos al rodar hacia arriba y negativos hacia abajo
                     if (event.angleDelta.y > 0) {
-                        // Rueda hacia ARRIBA: Sintoniza el canal anterior (Index - 1)
                         controller.playChannel(controller.currentChannelIndex - 1)
                     } else if (event.angleDelta.y < 0) {
-                        // Rueda hacia ABAJO: Sintoniza el canal siguiente (Index + 1)
                         controller.playChannel(controller.currentChannelIndex + 1)
                     }
                 }
@@ -139,15 +134,41 @@ FocusScope {
                 }
             }
 
+            // Dentro de qml/VideoPlayerView.qml (Componente Text central)
             Text {
+                id: streamStatusText
                 anchors.centerIn: parent
-                text: controller.isVoluntarilyStopped ? "Stream Detenido\nPulse Espacio o Enter para reanudar" : "Sintonizando canal...\nCargando flujo de Tvheadend"
                 color: controller.isVoluntarilyStopped ? "#94A3B8" : "#3B82F6"
                 font.pointSize: controller.isFullScreen ? 18 : 14
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 lineHeight: 1.3
-                visible: mediaPlayer.playbackState !== MediaPlayer.PlayingState
+                
+                // Propiedad interna que filtra el parpadeo del cartel
+                text: controller.isVoluntarilyStopped 
+                      ? "Stream Detenido\nPulse Espacio o Enter para reanudar" 
+                      : "Sintonizando canal...\nCargando flujo de Tvheadend"
+
+                // El cartel de pausa solo se muestra si el motor realmente no está reproduciendo
+                // Y si la propiedad 'isVoluntarilyStopped' sigue activa tras el filtro del temporizador
+                visible: (mediaPlayer.playbackState !== MediaPlayer.PlayingState) && textDebounceTimer.canShowText
+
+                // ⏱️ FILTRO DE PARPADEO: Espera 200ms para confirmar la visualización del texto.
+                // Si haces doble clic, la pausa se cancela antes de que termine el tiempo y el cartel no aparece.
+                property Timer textDebounceTimer: Timer {
+                    id: textDebounceTimer
+                    property bool canShowText: false
+                    interval: 200
+                    running: controller.isVoluntarilyStopped && (mediaPlayer.playbackState !== MediaPlayer.PlayingState)
+                    repeat: false
+                    onRunningChanged: {
+                        if (!running && controller.isVoluntarilyStopped) {
+                            canShowText = true
+                        } else if (!controller.isVoluntarilyStopped) {
+                            canShowText = false
+                        }
+                    }
+                }
             }
             
             OsdPanel {
@@ -165,11 +186,9 @@ FocusScope {
                 anchors.right: parent.right 
                 anchors.topMargin: controller.isFullScreen ? 40 : 20
                 anchors.rightMargin: (sidebarItem.visible && sidebarItem.width > 0) ? (sidebarItem.width + 40) : (controller.isFullScreen ? 40 : 20)
-                opacity: (controller.osdPanelOpacity > 0.0 || sidebarItem.visible || epgDrawerItem.visible) ? 1.0 : 0.0
-                z: 10
+                opacity: controller.clockOpacity 
                 Behavior on anchors.rightMargin { NumberAnimation { duration: 220; easing.type: Easing.OutQuad } }
                 Behavior on opacity { NumberAnimation { duration: 200 } }
-
             }
             
             VolumeIndicator { 
