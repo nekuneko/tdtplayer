@@ -101,5 +101,21 @@ MouseArea {
             maximumLineCount: 2
             elide: Text.ElideRight
         }
+
+        // 🚀 NUEVA FUNCIÓN: Captura la rueda de forma exclusiva cuando el ratón está sobre el EpgDrawer
+        WheelHandler {
+            id: drawerVolumeWheel
+            orientation: Qt.Vertical
+            
+            onWheel: (event) => {
+                if (event.angleDelta.y > 0) {
+                    // Rueda hacia ARRIBA dentro del panel: Sube el volumen 5%
+                    ctrl.changeVolume(5)
+                } else if (event.angleDelta.y < 0) {
+                    // Rueda hacia ABAJO dentro del panel: Baja el volumen 5%
+                    ctrl.changeVolume(-5)
+                }
+        }
+    }
     }
 }
