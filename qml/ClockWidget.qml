@@ -13,23 +13,27 @@ Rectangle {
     opacity: 0.0
     Behavior on opacity { NumberAnimation { duration: 250 } }
 
-    // Propiedad dinámica que el Timer modificará en cada segundo
     property string currentTime: "00:00"
+
+    // SOLUCIÓN: Modularizamos la lógica en una función estándar ejecutable
+    function updateTime() {
+        var date = new Date()
+        var hours = date.getHours().toString().padStart(2, '0')
+        var minutes = date.getMinutes().toString().padStart(2, '0')
+        root.currentTime = hours + ":" + minutes
+    }
 
     Timer {
         id: clockTimer
         interval: 1000
         running: true
         repeat: true
-        onTriggered: {
-            var date = new Date()
-            var hours = date.getHours().toString().padStart(2, '0')
-            var minutes = date.getMinutes().toString().padStart(2, '0')
-            root.currentTime = hours + ":" + minutes
-        }
-        // Fuerza la primera carga en el milisegundo cero al arrancar la app
-        Component.onCompleted: onTriggered()
+        // El temporizador simplemente invoca la función en cada ciclo
+        onTriggered: root.updateTime()
     }
+
+    // Fuerza la carga de la hora en el milisegundo cero al arrancar la app
+    Component.onCompleted: root.updateTime()
 
     Text {
         anchors.centerIn: parent

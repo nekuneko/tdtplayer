@@ -49,10 +49,25 @@ FocusScope {
             anchors.fill: parent
             fillMode: VideoOutput.PreserveAspectFit
 
+            // 🚀 SOLUCOIN: Respuesta instantánea sin retrasos por hardware
             TapHandler {
-                onDoubleTapped: {
-                    window.visibility = controller.isFullScreen ? Window.Windowed : Window.FullScreen
-                    controller.isFullScreen = !controller.isFullScreen
+                id: videoGestureHandler
+                gesturePolicy: TapHandler.ReleaseWithinBounds
+                
+                onTapped: {
+                    if (videoGestureHandler.tapCount === 2) {
+                        // 1. Conmutamos la pantalla completa de inmediato
+                        window.visibility = controller.isFullScreen ? Window.Windowed : Window.FullScreen
+                        controller.isFullScreen = !controller.isFullScreen
+                        
+                        // 2. CORRECCIÓN EN CALIENTE: Al ser el segundo clic, el primero pausó el vídeo 
+                        // por accidente. Volvemos a llamar a togglePlayback para restaurar el stream al instante.
+                        controller.togglePlayback()
+                    } 
+                    else if (videoGestureHandler.tapCount === 1) {
+                        // Responde en el milisegundo cero, sin retrasos artificiales
+                        controller.togglePlayback()
+                    }
                 }
             }
 
