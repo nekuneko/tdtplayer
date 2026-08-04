@@ -56,6 +56,24 @@ FocusScope {
                 }
             }
 
+            // 🚀 NUEVA FUNCIÓN: Zapping mediante la rueda del ratón (Milisegundo 0)
+            WheelHandler {
+                id: mouseWheelZapper
+                // Intercepta únicamente los desplazamientos en el eje vertical
+                orientation: Qt.Vertical
+                
+                onWheel: (event) => {
+                    // event.angleDelta.y devuelve valores positivos al rodar hacia arriba y negativos hacia abajo
+                    if (event.angleDelta.y > 0) {
+                        // Rueda hacia ARRIBA: Sintoniza el canal anterior (Index - 1)
+                        controller.playChannel(controller.currentChannelIndex - 1)
+                    } else if (event.angleDelta.y < 0) {
+                        // Rueda hacia ABAJO: Sintoniza el canal siguiente (Index + 1)
+                        controller.playChannel(controller.currentChannelIndex + 1)
+                    }
+                }
+            }
+
             MouseArea {
                 id: bottomEdgeArea
                 anchors.left: parent.left
