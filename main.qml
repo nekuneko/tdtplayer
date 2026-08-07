@@ -16,6 +16,7 @@ ApplicationWindow {
     Settings {
         id: appSettings
         property string lastM3uUrl: ""
+        property int lastChannelIndex: 0 
     }
 
     PlaybackController {
@@ -57,15 +58,18 @@ ApplicationWindow {
             width: sidebar.visible ? (parent.width - sidebar.width) : parent.width
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
 
-            onEpgForceOpenChanged: {
-                if (epgForceOpen) {
+            Timer { id: keyboardEpgTimer; interval: 3000; onTriggered: epgDrawer.epgForceOpen = false }
+        }
+
+        Connections {
+            target: epgDrawer
+            function onEpgForceOpenChanged() {
+                if (epgDrawer.epgForceOpen) {
                     if (typeof playerView !== "undefined") {
                         playerView.resetMouseCursor()
                     }
                 }
             }
-
-            Timer { id: keyboardEpgTimer; interval: 3000; onTriggered: epgDrawer.epgForceOpen = false }
         }
 
         ChannelSidebar {
@@ -82,7 +86,24 @@ ApplicationWindow {
                 var cleanHoverName = name.toString().trim().replace(/[\r\n]/g, "");
                 ctrl.osdHoveredChannelName = cleanHoverName
                 
-                var foundLogo = window.localLogoCache[cleanHoverName] || ""
+                var count = channelModel.rowCount()
+                var foundLogo = ""
+                var foundChNo = ""
+                
+                for (var i = 0; i < count; i++) {
+                    var idx = channelModel.index(i, 0)
+                    var modelName = channelModel.data(idx, Qt.UserRole + 1)
+                    if (modelName) {
+                        var cleanModelName = modelName.toString().trim().replace(/[\r\n]/g, "");
+                        if (cleanModelName === cleanHoverName) {
+                            foundLogo = window.localLogoCache[cleanModelName] || ""
+                            foundChNo = channelModel.data(idx, Qt.UserRole + 4) || i.toString()
+                            break
+                        }
+                    }
+                }
+                
+                ctrl.osdChannelNo = foundChNo
                 ctrl.osdChannelLogo = foundLogo 
 
                 var epgData = channelModel.fetch_current_epg(cleanHoverName)
@@ -104,6 +125,7 @@ ApplicationWindow {
                 if (currentName !== "") {
                     var cleanCurrentName = currentName.toString().trim().replace(/[\r\n]/g, "");
                     ctrl.osdChannelLogo = window.localLogoCache[cleanCurrentName] || ""
+                    ctrl.osdChannelNo = channelModel.data(currentIdx, Qt.UserRole + 4) || ctrl.currentChannelIndex.toString()
                 }
                 
                 var currentEpg = channelModel.fetch_current_epg(ctrl.osdChannelName)
@@ -119,6 +141,7 @@ ApplicationWindow {
             id: configSidebar
             isFullScreen: ctrl.isFullScreen; z: 2
             onImportRequested: fileDialog.open()
+            // 🚀 SINTAXIS NATIVA UNIFICADA: onMouseExitedSidebar mapeado de forma limpia
             onMouseExitedSidebar: ctrl.restorePanelsAfterConfig()
             visible: configSidebar.sidebarForceOpen
         }
@@ -167,8 +190,17 @@ ApplicationWindow {
         onTriggered: {
             var c = channelModel.rowCount()
             if (c > 0) { 
-                sidebar.positionListView(500000 - (500000 % c), ListView.Beginning) 
-                playerView.mediaPlayer.audioOutput.volume = 1.0; ctrl.currentVolumePercent = 100; ctrl.playChannel(0) 
+                var savedIndex = appSettings.lastChannelIndex
+                if (savedIndex < 0 || savedIndex >= c) {
+                    savedIndex = 0
+                }
+                
+                sidebar.positionListView(500000 - (500000 % c) + savedIndex, ListView.Beginning) 
+                
+                playerView.mediaPlayer.audioOutput.volume = 1.0
+                ctrl.currentVolumePercent = 100
+                
+                ctrl.playChannel(savedIndex) 
             }
         }
     }

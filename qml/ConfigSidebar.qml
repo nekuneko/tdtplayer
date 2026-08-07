@@ -15,15 +15,13 @@ MouseArea {
     anchors.top: parent.top
     anchors.bottom: parent.bottom
     
-    // 🛠️ REPARADO: Ya no depende del modo ventana. Solo es visible si se fuerza su apertura con el ratón
     visible: root.sidebarForceOpen
     width: visible ? 260 : 0
     hoverEnabled: true
 
-    // 🛠️ REPARADO: Comportamiento idéntico al drawer derecho al abandonar el ratón
     onExited: {
         root.sidebarForceOpen = false
-        root.mouseExitedSidebar() // Despierta la restauración en main.qml
+        root.mouseExitedSidebar() 
         
         if (typeof globalKeyboardHandler !== "undefined") {
             globalKeyboardHandler.forceActiveFocus();
@@ -32,7 +30,7 @@ MouseArea {
 
     Rectangle {
         anchors.fill: parent
-        color: "#0F172A" // Slate 900
+        color: "#0F172A" 
         border.color: "#3B82F6"
         border.width: root.isFullScreen ? 1 : 0
     }
@@ -54,7 +52,6 @@ MouseArea {
             Layout.bottomMargin: 10
         }
 
-        // Opción 1: Configuración General (Vacía)
         ItemDelegate {
             id: generalOpt
             Layout.fillWidth: true
@@ -71,13 +68,12 @@ MouseArea {
                 Text { text: "⚙️"; font.pointSize: 14 }
                 Text {
                     text: "Configuración General"
-                    color: "#94A3B8" // Color atenuado al estar vacío
+                    color: "#94A3B8" 
                     font.pointSize: 11
                 }
             }
         }
 
-        // Opción 2: Importar Lista M3U
         ItemDelegate {
             id: importOpt
             Layout.fillWidth: true
@@ -110,7 +106,6 @@ MouseArea {
             }
         }
 
-        // Espaciador para empujar el contenido hacia arriba
         Item {
             Layout.fillHeight: true
             Layout.fillWidth: true

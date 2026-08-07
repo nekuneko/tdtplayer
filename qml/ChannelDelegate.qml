@@ -1,4 +1,4 @@
-// ChannelDelegate.qml
+// qml/ChannelDelegate.qml
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,7 +9,7 @@ ItemDelegate {
     height: 60
     hoverEnabled: true
     
-    // Propiedades requeridas corregidas
+    // Propiedades requeridas
     required property var sidebarModel
     required property int modelRow
     required property int currentChannelIndex
@@ -17,7 +17,7 @@ ItemDelegate {
     signal clickedReal(int realIndex)
     signal hoveredReal(string channelName)
 
-    // Cálculo matemático limpio para el scroll infinito
+    // Cálculo matemático para el scroll infinito
     readonly property int realIndex: (sidebarModel && sidebarModel.rowCount() > 0) ? (modelRow % sidebarModel.rowCount()) : 0
     highlighted: currentChannelIndex === realIndex
 
@@ -30,12 +30,13 @@ ItemDelegate {
     }
 
     contentItem: RowLayout {
-        width: 270
+        // 🚀 MEJORA ESTRUCTURAL: Incrementamos el margen derecho a 15 para despegar la caja del borde
+        width: 255
         anchors.centerIn: parent
+        anchors.rightMargin: 15 
         spacing: 12
         
         Image {
-            // SOLUCIÓN: Generamos el QModelIndex de Python de forma explícita pasándole el entero realIndex
             source: (control.sidebarModel && control.sidebarModel.rowCount() > 0) 
                     ? control.sidebarModel.data(control.sidebarModel.index(control.realIndex, 0), Qt.UserRole + 3) 
                     : ""
@@ -44,6 +45,7 @@ ItemDelegate {
             Layout.preferredWidth: 35
             Layout.preferredHeight: 35
             fillMode: Image.PreserveAspectFit
+            cache: true
             onStatusChanged: {
                 if (status === Image.Error) {
                     source = "image://theme/media-playback-start"
@@ -52,7 +54,6 @@ ItemDelegate {
         }
 
         Text {
-            // SOLUCIÓN: Enlace de datos correcto para evitar nombres repetidos
             text: (control.sidebarModel && control.sidebarModel.rowCount() > 0) 
                   ? control.sidebarModel.data(control.sidebarModel.index(control.realIndex, 0), Qt.UserRole + 1) 
                   : ""
@@ -66,17 +67,34 @@ ItemDelegate {
             Behavior on color { ColorAnimation { duration: 150 } }
         }
 
-        Text {
+        // Caja cuadrada con bordes redondeados (Badge idéntico al EPG)
+        Rectangle {
+            id: badgeContainer
             property string chNoStr: (control.sidebarModel && control.sidebarModel.rowCount() > 0) 
                                      ? control.sidebarModel.data(control.sidebarModel.index(control.realIndex, 0), Qt.UserRole + 4) 
                                      : ""
             property string finalChNo: chNoStr !== "" ? chNoStr : control.realIndex.toString()
-            text: "CH " + finalChNo.padStart(2, '0')
-            color: control.highlighted 
-                   ? "#3B82F6" 
-                   : (control.hovered ? "#94A3B8" : "#64748B")
-            font.pointSize: 9
+
+            color: control.highlighted ? "#3B82F6" : (control.hovered ? "#2563EB" : "#1D4ED8")
+            opacity: control.highlighted || control.hovered ? 1.0 : 0.8
+            radius: 4
+
+            Layout.preferredHeight: 22
+            Layout.preferredWidth: channelNumberText.implicitWidth + 14
+            Layout.alignment: Qt.AlignVCenter
+            
             Behavior on color { ColorAnimation { duration: 150 } }
+
+            Text {
+                id: channelNumberText
+                anchors.centerIn: parent
+                text: parent.finalChNo.padStart(2, '0')
+                
+                color: "white"
+                font.bold: true
+                font.pointSize: 10
+                // 🚀 UNIFICACIÓN TIPOGRÁFICA: Eliminamos Monospace para usar la misma fuente que el EpgDrawer
+            }
         }
     }
 

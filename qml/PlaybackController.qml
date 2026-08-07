@@ -40,6 +40,11 @@ QtObject {
         root.zappingTimer.stop()
         root.osdHoveredChannelName = ""
         
+        // 🚀 GUARDADO EN CALIENTE: Almacenamos el dial de forma persistente en los ficheros ini de la app
+        if (typeof appSettings !== "undefined") {
+            appSettings.lastChannelIndex = index
+        }
+        
         var idx = root.model.index(index, 0)
         root.osdChannelName = root.model.data(idx, Qt.UserRole + 1) || ""
         root.osdChannelNo = root.model.data(idx, Qt.UserRole + 4) || ""

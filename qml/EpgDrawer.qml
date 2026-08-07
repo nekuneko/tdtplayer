@@ -17,8 +17,8 @@ Rectangle {
     property var sidebarItem: null
     property bool epgForceOpen: false
 
-    // Propiedad estructural mantenida por compatibilidad de interfaz
-    readonly property bool containsMouse: false
+    // Propiedad expuesta enlazada al detector de ratón de fondo
+    readonly property bool containsMouse: epgMouseTracker.containsMouse
 
     height: root.isFullScreen ? 180 : 160 
     anchors.bottom: parent ? parent.bottom : undefined
@@ -29,15 +29,43 @@ Rectangle {
     border.color: "#3B82F6"
     border.width: root.isFullScreen ? 1 : 0
 
-    // 🚀 SOLUCIÓN ESTRUCTURAL: Aseguramos que el sistema operativo pinte la flecha de forma nativa en este contenedor
-    // sin necesidad de meter interceptores MouseArea invisibles que rompan los clics de los hijos.
-    clip: true
-
     Behavior on height {
         NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
     }
 
-    // ❌ ELIMINADOS TODOS LOS DETECTORES DE RATÓN INTERNOS Y TEMPORIZADORES DE PARCHES (MouseArea y safetyExitTimer)
+    // ⏱️ TEMPORIZADOR DE TOLERANCIA OPTIMIZADO
+    Timer {
+        id: safetyExitTimer
+        interval: 200 
+        running: false
+        repeat: false
+        onTriggered: {
+            root.epgForceOpen = false
+        }
+    }
+
+    // 🛡️ GESTOR DE ENTRADA BLINDADO
+    MouseArea {
+        id: epgMouseTracker
+        anchors.fill: parent
+        hoverEnabled: true
+        z: -1 
+        cursorShape: Qt.ArrowCursor
+        
+        onEntered: {
+            safetyExitTimer.stop()
+        }
+        
+        onExited: {
+            safetyExitTimer.start()
+        }
+        
+        onPositionChanged: {
+            if (typeof playerView !== "undefined") {
+                playerView.resetMouseCursor()
+            }
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent

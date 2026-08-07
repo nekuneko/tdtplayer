@@ -48,7 +48,6 @@ RowLayout {
         spacing: 16
         Layout.alignment: Qt.AlignRight
 
-        // Integración de la barra de volumen modularizada
         EpgVolumeSlider {
             isFullScreen: root.isFullScreen
         }
