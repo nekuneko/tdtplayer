@@ -3,12 +3,19 @@ import QtQuick
 import QtQuick.Controls
 import QtMultimedia
 import QtQuick.Dialogs
+import QtCore // 🚀 AÑADIDO: Necesario para usar el componente Settings nativo
 import "qml"
 
 ApplicationWindow {
     id: window
     width: 1024; height: 768; visible: true
     title: "Tvheadend Native Player"
+
+    // 🚀 AÑADIDO: Almacenamiento persistente de la ruta del archivo M3U
+    Settings {
+        id: appSettings
+        property string lastM3uUrl: ""
+    }
 
     PlaybackController {
         id: ctrl
@@ -28,7 +35,6 @@ ApplicationWindow {
         id: mainFocusScope
         anchors.fill: parent
 
-        // 📺 REPARADO: El vídeo ahora SIEMPRE llena la pantalla/ventana por completo
         VideoPlayerView {
             id: playerView
             window: window
@@ -44,18 +50,13 @@ ApplicationWindow {
             id: epgDrawer
             channelName: ctrl.osdChannelName; channelNo: ctrl.osdChannelNo; hoveredChannelName: ctrl.osdHoveredChannelName
             epgTitle: ctrl.epgTitle; epgDescription: ctrl.epgDescription; isFullScreen: ctrl.isFullScreen; sidebarItem: sidebar; z: 1 
-            
-            // UNIFICADO: Ahora el panel inferior siempre es flotante condicional
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
-
             Timer { id: keyboardEpgTimer; interval: 3000; onTriggered: epgDrawer.epgForceOpen = false }
         }
 
         ChannelSidebar {
             id: sidebar
             model: channelModel; currentChannelIndex: ctrl.currentChannelIndex; isFullScreen: ctrl.isFullScreen; z: 1
-            
-            // UNIFICADO: La barra derecha siempre está oculta por defecto en ventana y en full
             visible: !ctrl.isConfigMenuOpen && sidebar.sidebarForceOpen
             
             onChannelSelected: (realIndex) => { ctrl.playChannel(realIndex); globalKeyboardHandler.forceActiveFocus() }
@@ -92,7 +93,32 @@ ApplicationWindow {
         onNumberAccepted: (numberStr) => ctrl.playChannelByNumber(numberStr)
     }
 
-    Component.onCompleted: fileDialog.open()
+    // 🚀 MODIFICADO: Carga automática de la lista persistente o apertura del diálogo si está vacío
+    Component.onCompleted: {
+        if (appSettings.lastM3uUrl !== "") {
+            loadM3uFromUrl(appSettings.lastM3uUrl);
+        } else {
+            fileDialog.open();
+        }
+    }
+
+    // 🚀 AÑADIDO: Función auxiliar para procesar la lista M3U mediante XMLHttpRequest
+    function loadM3uFromUrl(url) {
+        var request = new XMLHttpRequest()
+        request.open("GET", url, true)
+        request.onreadystatechange = function() {
+            if (request.readyState === XMLHttpRequest.DONE) {
+                if (request.status === 200 || request.status === 0) { // 0 es válido para archivos locales file://
+                    channelModel.parse_m3u_content(request.responseText)
+                    initScrollTimer.restart()
+                } else {
+                    console.log("Error al cargar el archivo persistente, abriendo selector de archivos.")
+                    fileDialog.open()
+                }
+            }
+        }
+        request.send(null)
+    }
 
     Timer {
         id: initScrollTimer
@@ -111,15 +137,9 @@ ApplicationWindow {
         title: "Carga tu lista Tvheadend"
         nameFilters: ["Archivos M3U (*.m3u *.m3u8)"]
         onAccepted: {
-            var request = new XMLHttpRequest()
-            request.open("GET", fileDialog.selectedFile, true)
-            request.onreadystatechange = function() {
-                if (request.readyState === XMLHttpRequest.DONE) {
-                    channelModel.parse_m3u_content(request.responseText)
-                    initScrollTimer.restart()
-                }
-            }
-            request.send(null)
+            var selected = fileDialog.selectedFile.toString()
+            appSettings.lastM3uUrl = selected // 🚀 AÑADIDO: Guarda la ruta para la próxima sesión
+            loadM3uFromUrl(selected)
         }
     }
 }

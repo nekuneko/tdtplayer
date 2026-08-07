@@ -18,6 +18,11 @@ def main():
     # 3. CORRECCIÓN DEL ENTLAZADO EN VAAPI INTEL
     os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "vaapi"
     os.environ["FFMPEG_HWACCEL_RECOV"] = "1"
+
+    # 📝 AÑADIR AQUÍ: Identificadores para habilitar el componente Settings en QML
+    QGuiApplication.setOrganizationName("TvheadendNative")
+    QGuiApplication.setOrganizationDomain("tvheadend.native")
+    QGuiApplication.setApplicationName("TvheadendNativePlayer")
     
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()

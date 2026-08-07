@@ -95,7 +95,7 @@ class ChannelModel(QAbstractListModel):
             return self._channels[row].url
         return ""
 
-    @Slot(str, result='QVariant')
+    @Slot(str, result=dict)
     def fetch_current_epg(self, channel_name: str) -> dict:
         # 1. Limpiamos espacios en blanco del nombre del canal
         search_name = str(channel_name).strip()
