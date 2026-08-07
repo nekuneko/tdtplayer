@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtMultimedia
 import QtQuick.Dialogs
-import QtCore // 🚀 AÑADIDO: Necesario para usar el componente Settings nativo
+import QtCore 
 import "qml"
 
 ApplicationWindow {
@@ -11,7 +11,6 @@ ApplicationWindow {
     width: 1024; height: 768; visible: true
     title: "Tvheadend Native Player"
 
-    // 🚀 AÑADIDO: Almacenamiento persistente de la ruta del archivo M3U
     Settings {
         id: appSettings
         property string lastM3uUrl: ""
@@ -53,9 +52,7 @@ ApplicationWindow {
             hoveredChannelName: ctrl.osdHoveredChannelName
             epgTitle: ctrl.epgTitle; epgDescription: ctrl.epgDescription; isFullScreen: ctrl.isFullScreen; sidebarItem: sidebar; z: 1 
             
-            // 🚀 REPARADO: El ancho ahora se adapta y se acopla dinámicamente si la barra lateral está abierta
             width: sidebar.visible ? (parent.width - sidebar.width) : parent.width
-            
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
 
             Timer { id: keyboardEpgTimer; interval: 3000; onTriggered: epgDrawer.epgForceOpen = false }
@@ -68,17 +65,13 @@ ApplicationWindow {
             
             onChannelSelected: (realIndex) => { ctrl.playChannel(realIndex); globalKeyboardHandler.forceActiveFocus() }
             
-            // 🚀 REPARADO: Vuelve a recibir el nombre (String) para que no tengas que cambiar tu archivo interno,
-            // pero aplica un filtrado tolerante a fallos de texto y saltos de línea ocultos.
             onChannelHovered: (name) => {
                 if (ctrl.zappingTimer.running) return
                 if (!name) return
                 
-                // Limpiamos el texto recibido quitando espacios y retornos de carro invisibles (\r)
                 var cleanHoverName = name.toString().trim().replace(/[\r\n]/g, "");
                 ctrl.osdHoveredChannelName = cleanHoverName
                 
-                // Buscamos el logotipo en el modelo de forma ultra-tolerante
                 var count = channelModel.rowCount()
                 var foundLogo = ""
                 for (var i = 0; i < count; i++) {
@@ -93,7 +86,6 @@ ApplicationWindow {
                     }
                 }
                 
-                // Forzamos la actualización inmediata del logo en la interfaz gráfica
                 ctrl.osdChannelLogo = foundLogo 
 
                 var epgData = channelModel.fetch_current_epg(cleanHoverName)
@@ -105,12 +97,26 @@ ApplicationWindow {
             }
             
             onExited: {
+                // Obtenemos la posición absoluta del cursor respecto al contenedor principal
+                var globalCursor = sidebar.mapToItem(mainFocusScope, sidebar.mouseX, sidebar.mouseY);
+                
+                // Calculamos el límite superior donde empieza el EPG en la pantalla
+                var epgTopBoundary = mainFocusScope.height - epgDrawer.height;
+
+                // Si el ratón salió por abajo dirigiéndose hacia el área del EPG
+                if (globalCursor.y >= epgTopBoundary) {
+                    sidebar.sidebarForceOpen = false // Escondemos el sidebar
+                    sidebar.forceCenterScrollSync()
+                    epgDrawer.epgForceOpen = true    // Mantenemos el EPG abierto para su redimensión automática
+                    return
+                }
+
+                // Salida normal hacia el reproductor de vídeo
                 sidebar.sidebarForceOpen = false
                 epgDrawer.epgForceOpen = false
                 sidebar.forceCenterScrollSync()
                 ctrl.osdHoveredChannelName = ""
                 
-                // Al salir, restauramos el logotipo original del canal en reproducción real
                 var currentIdx = channelModel.index(ctrl.currentChannelIndex, 0)
                 ctrl.osdChannelLogo = channelModel.data(currentIdx, Qt.UserRole + 3) || ""
                 
@@ -129,7 +135,6 @@ ApplicationWindow {
             onImportRequested: fileDialog.open()
             onMouseExitedSidebar: ctrl.restorePanelsAfterConfig()
             visible: configSidebar.sidebarForceOpen
-
         }
     } 
 
@@ -138,7 +143,6 @@ ApplicationWindow {
         onNumberAccepted: (numberStr) => ctrl.playChannelByNumber(numberStr)
     }
 
-    // 🚀 MODIFICADO: Carga automática de la lista persistente o apertura del diálogo si está vacío
     Component.onCompleted: {
         if (appSettings.lastM3uUrl !== "") {
             loadM3uFromUrl(appSettings.lastM3uUrl);
@@ -147,13 +151,12 @@ ApplicationWindow {
         }
     }
 
-    // 🚀 AÑADIDO: Función auxiliar para procesar la lista M3U mediante XMLHttpRequest
     function loadM3uFromUrl(url) {
         var request = new XMLHttpRequest()
         request.open("GET", url, true)
         request.onreadystatechange = function() {
             if (request.readyState === XMLHttpRequest.DONE) {
-                if (request.status === 200 || request.status === 0) { // 0 es válido para archivos locales file://
+                if (request.status === 200 || request.status === 0) { 
                     channelModel.parse_m3u_content(request.responseText)
                     initScrollTimer.restart()
                 } else {
@@ -183,7 +186,7 @@ ApplicationWindow {
         nameFilters: ["Archivos M3U (*.m3u *.m3u8)"]
         onAccepted: {
             var selected = fileDialog.selectedFile.toString()
-            appSettings.lastM3uUrl = selected // 🚀 AÑADIDO: Guarda la ruta para la próxima sesión
+            appSettings.lastM3uUrl = selected 
             loadM3uFromUrl(selected)
         }
     }

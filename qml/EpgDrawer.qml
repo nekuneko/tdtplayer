@@ -6,6 +6,7 @@ import QtQuick.Layouts
 Rectangle {
     id: root
     
+    // Propiedades de la interfaz del componente
     property string channelName: ""
     property string channelNo: ""
     property string hoveredChannelName: ""
@@ -16,13 +17,15 @@ Rectangle {
     property var sidebarItem: null
     property bool epgForceOpen: false
 
-    // ⚡ MODIFICADO: Eliminamos 'width: parent.width' para permitir que el valor dinámico asignado por main.qml tome el control
-    height: root.isFullScreen ? 180 : 160 // Incrementado ligeramente para albergar el scroll cómodamente
+    // Propiedad expuesta de solo lectura para que main.qml pueda saber si el ratón está encima de forma segura
+    readonly property bool containsMouse: epgMouseTracker.containsMouse
+
+    height: root.isFullScreen ? 180 : 160 
     
     anchors.bottom: parent ? parent.bottom : undefined
     anchors.left: parent ? parent.left : undefined
     
-    color: "#0F172A" // Un tono más oscuro (Slate 900) para mejorar el contraste del texto
+    color: "#0F172A" 
     opacity: 0.96
     border.color: "#3B82F6"
     border.width: root.isFullScreen ? 1 : 0
@@ -31,11 +34,12 @@ Rectangle {
         NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
     }
 
-    // 🚀 AÑADIDO: Captura el movimiento del ratón para cerrar el panel al salir
+    // Gestor que captura el movimiento del ratón sobre la superficie del EPG
     MouseArea {
+        id: epgMouseTracker
         anchors.fill: parent
         hoverEnabled: true
-        z: -1 // Se posiciona al fondo para no bloquear clics ni el scroll del texto
+        z: -1 
         onExited: {
             root.epgForceOpen = false
         }
@@ -155,7 +159,6 @@ Rectangle {
                     elide: Text.ElideRight
                 }
 
-                // 🚀 REPARADO: Contenedor con límites físicos de altura para forzar el scroll
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -168,7 +171,6 @@ Rectangle {
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
 
-                        // Captura de la rueda y desplazamiento manual seguro
                         WheelHandler {
                             id: textScrollWheel
                             orientation: Qt.Vertical
@@ -191,7 +193,6 @@ Rectangle {
                             wrapMode: Text.WordWrap
                         }
 
-                        // 🚀 REPARADO: En Qt6 la barra se asocia de forma nativa como propiedad adjunta
                         ScrollBar.vertical: ScrollBar {
                             id: verticalScrollBar
                             policy: descFlickable.contentHeight > descFlickable.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
@@ -208,7 +209,6 @@ Rectangle {
         }
     }
 
-    // Gestor de volumen en el área del drawer mediante la rueda del ratón
     WheelHandler {
         id: drawerVolumeWheel
         orientation: Qt.Vertical

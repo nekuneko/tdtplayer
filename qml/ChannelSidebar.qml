@@ -21,11 +21,6 @@ MouseArea {
     width: visible ? 290 : 0
     hoverEnabled: true
 
-    onEntered: {
-        // Emitir tanto el nombre como el logo (usando los roles b"name" y b"logo" definidos en python)
-        root.channelHovered(index) 
-    }
-
     onExited: {
         if (root.isFullScreen) {
             root.sidebarForceOpen = false
@@ -100,16 +95,17 @@ MouseArea {
         Connections {
             target: ctrl 
             
+            // 🆕 CAMBIO: Forzamos la lectura limpia del índice del controlador de reproducción
             function onCurrentChannelIndexChanged() {
-                var count = root.model ? root.model.rowCount() : 0;
-                if (count === 0) return;
-                if (root.containsMouse) return;
+                if (!root.model) return;
+                var count = root.model.rowCount();
+                if (count === 0 || root.containsMouse) return;
                 
-                var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY)
-                var baseVirtual = currentScrollIndex - (currentScrollIndex % count)
-                var targetVirtual = baseVirtual + ctrl.currentChannelIndex
+                var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY);
+                var baseVirtual = currentScrollIndex - (currentScrollIndex % count);
+                var targetVirtual = baseVirtual + ctrl.currentChannelIndex;
                 
-                channelListView.positionViewAtIndex(targetVirtual, ListView.Center)
+                channelListView.positionViewAtIndex(targetVirtual, ListView.Center);
             }
         }
 
