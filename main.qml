@@ -8,16 +8,51 @@ import "qml"
 
 ApplicationWindow {
     id: window
-    width: 1024; height: 768; visible: true
+    visible: true
     title: "Tvheadend Native Player"
 
-    property var localLogoCache: ({})
+    // Propiedad interna intermedia para evitar bucles de actualización infinita durante el arranque
+    property bool isBooting: true
+
+    // Persistencia geométrica multimonitor reactiva
+    x: appSettings.windowX !== -1 ? appSettings.windowX : (Screen.width - width) / 2
+    y: appSettings.windowY !== -1 ? appSettings.windowY : (Screen.height - height) / 2
+    width: appSettings.windowWidth > 0 ? appSettings.windowWidth : 1024
+    height: appSettings.windowHeight > 0 ? appSettings.windowHeight : 768
+
+    // 🚀 RESTAURACIÓN NATIVA EN ARRANQUE: Enlazamos el estado inicial de forma declarativa directa
+    visibility: appSettings.lastIsFullScreen ? Window.FullScreen : Window.Windowed
+
+    onXChanged: if (window.visibility === Window.Windowed && !window.isBooting) appSettings.windowX = window.x
+    onYChanged: if (window.visibility === Window.Windowed && !window.isBooting) appSettings.windowY = window.y
+    onWidthChanged: if (window.visibility === Window.Windowed && !window.isBooting) appSettings.windowWidth = window.width
+    onHeightChanged: if (window.visibility === Window.Windowed && !window.isBooting) appSettings.windowHeight = window.height
+
+    // Escuchamos el cambio de estado para guardar en caliente de forma bidireccional segura
+    onVisibilityChanged: {
+        if (window.isBooting) return // Blindaje: no guardamos nada mientras la app se está construyendo
+        
+        if (window.visibility === Window.FullScreen) {
+            appSettings.lastIsFullScreen = true
+            ctrl.isFullScreen = true
+        } else if (window.visibility === Window.Windowed) {
+            appSettings.lastIsFullScreen = false
+            ctrl.isFullScreen = false
+        }
+    }
 
     Settings {
         id: appSettings
         property string lastM3uUrl: ""
         property int lastChannelIndex: 0 
+        property int windowX: -1
+        property int windowY: -1
+        property int windowWidth: 1024
+        property int windowHeight: 768
+        property bool lastIsFullScreen: false
     }
+
+    property var localLogoCache: ({})
 
     PlaybackController {
         id: ctrl
@@ -141,7 +176,6 @@ ApplicationWindow {
             id: configSidebar
             isFullScreen: ctrl.isFullScreen; z: 2
             onImportRequested: fileDialog.open()
-            // 🚀 SINTAXIS NATIVA UNIFICADA: onMouseExitedSidebar mapeado de forma limpia
             onMouseExitedSidebar: ctrl.restorePanelsAfterConfig()
             visible: configSidebar.sidebarForceOpen
         }
@@ -160,6 +194,12 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        // Inicializamos los flags del controlador para que los componentes hijos escalen bien desde el frame 1
+        ctrl.isFullScreen = appSettings.lastIsFullScreen
+        
+        // Abrimos el candado de escritura: a partir de ahora cualquier cambio de tamaño se guardará en disco
+        window.isBooting = false
+
         if (appSettings.lastM3uUrl !== "") {
             loadM3uFromUrl(appSettings.lastM3uUrl);
         } else {
