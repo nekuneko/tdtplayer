@@ -12,7 +12,6 @@ QtObject {
     property int currentVolumePercent: 100; property bool showVolumeOsd: false; property real osdPanelOpacity: 0.0; property bool keyboardActiveOsd: false
     property bool backupSidebarVisible: false; property bool backupEpgVisible: false; property bool isConfigMenuOpen: false
 
-    // 🚀 NUEVA PROPIEDAD: Control del estado de Mute
     property bool isMuted: false
 
     property real clockOpacity: (osdPanelOpacity > 0.0 || (sidebar && sidebar.visible && sidebar.width > 0) || (epgDrawer && epgDrawer.visible && epgDrawer.height > 0)) ? 1.0 : 0.0
@@ -21,9 +20,15 @@ QtObject {
     property Timer osdTimer: Timer { interval: 3000; onTriggered: root.osdPanelOpacity = 0.0 }
     property Timer volumeOsdTimer: Timer { interval: 2000; onTriggered: root.showVolumeOsd = false }
     property Timer epgPoller: Timer { interval: 300; running: false }
+    
     property Timer zappingTimer: Timer {
         interval: 250; running: false; repeat: false
-        onTriggered: if (root.mediaPlayer && root.model && !root.isVoluntarilyStopped) { root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex); root.mediaPlayer.play() }
+        onTriggered: {
+            if (root.mediaPlayer && root.model && !root.isVoluntarilyStopped) { 
+                root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex)
+                root.mediaPlayer.play() 
+            }
+        }
     }
 
     function playChannel(index) {
@@ -31,21 +36,37 @@ QtObject {
         var count = root.model.rowCount()
         index = index < 0 ? count - 1 : (index >= count ? 0 : index)
         
-        root.currentChannelIndex = index; root.zappingTimer.stop(); root.osdHoveredChannelName = ""
+        root.currentChannelIndex = index
+        root.zappingTimer.stop()
+        root.osdHoveredChannelName = ""
         
         var idx = root.model.index(index, 0)
         root.osdChannelName = root.model.data(idx, Qt.UserRole + 1) || ""
-        root.osdChannelLogo = root.model.data(idx, Qt.UserRole + 3) || ""
         root.osdChannelNo = root.model.data(idx, Qt.UserRole + 4) || ""
+        
+        if (root.osdChannelName !== "") {
+            var cleanName = root.osdChannelName.toString().trim().replace(/[\r\n]/g, "");
+            root.osdChannelLogo = window.localLogoCache[cleanName] || ""
+        } else {
+            root.osdChannelLogo = ""
+        }
         
         var epg = root.model.fetch_current_epg(root.osdChannelName)
         root.epgTitle = epg ? epg.title : "Emisión en directo"
         root.epgDescription = epg ? (epg.description || "Sin descripción disponible.") : "..."
         
-        if (root.mediaPlayer) { root.mediaPlayer.stop(); root.mediaPlayer.source = ""; if (!root.isVoluntarilyStopped) root.zappingTimer.start() }
+        if (root.mediaPlayer) { 
+            root.mediaPlayer.stop()
+            if (!root.isVoluntarilyStopped) {
+                root.zappingTimer.start() 
+            }
+        }
+        
         if (root.sidebar) root.sidebar.forceKeyboardScrollSync()
         
-        root.osdPanelOpacity = 1.0; root.osdTimer.restart(); root.channelZappedByKeyboard()
+        root.osdPanelOpacity = 1.0
+        root.osdTimer.restart()
+        root.channelZappedByKeyboard()
     }
 
     function playChannelByNumber(numStr) {
@@ -57,7 +78,6 @@ QtObject {
     }
 
     function changeVolume(delta) {
-        // Si alteramos el volumen manualmente, quitamos el estado de silencio de forma lógica
         if (root.isMuted && delta !== 0) {
             root.isMuted = false
         }
@@ -68,7 +88,6 @@ QtObject {
         root.volumeOsdTimer.restart(); root.showVolumeOsd = true
     }
 
-    // 🚀 NUEVA FUNCIÓN: Conmutador de Mute nativo
     function toggleMute() {
         root.isMuted = !root.isMuted
         if (root.mediaPlayer && root.mediaPlayer.audioOutput) {

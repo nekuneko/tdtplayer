@@ -11,6 +11,8 @@ ApplicationWindow {
     width: 1024; height: 768; visible: true
     title: "Tvheadend Native Player"
 
+    property var localLogoCache: ({})
+
     Settings {
         id: appSettings
         property string lastM3uUrl: ""
@@ -55,7 +57,6 @@ ApplicationWindow {
             width: sidebar.visible ? (parent.width - sidebar.width) : parent.width
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
 
-            // 🚀 CORRECCIÓN ESTRICTA: Eliminamos la propiedad inexistente y delegamos al reset visual del playerView
             onEpgForceOpenChanged: {
                 if (epgForceOpen) {
                     if (typeof playerView !== "undefined") {
@@ -81,20 +82,7 @@ ApplicationWindow {
                 var cleanHoverName = name.toString().trim().replace(/[\r\n]/g, "");
                 ctrl.osdHoveredChannelName = cleanHoverName
                 
-                var count = channelModel.rowCount()
-                var foundLogo = ""
-                for (var i = 0; i < count; i++) {
-                    var idx = channelModel.index(i, 0)
-                    var modelName = channelModel.data(idx, Qt.UserRole + 1)
-                    if (modelName) {
-                        var cleanModelName = modelName.toString().trim().replace(/[\r\n]/g, "");
-                        if (cleanModelName === cleanHoverName) {
-                            foundLogo = channelModel.data(idx, Qt.UserRole + 3) || ""
-                            break
-                        }
-                    }
-                }
-                
+                var foundLogo = window.localLogoCache[cleanHoverName] || ""
                 ctrl.osdChannelLogo = foundLogo 
 
                 var epgData = channelModel.fetch_current_epg(cleanHoverName)
@@ -112,7 +100,11 @@ ApplicationWindow {
                 ctrl.osdHoveredChannelName = ""
                 
                 var currentIdx = channelModel.index(ctrl.currentChannelIndex, 0)
-                ctrl.osdChannelLogo = channelModel.data(currentIdx, Qt.UserRole + 3) || ""
+                var currentName = channelModel.data(currentIdx, Qt.UserRole + 1) || ""
+                if (currentName !== "") {
+                    var cleanCurrentName = currentName.toString().trim().replace(/[\r\n]/g, "");
+                    ctrl.osdChannelLogo = window.localLogoCache[cleanCurrentName] || ""
+                }
                 
                 var currentEpg = channelModel.fetch_current_epg(ctrl.osdChannelName)
                 if (currentEpg && currentEpg.title !== undefined) { 
@@ -135,6 +127,13 @@ ApplicationWindow {
     ChannelNumPopup {
         id: channelNumPopup
         onNumberAccepted: (numberStr) => ctrl.playChannelByNumber(numberStr)
+    }
+
+    Connections {
+        target: channelModel
+        function onLogoCacheChanged() {
+            window.localLogoCache = channelModel.logoCache
+        }
     }
 
     Component.onCompleted: {

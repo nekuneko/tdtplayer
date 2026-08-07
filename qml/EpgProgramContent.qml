@@ -37,26 +37,38 @@ RowLayout {
         Layout.alignment: Qt.AlignTop
 
         Image {
+            id: targetChannelLogoItem
             anchors.fill: parent
             anchors.margins: 4
             source: root.channelLogo
             fillMode: Image.PreserveAspectFit
-            onStatusChanged: if (status === Image.Error || root.channelLogo === "") source = "image://theme/media-playback-start"
+            
+            // Al ser rutas locales "file://", el renderizador lee directamente de la GPU de inmediato
+            sourceSize.width: 120
+            sourceSize.height: 120
+            cache: true
+            asynchronous: false
+
+            onStatusChanged: {
+                if (status === Image.Error || root.channelLogo === "") {
+                    source = "image://theme/media-playback-start"
+                }
+            }
         }
     }
 
     ColumnLayout {
+        id: infoColumnContainer
         Layout.fillWidth: true
         Layout.fillHeight: true
         spacing: 4
 
-        readonly property var timeMatch: root.epgTitle.match(/^\[(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\]\s*(.*)$/)
-        readonly property bool hasTime: timeMatch !== null
-        readonly property string extractedTime: hasTime ? timeMatch[1].trim() : ""
-        readonly property string cleanTitle: hasTime ? timeMatch[2].trim() : root.epgTitle
+        readonly property var timeMatch: root.epgTitle.match(/^\[(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\]/)
+        readonly property string extractedTime: timeMatch ? timeMatch[0].replace(/[\[\]]/g, "") : ""
+        readonly property string cleanTitle: timeMatch ? root.epgTitle.substring(timeMatch[0].length).trim() : root.epgTitle
 
         RowLayout {
-            visible: parent.hasTime
+            visible: infoColumnContainer.extractedTime !== ""
             spacing: 6
             Layout.fillWidth: true
 
@@ -67,7 +79,7 @@ RowLayout {
             }
 
             Text {
-                text: parent.parent.extractedTime
+                text: infoColumnContainer.extractedTime
                 color: "#94A3B8" 
                 font.bold: true
                 font.pointSize: root.isFullScreen ? 11 : 10
@@ -77,7 +89,7 @@ RowLayout {
         }
 
         Text {
-            text: parent.cleanTitle
+            text: infoColumnContainer.cleanTitle
             color: "#FFFFFF" 
             font.bold: true
             font.pointSize: root.isFullScreen ? 15 : 13
