@@ -84,6 +84,7 @@ FocusScope {
                 }
             }
 
+            // 🛡️ SENSOR INFERIOR (EPG): Solo se activa si las barras izquierda y derecha están CERRADAS
             MouseArea {
                 id: bottomEdgeArea
                 anchors.left: parent.left
@@ -91,9 +92,11 @@ FocusScope {
                 anchors.bottom: parent.bottom
                 height: 40
                 hoverEnabled: true
+                enabled: !sidebarItem.visible && !configSidebarItem.visible
                 onEntered: epgDrawerItem.epgForceOpen = true
             }
 
+            // 🛡️ SENSOR IZQUIERDO (Configuración): Solo se activa si el EPG inferior y la lista de canales están CERRADOS
             MouseArea {
                 id: leftEdgeSwipeArea
                 anchors.left: parent.left
@@ -101,12 +104,14 @@ FocusScope {
                 anchors.bottom: parent.bottom
                 width: 50
                 hoverEnabled: true
+                enabled: !epgDrawerItem.epgForceOpen && !sidebarItem.visible
                 onEntered: { 
                     controller.openConfigAndCollapseOthers()
                     configSidebarItem.sidebarForceOpen = true 
                 }
             }
             
+            // 🛡️ SENSOR DERECHO (Lista de canales): Solo se activa si el EPG inferior y la configuración están CERRADOS
             MouseArea {
                 id: rightEdgeSwipeArea
                 anchors.right: parent.right
@@ -114,6 +119,7 @@ FocusScope {
                 anchors.bottom: parent.bottom
                 width: 50
                 hoverEnabled: true
+                enabled: !epgDrawerItem.epgForceOpen && !configSidebarItem.visible
                 onEntered: sidebarItem.sidebarForceOpen = true
             }
 
@@ -171,14 +177,6 @@ FocusScope {
                 }
             }
             
-            OsdPanel {
-                id: osdPanel
-                channelName: controller.osdChannelName
-                channelLogo: controller.osdChannelLogo
-                channelNo: controller.osdChannelNo
-                isFullScreen: controller.isFullScreen
-                opacity: controller.osdPanelOpacity 
-            }
 
             ClockWidget {
                 id: clockWidget

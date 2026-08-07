@@ -21,6 +21,11 @@ MouseArea {
     width: visible ? 290 : 0
     hoverEnabled: true
 
+    onEntered: {
+        // Emitir tanto el nombre como el logo (usando los roles b"name" y b"logo" definidos en python)
+        root.channelHovered(index) 
+    }
+
     onExited: {
         if (root.isFullScreen) {
             root.sidebarForceOpen = false

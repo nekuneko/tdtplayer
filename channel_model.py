@@ -61,7 +61,7 @@ class ChannelModel(QAbstractListModel):
             line = line.strip()
             if line.startswith('#EXTINF:'):
                 comma_index = line.rfind(',')
-                current_name = line[comma_index + 1:].strip() if comma_index != -1 else "Canal Desconocido"
+                current_name = line[comma_index + 1:].strip().replace('\r', '') if comma_index != -1 else "Canal Desconocido"
                 logo_match = logo_regex.search(line)
                 current_logo = logo_match.group(1) if logo_match else None
                 ch_no_match = ch_no_regex.search(line)
@@ -95,19 +95,17 @@ class ChannelModel(QAbstractListModel):
             return self._channels[row].url
         return ""
 
-    @Slot(str, result=dict)
+    @Slot(str, result='QVariant')
     def fetch_current_epg(self, channel_name: str) -> dict:
-        # 1. Limpiamos espacios en blanco del nombre del canal
         search_name = str(channel_name).strip()
         
-        # 2. Si la guía YA está guardada en la memoria RAM, la devolvemos al instante (0 milisegundos)
+        # ⚡ REVERTIDO: Eliminamos el bucle for que causaba la lentitud
         if search_name in self._epg_cache:
             return self._epg_cache[search_name]
             
-        # 3. Si NO está en la RAM, en lugar de consultar por internet y congelar la pantalla,
-        # devolvemos una respuesta provisional inmediata para que la interfaz no sufra micro-parones.
         return {
             "title": "Emisión en directo",
             "description": "Buscando información del evento actual en el flujo de Tvheadend..."
         }
+
 

@@ -1,121 +1,223 @@
 // qml/EpgDrawer.qml
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
-MouseArea {
+Rectangle {
     id: root
     
-    // Propiedades de estado expuestas
     property string channelName: ""
     property string channelNo: ""
     property string hoveredChannelName: ""
+    property string channelLogo: "" 
     property string epgTitle: ""
     property string epgDescription: ""
     property bool isFullScreen: false
-    property bool epgForceOpen: false
     property var sidebarItem: null
+    property bool epgForceOpen: false
 
-    // Anclajes dinámicos según el estado del panel lateral
-    anchors.left: parent.left
-    anchors.bottom: parent.bottom
-    anchors.right: (sidebarItem && sidebarItem.visible && (sidebarItem.width > 0)) 
-                   ? sidebarItem.left 
-                   : parent.right
+    // ⚡ MODIFICADO: Eliminamos 'width: parent.width' para permitir que el valor dinámico asignado por main.qml tome el control
+    height: root.isFullScreen ? 180 : 160 // Incrementado ligeramente para albergar el scroll cómodamente
     
-    visible: !root.isFullScreen || root.epgForceOpen
-    height: visible ? 130 : 0 
-    hoverEnabled: true
+    anchors.bottom: parent ? parent.bottom : undefined
+    anchors.left: parent ? parent.left : undefined
     
-    onExited: {
-        root.epgForceOpen = false
-        
-    }
+    color: "#0F172A" // Un tono más oscuro (Slate 900) para mejorar el contraste del texto
+    opacity: 0.96
+    border.color: "#3B82F6"
+    border.width: root.isFullScreen ? 1 : 0
 
-    // Animaciones de interfaz suaves
     Behavior on height {
         NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
     }
 
-    Behavior on anchors.right {
-        AnchorAnimation { duration: 200; easing.type: Easing.OutQuad }
-    }
-
-    // Sub-componente 1: Fondo visual contenedor
-    Rectangle {
-        id: backgroundContainer
+    // 🚀 AÑADIDO: Captura el movimiento del ratón para cerrar el panel al salir
+    MouseArea {
         anchors.fill: parent
-        color: "#0F172A"
-        opacity: 0.95
-        border.color: "#3B82F6"
-        border.width: 1
+        hoverEnabled: true
+        z: -1 // Se posiciona al fondo para no bloquear clics ni el scroll del texto
+        onExited: {
+            root.epgForceOpen = false
+        }
     }
 
-    // Estructura modular del contenido
+    // Contenedor principal con márgenes limpios
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 15
-        spacing: 6
+        anchors.margins: 16
+        spacing: 10
 
-        // Sub-componente 2: Fila de cabecera (Meta-información del canal y EPG)
+        // FILA SUPERIOR: Identificación del Canal
         RowLayout {
-            id: headerRow
             Layout.fillWidth: true
-            
-            Text {
-                // Lógica de visualización limpia usando un alias dinámico
-                readonly property string targetedChannel: root.hoveredChannelName !== "" ? root.hoveredChannelName : root.channelName
-                readonly property string formattedChNo: root.channelNo !== "" ? " (CH " + root.channelNo.padStart(2, '0') + ")" : ""
-                
-                text: targetedChannel + formattedChNo
-                color: "#3B82F6" 
-                font.bold: true
-                font.pointSize: 10
-            }
-            
-            Text {
-                text: " • GUÍA DE PROGRAMACIÓN (EPG)"
-                color: "#64748B"
-                font.pointSize: 9
-            }
-        }
+            spacing: 12
 
-        // Sub-componente 3: Título de la emisión actual
-        Text {
-            id: programTitleText
-            text: root.epgTitle
-            color: "white"
-            font.bold: true
-            font.pointSize: 14
-            Layout.fillWidth: true
-            elide: Text.ElideRight
-        }
+            RowLayout {
+                spacing: 8
+                Layout.alignment: Qt.AlignLeft
 
-        // Sub-componente 4: Descripción o resumen detallado
-        Text {
-            id: programDescriptionText
-            text: root.epgDescription
-            color: "#94A3B8"
-            font.pointSize: 10
-            Layout.fillWidth: true
-            wrapMode: Text.WordWrap
-            maximumLineCount: 2
-            elide: Text.ElideRight
-        }
-
-        // 🚀 NUEVA FUNCIÓN: Captura la rueda de forma exclusiva cuando el ratón está sobre el EpgDrawer
-        WheelHandler {
-            id: drawerVolumeWheel
-            orientation: Qt.Vertical
-            
-            onWheel: (event) => {
-                if (event.angleDelta.y > 0) {
-                    // Rueda hacia ARRIBA dentro del panel: Sube el volumen 5%
-                    ctrl.changeVolume(5)
-                } else if (event.angleDelta.y < 0) {
-                    // Rueda hacia ABAJO dentro del panel: Baja el volumen 5%
-                    ctrl.changeVolume(-5)
+                Rectangle {
+                    visible: root.channelNo !== ""
+                    color: "#3B82F6"
+                    radius: 4
+                    Layout.preferredWidth: 42
+                    Layout.preferredHeight: 22
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: root.channelNo.padStart(2, '0')
+                        color: "white"
+                        font.bold: true
+                        font.pointSize: 10
+                    }
                 }
+
+                Text {
+                    readonly property string targetedChannel: root.hoveredChannelName !== "" ? root.hoveredChannelName : root.channelName
+                    text: targetedChannel
+                    color: "white"
+                    font.bold: true
+                    font.pointSize: root.isFullScreen ? 14 : 12
+                    elide: Text.ElideRight
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Rectangle {
+                color: "#EF4444" 
+                radius: 4
+                Layout.preferredHeight: 22
+                Layout.alignment: Qt.AlignRight
+                Layout.preferredWidth: liveRowLayout.implicitWidth + 16 
+
+                RowLayout {
+                    id: liveRowLayout
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Rectangle { width: 6; height: 6; radius: 3; color: "white"; Layout.alignment: Qt.AlignVCenter }
+                    Text {
+                        text: "EN DIRECTO AHORA"
+                        color: "white"
+                        font.bold: true
+                        font.pointSize: 8
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: "#334155"
+        }
+
+        // FILA INFERIOR: CONTENIDO (LOGO + GUÍA CON SCROLL REPARADO)
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 20
+
+            Rectangle {
+                Layout.preferredWidth: 60
+                Layout.preferredHeight: 60
+                color: "#1E293B"
+                radius: 8
+                Layout.alignment: Qt.AlignTop
+
+                Image {
+                    id: channelLogoImage
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    source: root.channelLogo
+                    fillMode: Image.PreserveAspectFit
+                    
+                    onStatusChanged: {
+                        if (status === Image.Error || root.channelLogo === "") {
+                            source = "image://theme/media-playback-start"
+                        }
+                    }
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 4
+
+                Text {
+                    text: root.epgTitle
+                    color: "#3B82F6" 
+                    font.bold: true
+                    font.pointSize: root.isFullScreen ? 13 : 11
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+
+                // 🚀 REPARADO: Contenedor con límites físicos de altura para forzar el scroll
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    
+                    Flickable {
+                        id: descFlickable
+                        anchors.fill: parent
+                        contentWidth: width
+                        contentHeight: descriptionText.implicitHeight
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+
+                        // Captura de la rueda y desplazamiento manual seguro
+                        WheelHandler {
+                            id: textScrollWheel
+                            orientation: Qt.Vertical
+                            onWheel: (event) => {
+                                if (event.angleDelta.y > 0) {
+                                    descFlickable.contentY = Math.max(0, descFlickable.contentY - 20)
+                                } else {
+                                    descFlickable.contentY = Math.min(descFlickable.contentHeight - descFlickable.height, descFlickable.contentY + 20)
+                                }
+                                event.accepted = true
+                            }
+                        }
+
+                        Text {
+                            id: descriptionText
+                            width: descFlickable.width
+                            text: root.epgDescription
+                            color: "#94A3B8"
+                            font.pointSize: root.isFullScreen ? 11 : 10
+                            wrapMode: Text.WordWrap
+                        }
+
+                        // 🚀 REPARADO: En Qt6 la barra se asocia de forma nativa como propiedad adjunta
+                        ScrollBar.vertical: ScrollBar {
+                            id: verticalScrollBar
+                            policy: descFlickable.contentHeight > descFlickable.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                            
+                            contentItem: Rectangle {
+                                implicitWidth: 4
+                                radius: 2
+                                color: "#475569"
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
+
+    // Gestor de volumen en el área del drawer mediante la rueda del ratón
+    WheelHandler {
+        id: drawerVolumeWheel
+        orientation: Qt.Vertical
+        onWheel: (event) => {
+            if (event.angleDelta.y > 0) {
+                ctrl.changeVolume(5)
+            } else if (event.angleDelta.y < 0) {
+                ctrl.changeVolume(-5)
+            }
+        }
     }
 }
