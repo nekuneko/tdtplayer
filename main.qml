@@ -10,6 +10,12 @@ ApplicationWindow {
     width: 1024; height: 768; visible: true
     title: "Tvheadend Native Player"
 
+    // Orquestador de estilos raíz sincronizado con la persistencia en disco
+    Theme {
+        id: appTheme
+        currentTheme: appSettings.lastTheme
+    }
+
     readonly property var epgGridOverlayItem: epgGridOverlayLoader.item
     property alias epgGridOverlayLoaderItemActive: epgGridOverlayLoader.active
     property bool isBooting: true
@@ -35,6 +41,8 @@ ApplicationWindow {
         property string lastM3uUrl: ""; property int lastChannelIndex: 0 
         property int windowX: -1; property int windowY: -1; property int windowWidth: 1024; property int windowHeight: 768
         property bool lastIsFullScreen: false
+        // 🚀 PERSISTENCIA DE TEMA: Almacena la cadena identificadora del perfil visual
+        property string lastTheme: "CINEMATIC_COLOR"
     }
 
     PlaybackController {
@@ -109,19 +117,15 @@ ApplicationWindow {
         ConfigSidebar {
             id: configSidebar; isFullScreen: ctrl.isFullScreen; z: 2; onImportRequested: dataLoader.loadM3uFromUrl("")
             onMouseExitedSidebar: ctrl.restorePanelsAfterConfig(); visible: configSidebar.sidebarForceOpen
+            
+            // 🚀 ENLACE DE PROPIEDADES: Pasamos el control al panel lateral
+            appSettingsItem: appSettings
+            appThemeItem: appTheme
         }
     } 
 
-    // 🚀 REFACTORIZACIÓN DEL LOADER:
-    // Al añadir 'enabled: active', la capa z:10 se apaga completamente cuando no se usa la guía,
-    // permitiendo que los eventos de doble clic traspasen la pantalla limpia hacia el vídeo trasero.
     Loader {
-        id: epgGridOverlayLoader
-        anchors.fill: parent
-        z: 10
-        active: false 
-        enabled: active
-        source: "qml/EpgGridOverlay.qml"
+        id: epgGridOverlayLoader; anchors.fill: parent; z: 10; active: false; enabled: active; source: "qml/EpgGridOverlay.qml"
         onLoaded: {
             item.channelModel = channelModel; item.currentChannelIndex = ctrl.currentChannelIndex
             item.channelSelected.connect(function(realIndex) { epgGridOverlayLoader.active = false; ctrl.playChannel(realIndex); globalKeyboardHandler.forceActiveFocus() })

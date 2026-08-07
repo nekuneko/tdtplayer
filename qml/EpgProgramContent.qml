@@ -14,7 +14,6 @@ RowLayout {
     required property string epgTitle
     required property string epgDescription
 
-    // 🛡️ ESCUDO DE EVENTOS: Absorbe todos los scrolls verticales para evitar zapping accidental
     WheelHandler {
         id: contentScrollShield
         orientation: Qt.Vertical
@@ -30,7 +29,6 @@ RowLayout {
         }
     }
 
-    // Contenedor estático del Logotipo del canal sintonizado (Fijo a la izquierda)
     Rectangle {
         Layout.preferredWidth: 60
         Layout.preferredHeight: 60
@@ -48,7 +46,6 @@ RowLayout {
             sourceSize.height: 120
             cache: true
             asynchronous: false
-
             onStatusChanged: {
                 if (status === Image.Error || root.channelLogo === "") {
                     source = "image://theme/media-playback-start"
@@ -57,7 +54,6 @@ RowLayout {
         }
     }
 
-    // ÁREA SCROLLEABLE UNIFICADA (Hora + Título + Sinopsis)
     Item {
         id: scrollableWrapper
         Layout.fillWidth: true
@@ -76,67 +72,61 @@ RowLayout {
                 width: descFlickable.width
                 spacing: 4
 
-                // 🚀 CORRECCIÓN DE PARSEO SEGURA:
-                // El índice [1] extrae directamente el texto capturado por los paréntesis (\\d{2}:\\d{2}\\s*-\\s*\\d{2}:\\d{2}) ya limpio de corchetes.
-                readonly property var timeMatch: root.epgTitle.match(/^\[(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\]/)
-                readonly property string extractedTime: timeMatch ? timeMatch[1] : ""
-                readonly property string cleanTitle: timeMatch ? root.epgTitle.substring(timeMatch[0].length).trim() : root.epgTitle
+                // Buscamos el cierre del corchete ']' que inyecta Python para recortar las cadenas limpiamente
+                readonly property int closeBracketIndex: root.epgTitle.indexOf("]")
+                readonly property bool hasTime: root.epgTitle.startsWith("[") && closeBracketIndex !== -1
+                
+                // 🚀 LIMPIEZA TOTAL: Recortamos omitiendo los corchetes exteriores [ ]
+                readonly property string extractedTime: hasTime ? root.epgTitle.substring(1, closeBracketIndex).trim() : ""
+                readonly property string cleanTitle: hasTime ? root.epgTitle.substring(closeBracketIndex + 1).trim() : root.epgTitle
 
-                // 🕒 1. Bloque de Horarios Superior Estilizado con Icono (Ahora scrollea)
+                // Bloque 1: Horario Estilizado Limpio con Icono
                 RowLayout {
-                    visible: scrollContentLayout.extractedTime !== ""
+                    visible: scrollContentLayout.hasTime
                     spacing: 6
                     Layout.fillWidth: true
 
-                    Text {
-                        text: "🕒"
-                        font.pointSize: root.isFullScreen ? 10 : 9
-                        Layout.alignment: Qt.AlignVCenter
-                    }
+                    Text { text: "🕒"; font.pointSize: root.isFullScreen ? 10 : 9; Layout.alignment: Qt.AlignVCenter }
 
                     Text {
                         text: scrollContentLayout.extractedTime
-                        color: "#94A3B8" 
+                        color: "#E2E8F0" 
                         font.bold: true
                         font.pointSize: root.isFullScreen ? 11 : 10
                         font.family: "Monospace"
+                        renderType: Text.NativeRendering
                         Layout.alignment: Qt.AlignVCenter
                     }
                 }
 
-                // 🚀 2. Título Principal del Programa en línea independiente (Debajo de la hora, ahora scrollea)
+                // Bloque 2: Título Principal del Programa
                 Text {
                     text: scrollContentLayout.cleanTitle
                     color: "#FFFFFF" 
                     font.bold: true
                     font.pointSize: root.isFullScreen ? 15 : 13
+                    renderType: Text.NativeRendering
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap 
                 }
 
-                // Espaciador mínimo antes de la sinopsis
                 Item { Layout.preferredHeight: 2 }
 
-                // 3. Área de la sinopsis o descripción del programa
+                // Bloque 3: Cuerpo de la Sinopsis en alto contraste legible
                 Text {
                     id: descriptionText
                     Layout.fillWidth: true
                     text: root.epgDescription
-                    color: "#64748B" 
+                    color: "#CBD5E1" 
                     font.pointSize: root.isFullScreen ? 11 : 10
+                    renderType: Text.NativeRendering
                     wrapMode: Text.WordWrap
                 }
             }
 
             ScrollBar.vertical: ScrollBar {
-                id: verticalScrollBar
                 policy: descFlickable.contentHeight > descFlickable.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
-                
-                contentItem: Rectangle {
-                    implicitWidth: 4
-                    radius: 2
-                    color: "#475569"
-                }
+                contentItem: Rectangle { implicitWidth: 4; radius: 2; color: "#FFFFFF" } 
             }
         }
     }

@@ -12,6 +12,7 @@ QtObject {
     property int currentVolumePercent: 100; property bool showVolumeOsd: false; property real osdPanelOpacity: 0.0; property bool keyboardActiveOsd: false
     property bool backupSidebarVisible: false; property bool backupEpgVisible: false; property bool isConfigMenuOpen: false
 
+    // Variable de control de silencio nativa
     property bool isMuted: false
 
     property real clockOpacity: (osdPanelOpacity > 0.0 || (sidebar && sidebar.visible && sidebar.width > 0) || (epgDrawer && epgDrawer.visible && epgDrawer.height > 0)) ? 1.0 : 0.0
@@ -81,20 +82,25 @@ QtObject {
         if (!isNaN(target) && target >= 0 && target < count) playChannel(target)
     }
 
+    // 🚀 CONTROL DE AUDIO EN HARDWARE CORREGIDO:
     function changeVolume(delta) {
+        // Si el usuario sube o baja volumen teniendo el mute puesto, quitamos el silencio de forma intuitiva
         if (root.isMuted && delta !== 0) {
             root.isMuted = false
         }
         root.currentVolumePercent = Math.max(0, Math.min(100, root.currentVolumePercent + delta))
         if (root.mediaPlayer && root.mediaPlayer.audioOutput) {
+            // Evaluamos de forma estricta el estado del mute antes de inyectar el float a Qt
             root.mediaPlayer.audioOutput.volume = root.isMuted ? 0.0 : (root.currentVolumePercent / 100.0)
         }
         root.volumeOsdTimer.restart(); root.showVolumeOsd = true
     }
 
+    // 🚀 ALTERNANCIA DE MUTE DIRECTA Y FIABLE:
     function toggleMute() {
         root.isMuted = !root.isMuted
         if (root.mediaPlayer && root.mediaPlayer.audioOutput) {
+            // Corta o restituye los decibelios en el mismo milisegundo en la tarjeta de sonido
             root.mediaPlayer.audioOutput.volume = root.isMuted ? 0.0 : (root.currentVolumePercent / 100.0)
         }
         root.volumeOsdTimer.restart(); root.showVolumeOsd = true

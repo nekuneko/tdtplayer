@@ -9,7 +9,6 @@ ItemDelegate {
     height: 60
     hoverEnabled: true
     
-    // Propiedades requeridas
     required property var sidebarModel
     required property int modelRow
     required property int currentChannelIndex
@@ -17,20 +16,21 @@ ItemDelegate {
     signal clickedReal(int realIndex)
     signal hoveredReal(string channelName)
 
-    // Cálculo matemático para el scroll infinito
     readonly property int realIndex: (sidebarModel && sidebarModel.rowCount() > 0) ? (modelRow % sidebarModel.rowCount()) : 0
     highlighted: currentChannelIndex === realIndex
 
     background: Rectangle {
+        // 🚀 ENLACE DE PALETA TOTAL: Respeta la configuración acromática o de color global al instante
         color: control.highlighted 
-               ? "#1E3A8A" 
-               : (control.hovered ? "#334155" : "transparent") 
-        opacity: control.highlighted ? 0.4 : 0.6
-        Behavior on color { ColorAnimation { duration: 150 } }
+               ? appTheme.bgItemActive 
+               : (control.hovered ? appTheme.bgItemHover : "transparent") 
+        radius: 6
+        border.color: control.highlighted ? appTheme.borderActive : (control.hovered ? appTheme.borderHover : "transparent")
+        border.width: 1
+        Behavior on color { ColorAnimation { duration: 120 } }
     }
 
     contentItem: RowLayout {
-        // 🚀 MEJORA ESTRUCTURAL: Incrementamos el margen derecho a 15 para despegar la caja del borde
         width: 255
         anchors.centerIn: parent
         anchors.rightMargin: 15 
@@ -58,16 +58,16 @@ ItemDelegate {
                   ? control.sidebarModel.data(control.sidebarModel.index(control.realIndex, 0), Qt.UserRole + 1) 
                   : ""
             color: control.highlighted 
-                   ? "#3B82F6" 
-                   : (control.hovered ? "#FFFFFF" : "#E2E8F0") 
-            font.bold: control.highlighted
+                   ? appTheme.textTitleActive 
+                   : (control.hovered ? appTheme.textTitle : appTheme.textDesc) 
+            font.bold: true
             font.pointSize: 11
+            renderType: Text.NativeRendering
             Layout.fillWidth: true
             elide: Text.ElideRight
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: 120 } }
         }
 
-        // Caja cuadrada con bordes redondeados (Badge idéntico al EPG)
         Rectangle {
             id: badgeContainer
             property string chNoStr: (control.sidebarModel && control.sidebarModel.rowCount() > 0) 
@@ -75,25 +75,23 @@ ItemDelegate {
                                      : ""
             property string finalChNo: chNoStr !== "" ? chNoStr : control.realIndex.toString()
 
-            color: control.highlighted ? "#3B82F6" : (control.hovered ? "#2563EB" : "#1D4ED8")
-            opacity: control.highlighted || control.hovered ? 1.0 : 0.8
+            color: control.highlighted ? appTheme.bgAbsolute : appTheme.badgeTimeBg
             radius: 4
 
-            Layout.preferredHeight: 22
+            Layout.preferredHeight: 24
             Layout.preferredWidth: channelNumberText.implicitWidth + 14
             Layout.alignment: Qt.AlignVCenter
             
-            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: 120 } }
 
             Text {
                 id: channelNumberText
                 anchors.centerIn: parent
                 text: parent.finalChNo.padStart(2, '0')
-                
-                color: "white"
+                color: control.highlighted ? appTheme.textTitle : appTheme.badgeTimeText
                 font.bold: true
                 font.pointSize: 10
-                // 🚀 UNIFICACIÓN TIPOGRÁFICA: Eliminamos Monospace para usar la misma fuente que el EpgDrawer
+                renderType: Text.NativeRendering
             }
         }
     }
