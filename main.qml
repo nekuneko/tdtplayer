@@ -97,21 +97,7 @@ ApplicationWindow {
             }
             
             onExited: {
-                // Obtenemos la posición absoluta del cursor respecto al contenedor principal
-                var globalCursor = sidebar.mapToItem(mainFocusScope, sidebar.mouseX, sidebar.mouseY);
-                
-                // Calculamos el límite superior donde empieza el EPG en la pantalla
-                var epgTopBoundary = mainFocusScope.height - epgDrawer.height;
-
-                // Si el ratón salió por abajo dirigiéndose hacia el área del EPG
-                if (globalCursor.y >= epgTopBoundary) {
-                    sidebar.sidebarForceOpen = false // Escondemos el sidebar
-                    sidebar.forceCenterScrollSync()
-                    epgDrawer.epgForceOpen = true    // Mantenemos el EPG abierto para su redimensión automática
-                    return
-                }
-
-                // Salida normal hacia el reproductor de vídeo
+                // RESTAURACIÓN ABSOLUTA DEL COMPORTAMIENTO ORIGINAL
                 sidebar.sidebarForceOpen = false
                 epgDrawer.epgForceOpen = false
                 sidebar.forceCenterScrollSync()
