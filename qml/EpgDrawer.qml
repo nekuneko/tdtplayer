@@ -33,7 +33,7 @@ Rectangle {
         NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
     }
 
-    // ⏱️ TEMPORIZADOR DE TOLERANCIA OPTIMIZADO
+    // Temporizador de estabilidad
     Timer {
         id: safetyExitTimer
         interval: 200 
@@ -44,7 +44,7 @@ Rectangle {
         }
     }
 
-    // 🛡️ GESTOR DE ENTRADA BLINDADO
+    // Gestor de entrada blindado
     MouseArea {
         id: epgMouseTracker
         anchors.fill: parent
