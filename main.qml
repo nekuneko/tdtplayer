@@ -55,6 +55,15 @@ ApplicationWindow {
             width: sidebar.visible ? (parent.width - sidebar.width) : parent.width
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
 
+            // 🚀 CORRECCIÓN ESTRICTA: Eliminamos la propiedad inexistente y delegamos al reset visual del playerView
+            onEpgForceOpenChanged: {
+                if (epgForceOpen) {
+                    if (typeof playerView !== "undefined") {
+                        playerView.resetMouseCursor()
+                    }
+                }
+            }
+
             Timer { id: keyboardEpgTimer; interval: 3000; onTriggered: epgDrawer.epgForceOpen = false }
         }
 
@@ -97,7 +106,6 @@ ApplicationWindow {
             }
             
             onExited: {
-                // RESTAURACIÓN ABSOLUTA DEL COMPORTAMIENTO ORIGINAL
                 sidebar.sidebarForceOpen = false
                 epgDrawer.epgForceOpen = false
                 sidebar.forceCenterScrollSync()

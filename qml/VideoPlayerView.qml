@@ -14,6 +14,11 @@ FocusScope {
 
     property alias mediaPlayer: mediaPlayer
 
+    function resetMouseCursor() {
+        videoMouseTracker.cursorShape = Qt.ArrowCursor
+        mouseInactivityTimer.restart()
+    }
+
     MediaPlayer { 
         id: mediaPlayer
         audioOutput: AudioOutput {}
@@ -28,19 +33,35 @@ FocusScope {
         Timer {
             id: mouseInactivityTimer
             interval: 500
-            running: true
+            running: !controller.isVoluntarilyStopped && (controller.epgDrawer ? !controller.epgDrawer.epgForceOpen : true)
             repeat: false
             onTriggered: videoMouseTracker.cursorShape = Qt.BlankCursor
         }
 
+        // 🚀 CONTROL CENTRALIZADO: Un solo ratreador unificado para toda la pantalla
         MouseArea {
             id: videoMouseTracker
             anchors.fill: parent
             hoverEnabled: true
-            z: -1 
+            z: 0 // Elevado para que cubra el fondo del reproductor de forma continua
+
             onPositionChanged: { 
-                videoMouseTracker.cursorShape = Qt.ArrowCursor
-                mouseInactivityTimer.restart() 
+                scope.resetMouseCursor()
+
+                // Si las barras laterales izquierda o derecha están abiertas, ignoramos la lógica del EPG
+                if (sidebarItem.visible || configSidebarItem.visible) return
+
+                // Calculamos de forma matemática estricta la zona del EPG basándonos en la altura actual
+                var epgHeight = controller.epgDrawer.height
+                var epgTopBoundary = videoContainer.height - epgHeight
+
+                if (videoMouseTracker.mouseY >= epgTopBoundary) {
+                    // El ratón está físicamente dentro o sobre el área del EPG -> Se mantiene abierto de forma sólida
+                    controller.epgDrawer.epgForceOpen = true
+                } else if (videoMouseTracker.mouseY < (epgTopBoundary - 10)) {
+                    // El ratón ha subido claramente por encima del límite superior del EPG -> Se cierra al instante sin parpadeos
+                    controller.epgDrawer.epgForceOpen = false
+                }
             }
         }
         
@@ -49,29 +70,22 @@ FocusScope {
             anchors.fill: parent
             fillMode: VideoOutput.PreserveAspectFit
 
-            // Gestor de gestos unificado en caliente
             TapHandler {
                 id: videoGestureHandler
                 gesturePolicy: TapHandler.ReleaseWithinBounds
                 
                 onTapped: {
                     if (videoGestureHandler.tapCount === 2) {
-                        // 1. Conmutamos la pantalla completa de forma instantánea
                         window.visibility = controller.isFullScreen ? Window.Windowed : Window.FullScreen
                         controller.isFullScreen = !controller.isFullScreen
-                        
-                        // 2. SOLUCIÓN: Reanudamos el buffer de vídeo inmediatamente. 
-                        // Al no vaciar la URL en el controlador, la reproducción continúa sin cortes de red.
                         controller.cancelAccidentalPause()
                     } 
                     else if (videoGestureHandler.tapCount === 1) {
-                        // Respuesta inmediata al hacer un solo clic
                         controller.togglePlayback()
                     }
                 }
             }
 
-            // Zapping mediante la rueda del ratón
             WheelHandler {
                 id: mouseWheelZapper
                 orientation: Qt.Vertical
@@ -84,19 +98,8 @@ FocusScope {
                 }
             }
 
-            // 🛡️ SENSOR INFERIOR (EPG): Solo se activa si las barras izquierda y derecha están CERRADAS
-            MouseArea {
-                id: bottomEdgeArea
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: 40
-                hoverEnabled: true
-                enabled: !sidebarItem.visible && !configSidebarItem.visible
-                onEntered: epgDrawerItem.epgForceOpen = true
-            }
+            // ❌ ELIMINADO EL SENSOR INFERIOR ANTERIOR QUE INTERFERÍA (bottomEdgeArea)
 
-            // 🛡️ SENSOR IZQUIERDO (Configuración): Solo se activa si el EPG inferior y la lista de canales están CERRADOS
             MouseArea {
                 id: leftEdgeSwipeArea
                 anchors.left: parent.left
@@ -111,7 +114,6 @@ FocusScope {
                 }
             }
             
-            // 🛡️ SENSOR DERECHO (Lista de canales): Solo se activa si el EPG inferior y la configuración están CERRADOS
             MouseArea {
                 id: rightEdgeSwipeArea
                 anchors.right: parent.right
@@ -140,7 +142,6 @@ FocusScope {
                 }
             }
 
-            // Dentro de qml/VideoPlayerView.qml (Componente Text central)
             Text {
                 id: streamStatusText
                 anchors.centerIn: parent
@@ -149,18 +150,11 @@ FocusScope {
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 lineHeight: 1.3
-                
-                // Propiedad interna que filtra el parpadeo del cartel
                 text: controller.isVoluntarilyStopped 
                       ? "Stream Detenido\nPulse Espacio o Enter para reanudar" 
                       : "Sintonizando canal...\nCargando flujo de Tvheadend"
-
-                // El cartel de pausa solo se muestra si el motor realmente no está reproduciendo
-                // Y si la propiedad 'isVoluntarilyStopped' sigue activa tras el filtro del temporizador
                 visible: (mediaPlayer.playbackState !== MediaPlayer.PlayingState) && textDebounceTimer.canShowText
 
-                // ⏱️ FILTRO DE PARPADEO: Espera 200ms para confirmar la visualización del texto.
-                // Si haces doble clic, la pausa se cancela antes de que termine el tiempo y el cartel no aparece.
                 property Timer textDebounceTimer: Timer {
                     id: textDebounceTimer
                     property bool canShowText: false
@@ -177,7 +171,6 @@ FocusScope {
                 }
             }
             
-
             ClockWidget {
                 id: clockWidget
                 anchors.top: parent.top

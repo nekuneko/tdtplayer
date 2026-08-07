@@ -12,6 +12,9 @@ QtObject {
     property int currentVolumePercent: 100; property bool showVolumeOsd: false; property real osdPanelOpacity: 0.0; property bool keyboardActiveOsd: false
     property bool backupSidebarVisible: false; property bool backupEpgVisible: false; property bool isConfigMenuOpen: false
 
+    // 🚀 NUEVA PROPIEDAD: Control del estado de Mute
+    property bool isMuted: false
+
     property real clockOpacity: (osdPanelOpacity > 0.0 || (sidebar && sidebar.visible && sidebar.width > 0) || (epgDrawer && epgDrawer.visible && epgDrawer.height > 0)) ? 1.0 : 0.0
     signal channelZappedByKeyboard()
 
@@ -54,8 +57,23 @@ QtObject {
     }
 
     function changeVolume(delta) {
+        // Si alteramos el volumen manualmente, quitamos el estado de silencio de forma lógica
+        if (root.isMuted && delta !== 0) {
+            root.isMuted = false
+        }
         root.currentVolumePercent = Math.max(0, Math.min(100, root.currentVolumePercent + delta))
-        if (root.mediaPlayer && root.mediaPlayer.audioOutput) root.mediaPlayer.audioOutput.volume = root.currentVolumePercent / 100.0
+        if (root.mediaPlayer && root.mediaPlayer.audioOutput) {
+            root.mediaPlayer.audioOutput.volume = root.isMuted ? 0.0 : (root.currentVolumePercent / 100.0)
+        }
+        root.volumeOsdTimer.restart(); root.showVolumeOsd = true
+    }
+
+    // 🚀 NUEVA FUNCIÓN: Conmutador de Mute nativo
+    function toggleMute() {
+        root.isMuted = !root.isMuted
+        if (root.mediaPlayer && root.mediaPlayer.audioOutput) {
+            root.mediaPlayer.audioOutput.volume = root.isMuted ? 0.0 : (root.currentVolumePercent / 100.0)
+        }
         root.volumeOsdTimer.restart(); root.showVolumeOsd = true
     }
 
@@ -63,13 +81,12 @@ QtObject {
         if (!root.mediaPlayer || !root.model) return
         root.isVoluntarilyStopped = (root.mediaPlayer.playbackState === MediaPlayer.PlayingState)
         if (root.isVoluntarilyStopped) {
-            root.mediaPlayer.pause() // ⚡ MODIFICADO: Usamos pause() nativo en vez de vaciar la URL para no perder el buffer
+            root.mediaPlayer.pause() 
         } else {
             root.mediaPlayer.play()
         }
     }
 
-    // 🚀 NUEVA FUNCIÓN: Cancela la pausa del primer impacto de forma inmediata sin tocar la red
     function cancelAccidentalPause() {
         if (!root.mediaPlayer) return
         root.isVoluntarilyStopped = false
@@ -86,7 +103,6 @@ QtObject {
         root.sidebar.sidebarForceOpen = false; root.epgDrawer.epgForceOpen = false
     }
 
-    // El resto se mantiene limpio y sin puntos y comas
     function restorePanelsAfterConfig() {
         root.isConfigMenuOpen = false; if (!root.sidebar || !root.epgDrawer) return
         root.sidebar.sidebarForceOpen = root.backupSidebarVisible; root.epgDrawer.epgForceOpen = root.isFullScreen ? false : root.backupEpgVisible
