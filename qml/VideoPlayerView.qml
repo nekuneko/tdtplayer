@@ -38,28 +38,31 @@ FocusScope {
             onTriggered: videoMouseTracker.cursorShape = Qt.BlankCursor
         }
 
-        // 🚀 CONTROL CENTRALIZADO: Un solo ratreador unificado para toda la pantalla
+        Connections {
+            target: controller.epgDrawer
+            function onEpgForceOpenChanged() {
+                scope.resetMouseCursor()
+            }
+        }
+
+        // Rastreador de movimiento y zonas del EPG (en el fondo)
         MouseArea {
             id: videoMouseTracker
             anchors.fill: parent
             hoverEnabled: true
-            z: 0 // Elevado para que cubra el fondo del reproductor de forma continua
+            z: -1 
 
             onPositionChanged: { 
                 scope.resetMouseCursor()
 
-                // Si las barras laterales izquierda o derecha están abiertas, ignoramos la lógica del EPG
                 if (sidebarItem.visible || configSidebarItem.visible) return
 
-                // Calculamos de forma matemática estricta la zona del EPG basándonos en la altura actual
                 var epgHeight = controller.epgDrawer.height
                 var epgTopBoundary = videoContainer.height - epgHeight
 
                 if (videoMouseTracker.mouseY >= epgTopBoundary) {
-                    // El ratón está físicamente dentro o sobre el área del EPG -> Se mantiene abierto de forma sólida
                     controller.epgDrawer.epgForceOpen = true
                 } else if (videoMouseTracker.mouseY < (epgTopBoundary - 10)) {
-                    // El ratón ha subido claramente por encima del límite superior del EPG -> Se cierra al instante sin parpadeos
                     controller.epgDrawer.epgForceOpen = false
                 }
             }
@@ -70,19 +73,23 @@ FocusScope {
             anchors.fill: parent
             fillMode: VideoOutput.PreserveAspectFit
 
+            // 🚀 ARQUITECTURA MAESTRA UNIFICADA: Un solo TapHandler para filtrar y separar órdenes sin colisiones
             TapHandler {
-                id: videoGestureHandler
-                gesturePolicy: TapHandler.ReleaseWithinBounds
+                id: videoGestureOrchestrator
+                acceptedButtons: Qt.LeftButton
                 
+                // Exigimos que el gesto se complete estrictamente dentro de los límites visuales
+                gesturePolicy: TapHandler.WithinBounds
+
+                // Se ejecuta EXCLUSIVAMENTE cuando Qt6 confirma que es un único clic aislado
                 onTapped: {
-                    if (videoGestureHandler.tapCount === 2) {
-                        window.visibility = controller.isFullScreen ? Window.Windowed : Window.FullScreen
-                        controller.isFullScreen = !controller.isFullScreen
-                        controller.cancelAccidentalPause()
-                    } 
-                    else if (videoGestureHandler.tapCount === 1) {
-                        controller.togglePlayback()
-                    }
+                    controller.togglePlayback()
+                }
+
+                // Se ejecuta EXCLUSIVAMENTE al hacer doble clic rápido, anulando por completo el disparo de onTapped
+                onDoubleTapped: {
+                    window.visibility = controller.isFullScreen ? Window.Windowed : Window.FullScreen
+                    controller.isFullScreen = !controller.isFullScreen
                 }
             }
 
@@ -97,8 +104,6 @@ FocusScope {
                     }
                 }
             }
-
-            // ❌ ELIMINADO EL SENSOR INFERIOR ANTERIOR QUE INTERFERÍA (bottomEdgeArea)
 
             MouseArea {
                 id: leftEdgeSwipeArea

@@ -40,7 +40,6 @@ QtObject {
         root.zappingTimer.stop()
         root.osdHoveredChannelName = ""
         
-        // 🚀 GUARDADO EN CALIENTE: Almacenamos el dial de forma persistente en los ficheros ini de la app
         if (typeof appSettings !== "undefined") {
             appSettings.lastChannelIndex = index
         }
@@ -109,12 +108,6 @@ QtObject {
         } else {
             root.mediaPlayer.play()
         }
-    }
-
-    function cancelAccidentalPause() {
-        if (!root.mediaPlayer) return
-        root.isVoluntarilyStopped = false
-        root.mediaPlayer.play()
     }
 
     function forceResume() {
