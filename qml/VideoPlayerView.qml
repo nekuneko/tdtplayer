@@ -55,7 +55,7 @@ FocusScope {
             onPositionChanged: { 
                 scope.resetMouseCursor()
 
-                if (sidebarItem.visible || configSidebarItem.visible) return
+                if (window.visibility === Window.Minimized || sidebarItem.visible || configSidebarItem.visible) return
 
                 var epgHeight = controller.epgDrawer.height
                 var epgTopBoundary = videoContainer.height - epgHeight
@@ -73,12 +73,10 @@ FocusScope {
             anchors.fill: parent
             fillMode: VideoOutput.PreserveAspectFit
 
-            // 🚀 ARQUITECTURA MAESTRA UNIFICADA: Un solo TapHandler para filtrar y separar órdenes sin colisiones
+            // 🚀 ARQUITECTURA MAESTRA UNIFICADA: Un solo TapHandler nativo para separar órdenes sin colisiones de tipo
             TapHandler {
                 id: videoGestureOrchestrator
                 acceptedButtons: Qt.LeftButton
-                
-                // Exigimos que el gesto se complete estrictamente dentro de los límites visuales
                 gesturePolicy: TapHandler.WithinBounds
 
                 // Se ejecuta EXCLUSIVAMENTE cuando Qt6 confirma que es un único clic aislado
@@ -86,10 +84,17 @@ FocusScope {
                     controller.togglePlayback()
                 }
 
-                // Se ejecuta EXCLUSIVAMENTE al hacer doble clic rápido, anulando por completo el disparo de onTapped
+                // Se ejecuta EXCLUSIVAMENTE al hacer doble clic rápido, aislando la mutación de hardware
                 onDoubleTapped: {
-                    window.visibility = controller.isFullScreen ? Window.Windowed : Window.FullScreen
-                    controller.isFullScreen = !controller.isFullScreen
+                    Qt.callLater(function() {
+                        if (window.visibility === Window.FullScreen) {
+                            window.visibility = Window.Windowed
+                            controller.isFullScreen = false
+                        } else {
+                            window.visibility = Window.FullScreen
+                            controller.isFullScreen = true
+                        }
+                    })
                 }
             }
 
@@ -166,11 +171,9 @@ FocusScope {
                     interval: 200
                     running: controller.isVoluntarilyStopped && (mediaPlayer.playbackState !== MediaPlayer.PlayingState)
                     repeat: false
-                    onRunningChanged: {
-                        if (!running && controller.isVoluntarilyStopped) {
+                    onTriggered: {
+                        if (controller.isVoluntarilyStopped) {
                             canShowText = true
-                        } else if (!controller.isVoluntarilyStopped) {
-                            canShowText = false
                         }
                     }
                 }

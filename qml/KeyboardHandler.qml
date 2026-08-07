@@ -9,9 +9,17 @@ Item {
     required property var channelNumPopup
 
     Keys.onPressed: (event) => {
-        // Si el OSD numérico está absorbiendo caracteres, delegamos el evento
         if (root.channelNumPopup.opened) {
             return;
+        }
+
+        // Si la parrilla está activa, permitimos el cierre desde aquí si el foco se desvía
+        if (window.epgGridOverlayItem && window.epgGridOverlayItem.visible) {
+            if (event.key === Qt.Key_Escape || event.key === Qt.Key_E) {
+                window.epgGridOverlayItem.closeRequested();
+                event.accepted = true;
+                return;
+            }
         }
 
         switch (event.key) {
@@ -35,16 +43,19 @@ Item {
                 event.accepted = true;
                 break;
 
-            // 🚀 MAPEO DE LA TECLA M PARA SILENCIADO
             case Qt.Key_M:
                 root.controller.toggleMute();
                 event.accepted = true;
                 break;
 
-            case Qt.Key_Space:
-            case Qt.Key_Return:
-            case Qt.Key_Enter:
-                root.controller.togglePlayback();
+            // 🚀 SOLUCIÓN ESTRUCTURAL: Conmutación directa usando la propiedad expuesta en la ventana raíz
+            case Qt.Key_E:
+                if (window.epgGridOverlayItem && window.epgGridOverlayItem.visible) {
+                    window.epgGridOverlayItem.closeRequested();
+                } else {
+                    // Acceso directo y blindado al Loader expuesto de main.qml
+                    window.epgGridOverlayLoaderItemActive = true;
+                }
                 event.accepted = true;
                 break;
 
