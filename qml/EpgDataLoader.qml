@@ -11,6 +11,9 @@ Item {
     required property var ctrl
     required property var sidebar
 
+    // 🚀 SEÑAL FORMAL: El linter de Qt6 la reconoce estáticamente sin fallos
+    signal fileSelectorOpenRequested
+
     Component.onCompleted: {
         if (root.appSettings.lastM3uUrl !== "") {
             root.loadM3uFromUrl(root.appSettings.lastM3uUrl);
@@ -19,7 +22,17 @@ Item {
         }
     }
 
+    // Encapsulamos la apertura en la señal nativa
+    onFileSelectorOpenRequested: {
+        fileDialog.open();
+    }
+
     function loadM3uFromUrl(url) {
+        if (!url || url === "") {
+            fileDialog.open();
+            return;
+        }
+
         var request = new XMLHttpRequest();
         request.open("GET", url, true);
         request.onreadystatechange = function () {
@@ -36,7 +49,6 @@ Item {
         request.send(null);
     }
 
-    // 🚀 CORRECTAMENTE ANIDADO: El Timer ahora reside dentro del Item raíz
     Timer {
         id: initScrollTimer
         interval: 100
@@ -47,7 +59,7 @@ Item {
                 if (savedIndex < 0 || savedIndex >= c) {
                     savedIndex = 0;
                 }
-                // Posiciona la vista directamente en el índice real centrado sin desbordamientos
+
                 root.sidebar.positionListView(savedIndex, ListView.Center);
                 root.playerView.mediaPlayer.audioOutput.volume = 1.0;
                 root.ctrl.currentVolumePercent = 100;

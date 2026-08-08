@@ -179,7 +179,10 @@ ApplicationWindow {
             visible: configSidebar.sidebarForceOpen
             appSettingsItem: appSettings
             appThemeItem: appTheme
-            onImportRequested: dataLoader.loadM3uFromUrl("")
+
+            // 🚀 DISPARO DE SEÑAL: Emitimos la señal hacia el cargador de datos
+            onImportRequested: dataLoader.fileSelectorOpenRequested()
+
             onMouseExitedSidebar: ctrl.restorePanelsAfterConfig()
         }
     }
