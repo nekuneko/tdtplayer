@@ -13,11 +13,11 @@ Rectangle {
     signal programExpired
 
     visible: root.hasValidTime
-    color: root.isSelected ? "#FFFFFF" : (root.themeItem ? root.themeItem.bgItemActive : "#3B82F6")
+    color: root.isSelected ? "#FFFFFF" : root.themeItem.bgItemActive
 
-    radius: root.themeItem ? root.themeItem.px(5) : 5
-    implicitHeight: root.themeItem ? root.themeItem.px(24) : 24
-    implicitWidth: labelText.implicitWidth + (root.themeItem ? root.themeItem.px(14) : 14)
+    radius: root.themeItem.px(5)
+    implicitHeight: root.themeItem.px(24)
+    implicitWidth: labelText.implicitWidth + root.themeItem.px(14)
 
     Timer {
         id: expiryTimer
@@ -37,9 +37,9 @@ Rectangle {
         id: labelText
         anchors.centerIn: parent
         text: root.timeTextStr
-        color: root.isSelected ? (root.themeItem ? root.themeItem.bgItemActive : "#3B82F6") : (root.themeItem ? root.themeItem.getW3cContrast(root.color) : "#FFFFFF")
+        color: root.isSelected ? root.themeItem.bgItemActive : root.themeItem.getW3cContrast(root.color)
         font.bold: true
-        font.pointSize: root.themeItem ? root.themeItem.pt(10) : 10
+        font.pointSize: root.themeItem.pt(10)
         font.family: "Monospace"
         renderType: Text.NativeRendering
     }

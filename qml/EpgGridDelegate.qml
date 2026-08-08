@@ -17,14 +17,26 @@ ItemDelegate {
     required property var channelModel
     required property int currentChannelIndex
     property string viewMode: "NOW"
-
-    // Contrato estricto tipado
     required property var appThemeItem
 
     readonly property int itemIndex: root.index
     readonly property bool isCurrent: ListView.view.currentIndex === root.itemIndex || (root.currentChannelIndex === root.itemIndex && !ListView.view.activeFocus)
 
     property int currentTimestamp: Math.floor(Date.now() / 1000)
+
+    property var currentEpgObject: null
+    property var nextEpgObject: null
+
+    function forceRefreshEpgData() {
+        if (root.channelModel && root.channelNameStr !== "") {
+            root.currentEpgObject = root.channelModel.fetch_current_epg(root.channelNameStr);
+            root.nextEpgObject = root.channelModel.fetch_next_epg(root.channelNameStr);
+        }
+    }
+
+    Component.onCompleted: {
+        root.forceRefreshEpgData();
+    }
 
     Timer {
         id: liveProgressTimer
@@ -48,20 +60,6 @@ ItemDelegate {
     }
 
     readonly property string channelNameStr: root.name ? root.name.toString().trim().replace(/[\r\n]/g, "") : ""
-
-    property var currentEpgObject: null
-    property var nextEpgObject: null
-
-    function forceRefreshEpgData() {
-        if (root.channelModel && root.channelNameStr !== "") {
-            root.currentEpgObject = root.channelModel.fetch_current_epg(root.channelNameStr);
-            root.nextEpgObject = root.channelModel.fetch_next_epg(root.channelNameStr);
-        }
-    }
-
-    Component.onCompleted: {
-        root.forceRefreshEpgData();
-    }
 
     readonly property string nowTitleRaw: root.currentEpgObject ? root.currentEpgObject.title : "Emisión en directo"
     readonly property string nowDescRaw: root.currentEpgObject ? (root.currentEpgObject.description || "Sin descripción disponible.") : "Sin descripción disponible."
@@ -90,6 +88,7 @@ ItemDelegate {
         anchors.bottomMargin: root.appThemeItem.px(12)
         spacing: root.appThemeItem.px(20)
 
+        // Bloque Fijo Izquierdo: Canal
         EpgBadgeNo {
             textNo: root.chNo ? root.chNo.toString() : root.itemIndex.toString()
             isSelected: root.isCurrent
@@ -97,12 +96,9 @@ ItemDelegate {
             Layout.alignment: Qt.AlignVCenter
         }
 
-        // 2. Contenedor del Logotipo Proporcional
         Rectangle {
             Layout.preferredWidth: root.appThemeItem.px(45)
             Layout.preferredHeight: root.appThemeItem.px(45)
-
-            // 🚀 CONTROLADO DESDE EL TEMA: Eliminamos el color rígido de fondo de la celda de la parrilla
             color: root.appThemeItem.logoBg
             radius: 6
             Layout.alignment: Qt.AlignVCenter
@@ -141,18 +137,33 @@ ItemDelegate {
             Layout.alignment: Qt.AlignVCenter
         }
 
+        // Bloque Elástico Derecho: Programa Organizado Estrictamente por Niveles
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: root.appThemeItem.px(4)
+            spacing: root.appThemeItem.px(5)
             Layout.alignment: Qt.AlignVCenter
 
-            RowLayout {
-                spacing: root.appThemeItem.px(12)
+            // 🚀 PISO 1: Nombre del programa arriba del todo
+            Text {
+                text: root.cleanTitle
+                color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
+                font.bold: true
+                font.pointSize: root.appThemeItem.pt(12.5)
+                renderType: Text.NativeRendering
                 Layout.fillWidth: true
+                elide: Text.ElideRight
+                Layout.alignment: Qt.AlignLeft
+            }
+
+            // 🚀 PISO 2: Fila horizontal con la píldora a la izquierda y la barra a su derecha
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: root.appThemeItem.px(12)
+                Layout.alignment: Qt.AlignVCenter
 
                 EpgTimePill {
                     isSelected: root.isCurrent
-                    hasValidTime: root.hasTime && root.viewMode === "NOW"
+                    hasValidTime: root.hasTime
                     timeTextStr: root.formattedTime
                     stopTime: root.stopTimestamp
                     themeItem: root.appThemeItem
@@ -164,18 +175,28 @@ ItemDelegate {
                     }
                 }
 
-                Text {
-                    text: root.cleanTitle
-                    color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
-                    font.bold: true
-                    font.pointSize: root.appThemeItem.pt(12.5)
-                    renderType: Text.NativeRendering
+                // La barra de progreso se renderiza directamente aquí a la derecha de la píldora
+                Rectangle {
+                    id: gridProgressBarContainer
+                    visible: root.hasTime
                     Layout.fillWidth: true
-                    elide: Text.ElideRight
+                    Layout.preferredHeight: root.appThemeItem.px(4)
                     Layout.alignment: Qt.AlignVCenter
+                    color: root.isCurrent ? "rgba(255, 255, 255, 0.3)" : "#334155"
+                    radius: 2
+
+                    readonly property real progressFactor: root.viewMode === "NOW" ? (root.stopTimestamp > root.startTimestamp ? Math.max(0.0, Math.min(1.0, (root.currentTimestamp - root.startTimestamp) / (root.stopTimestamp - root.startTimestamp))) : 0.0) : 0.0
+
+                    Rectangle {
+                        width: gridProgressBarContainer.width * gridProgressBarContainer.progressFactor
+                        height: parent.height
+                        radius: 2
+                        color: root.isCurrent ? "#FFFFFF" : root.appThemeItem.borderActive
+                    }
                 }
             }
 
+            // 🚀 PISO 3: Descripción del programa abajo del todo
             Text {
                 text: root.finalDesc
                 color: root.isCurrent ? root.appThemeItem.textDescActive : root.appThemeItem.textDesc
@@ -185,25 +206,7 @@ ItemDelegate {
                 wrapMode: Text.WordWrap
                 maximumLineCount: 1
                 elide: Text.ElideRight
-            }
-
-            Rectangle {
-                id: gridProgressBarContainer
-                visible: root.hasTime && root.viewMode === "NOW" && root.stopTimestamp > root.startTimestamp
-                Layout.fillWidth: true
-                Layout.preferredHeight: root.appThemeItem.px(4)
-                Layout.topMargin: root.appThemeItem.px(2)
-                color: root.isCurrent ? "rgba(255, 255, 255, 0.3)" : "#334155"
-                radius: 2
-
-                readonly property real progressFactor: Math.max(0.0, Math.min(1.0, (root.currentTimestamp - root.startTimestamp) / (root.stopTimestamp - root.startTimestamp)))
-
-                Rectangle {
-                    width: parent.width * parent.progressFactor
-                    height: parent.height
-                    radius: 2
-                    color: root.isCurrent ? "#FFFFFF" : root.appThemeItem.borderActive
-                }
+                Layout.alignment: Qt.AlignLeft
             }
         }
     }
