@@ -6,7 +6,7 @@ import QtQuick.Layouts
 ItemDelegate {
     id: root
     width: ListView.view.width
-    height: root.appThemeItem ? root.appThemeItem.px(100) : 105
+    height: root.appThemeItem.px(100)
     hoverEnabled: true
 
     required property int index
@@ -17,29 +17,14 @@ ItemDelegate {
     required property var channelModel
     required property int currentChannelIndex
     property string viewMode: "NOW"
+
+    // Contrato estricto tipado
     required property var appThemeItem
 
     readonly property int itemIndex: root.index
     readonly property bool isCurrent: ListView.view.currentIndex === root.itemIndex || (root.currentChannelIndex === root.itemIndex && !ListView.view.activeFocus)
 
     property int currentTimestamp: Math.floor(Date.now() / 1000)
-
-    // 🚀 VARIABLES REACTIVAS DE CONTROL: Sacamos el EPG de las propiedades fijas y las volvemos dinámicas
-    property var currentEpgObject: null
-    property var nextEpgObject: null
-
-    // Función interna encargada de destrozar la caché e invocar al cursor WAL de SQLite de forma forzada
-    function forceRefreshEpgData() {
-        if (root.channelModel && root.channelNameStr !== "") {
-            root.currentEpgObject = root.channelModel.fetch_current_epg(root.channelNameStr);
-            root.nextEpgObject = root.channelModel.fetch_next_epg(root.channelNameStr);
-        }
-    }
-
-    // Inicializamos los datos al completarse el árbol de renderizado de la tarjeta
-    Component.onCompleted: {
-        root.forceRefreshEpgData();
-    }
 
     Timer {
         id: liveProgressTimer
@@ -64,7 +49,20 @@ ItemDelegate {
 
     readonly property string channelNameStr: root.name ? root.name.toString().trim().replace(/[\r\n]/g, "") : ""
 
-    // Vinculamos los textos de la interfaz a nuestras nuevas propiedades dinámicas reactivas
+    property var currentEpgObject: null
+    property var nextEpgObject: null
+
+    function forceRefreshEpgData() {
+        if (root.channelModel && root.channelNameStr !== "") {
+            root.currentEpgObject = root.channelModel.fetch_current_epg(root.channelNameStr);
+            root.nextEpgObject = root.channelModel.fetch_next_epg(root.channelNameStr);
+        }
+    }
+
+    Component.onCompleted: {
+        root.forceRefreshEpgData();
+    }
+
     readonly property string nowTitleRaw: root.currentEpgObject ? root.currentEpgObject.title : "Emisión en directo"
     readonly property string nowDescRaw: root.currentEpgObject ? (root.currentEpgObject.description || "Sin descripción disponible.") : "Sin descripción disponible."
 
@@ -99,10 +97,13 @@ ItemDelegate {
             Layout.alignment: Qt.AlignVCenter
         }
 
+        // 2. Contenedor del Logotipo Proporcional
         Rectangle {
             Layout.preferredWidth: root.appThemeItem.px(45)
             Layout.preferredHeight: root.appThemeItem.px(45)
-            color: root.appThemeItem.bgAbsolute
+
+            // 🚀 CONTROLADO DESDE EL TEMA: Eliminamos el color rígido de fondo de la celda de la parrilla
+            color: root.appThemeItem.logoBg
             radius: 6
             Layout.alignment: Qt.AlignVCenter
 
@@ -157,7 +158,6 @@ ItemDelegate {
                     themeItem: root.appThemeItem
                     Layout.alignment: Qt.AlignVCenter
 
-                    // 🚀 SOLUCIÓN: Cuando expira la hora, forzamos la llamada directa para sobreescribir la memoria de Qt6
                     onProgramExpired: {
                         root.forceRefreshEpgData();
                         root.channelModel.dataChanged(root.channelModel.index(root.itemIndex, 0), root.channelModel.index(root.itemIndex, 0));

@@ -8,14 +8,18 @@ Item {
     property string currentTheme: "CINEMATIC_COLOR"
 
     // 🚀 MOTOR DE ESCALA DINÁMICA HIDPI (Qt6 Smart Scaler)
+    // Cambiado 'scale' por 'factorScale' para fulminar el error 'property-override' de qmllint
     readonly property real ratio: Screen.devicePixelRatio
-    readonly property real scale: root.ratio > 1.0 ? root.ratio : 1.2
+    readonly property real factorScale: root.ratio > 1.0 ? root.ratio : 1.2
 
+    // Función matemática para escalar celdas y márgenes de forma proporcional
     function px(value) {
-        return Math.round(value * root.scale);
+        return Math.round(value * root.factorScale);
     }
+
+    // Función matemática para escalar fuentes vectoriales de alta definición
     function pt(value) {
-        return Math.round(value * root.scale);
+        return Math.round(value * root.factorScale);
     }
 
     readonly property list<string> themeKeys: ["CINEMATIC_COLOR", "DARK_ACCESSIBLE", "NORDIC_FROST", "MONOKAI_PRO", "VAMPIRE_BLOOD", "CYBERPUNK_NEON"]
@@ -38,7 +42,8 @@ Item {
                 "badgeTimeText": "#FFFFFF",
                 "liveBg": "#000000",
                 "liveBorder": "#FFFFFF",
-                "liveText": "#FFFFFF"
+                "liveText": "#FFFFFF",
+                "logoBg": "#111827"
             },
             "CINEMATIC_COLOR": {
                 "name": "Color Cinemático",
@@ -57,7 +62,8 @@ Item {
                 "badgeTimeText": "#60A5FA",
                 "liveBg": "#EF4444",
                 "liveBorder": "transparent",
-                "liveText": "#FFFFFF"
+                "liveText": "#FFFFFF",
+                "logoBg": "transparent"
             },
             "NORDIC_FROST": {
                 "name": "Escarcha Nórdica",
@@ -76,7 +82,8 @@ Item {
                 "badgeTimeText": "#2DD4BF",
                 "liveBg": "#0D9488",
                 "liveBorder": "transparent",
-                "liveText": "#FFFFFF"
+                "liveText": "#FFFFFF",
+                "logoBg": "transparent"
             },
             "MONOKAI_PRO": {
                 "name": "Monokai Ámbar",
@@ -95,7 +102,8 @@ Item {
                 "badgeTimeText": "#FBBF24",
                 "liveBg": "#D97706",
                 "liveBorder": "transparent",
-                "liveText": "#FFFFFF"
+                "liveText": "#FFFFFF",
+                "logoBg": "#2D2D2D"
             },
             "VAMPIRE_BLOOD": {
                 "name": "Rojo Vampiro",
@@ -114,7 +122,8 @@ Item {
                 "badgeTimeText": "#EF4444",
                 "liveBg": "#EF4444",
                 "liveBorder": "transparent",
-                "liveText": "#FFFFFF"
+                "liveText": "#FFFFFF",
+                "logoBg": "transparent"
             },
             "CYBERPUNK_NEON": {
                 "name": "Cyberpunk Neón",
@@ -133,11 +142,11 @@ Item {
                 "badgeTimeText": "#F0ABFC",
                 "liveBg": "#C026D3",
                 "liveBorder": "transparent",
-                "liveText": "#FFFFFF"
+                "liveText": "#FFFFFF",
+                "logoBg": "transparent"
             }
         })
 
-    // 🚀 CENTRALIZACIÓN DEL ALFA: El tema gestiona y sirve las opacidades directamente de forma nativa
     property color bgAbsolute: {
         return Qt.alpha(colors[currentTheme]["bgAbsolute"], 0.80);
     }
@@ -150,7 +159,6 @@ Item {
     property color bgItemDefault: {
         return Qt.alpha(colors[currentTheme]["bgItemDefault"], 0.85);
     }
-
     property color borderActive: {
         return colors[currentTheme]["borderActive"];
     }
@@ -187,6 +195,9 @@ Item {
     property color liveText: {
         return colors[currentTheme]["liveText"];
     }
+    property color logoBg: {
+        return colors[currentTheme]["logoBg"];
+    }
 
     function getW3cContrast(hexColor) {
         if (!hexColor)
@@ -196,6 +207,7 @@ Item {
             str = str + str + str + str + str + str;
         if (str.length === 8)
             str = str.substring(2);
+
         var r = parseInt(str.substring(0, 2), 16);
         var g = parseInt(str.substring(2, 4), 16);
         var b = parseInt(str.substring(4, 6), 16);

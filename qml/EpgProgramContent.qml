@@ -41,10 +41,13 @@ Item {
     RowLayout {
         anchors.fill: parent
         spacing: 20
+
         Rectangle {
             Layout.preferredWidth: 60
             Layout.preferredHeight: 60
-            color: "#1E293B"
+
+            // 🚀 CONTROLADO DESDE EL TEMA: Enlazado al objeto central global appTheme para eliminar el color oscuro fijo
+            color: typeof appTheme !== "undefined" ? appTheme.logoBg : "transparent"
             radius: 8
             Layout.alignment: Qt.AlignTop
 
@@ -100,7 +103,6 @@ Item {
                     readonly property bool hasTime: root.epgTitle.startsWith("[") && closeBracketIndex !== -1
 
                     readonly property string rawTimeStr: hasTime ? root.epgTitle.substring(1, closeBracketIndex).trim() : ""
-                    readonly property string cleanTitle: hasTime ? root.epgTitle.substring(closeBracketIndex + 1).trim() : root.epgTitle
                     readonly property string formattedTime: scrollContentLayout.rawTimeStr ? scrollContentLayout.rawTimeStr.replace(/\s*-\s*/, " ➔ ") : ""
 
                     Rectangle {
@@ -129,39 +131,32 @@ Item {
                         }
                     }
 
-                    // Título Principal del Programa
-                    Text {
-                        text: scrollContentLayout.cleanTitle
-                        color: "#FFFFFF"
-                        font.bold: true
-                        font.pointSize: root.isFullScreen ? 15 : 13
-                        renderType: Text.NativeRendering
+                    RowLayout {
+                        visible: scrollContentLayout.hasTime
                         Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                    }
-
-                    // 🚀 UBICACIÓN CORREGIDA EN MODO DRAWER: La barra de progreso se sitúa justo debajo del título del programa
-                    Rectangle {
-                        id: drawerProgressBarContainer
-                        visible: scrollContentLayout.hasTime && root.stopTimestamp > root.startTimestamp
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: appTheme.px ? appTheme.px(4) : 4
-                        Layout.topMargin: 2
-                        Layout.bottomMargin: 4
-                        color: "#334155"
-                        radius: 2
-
-                        readonly property real progressFactor: Math.max(0.0, Math.min(1.0, (root.currentTimestamp - root.startTimestamp) / (root.stopTimestamp - root.startTimestamp)))
+                        spacing: 12
+                        Layout.alignment: Qt.AlignVCenter
 
                         Rectangle {
-                            width: parent.width * parent.progressFactor
-                            height: parent.height
+                            id: drawerProgressBarContainer
+                            visible: root.stopTimestamp > root.startTimestamp
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: appTheme.px ? appTheme.px(4) : 4
+                            Layout.alignment: Qt.AlignVCenter
+                            color: "#334155"
                             radius: 2
-                            color: appTheme.borderActive
+
+                            readonly property real progressFactor: Math.max(0.0, Math.min(1.0, (root.currentTimestamp - root.startTimestamp) / (root.stopTimestamp - root.startTimestamp)))
+
+                            Rectangle {
+                                width: parent.width * parent.progressFactor
+                                height: parent.height
+                                radius: 2
+                                color: appTheme.borderActive
+                            }
                         }
                     }
 
-                    // Cuerpo de la Sinopsis
                     Text {
                         id: descriptionText
                         Layout.fillWidth: true

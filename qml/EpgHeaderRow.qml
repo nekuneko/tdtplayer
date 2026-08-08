@@ -1,6 +1,5 @@
 // qml/EpgHeaderRow.qml
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 RowLayout {
@@ -13,10 +12,16 @@ RowLayout {
     required property string channelName
     required property string hoveredChannelName
 
+    // 🚀 SOLUCCIÓN DEFINITIVA: Cambiado de 'required property' a propiedad estándar con buffer vacío
+    // Esto permite que el Component.onCompleted de tu EpgDrawer le inyecte el Binding dinámico sin errores de arranque
+    property string epgTitle: ""
+
+    // Bloque Izquierdo: [Número] Nombre del Canal — Programa Activo
     RowLayout {
         spacing: 8
         Layout.alignment: Qt.AlignLeft
-        // CABECERA EPG: CUADRADO CON ESQUINAS REDONDEADAS DE ACENTO SÓLIDO YIQ CONTRONTRATE
+        Layout.fillWidth: true
+
         Rectangle {
             visible: root.channelNo !== ""
             color: appTheme.bgItemActive
@@ -42,49 +47,43 @@ RowLayout {
             font.pointSize: root.isFullScreen ? 14 : 12
             renderType: Text.NativeRendering
             elide: Text.ElideRight
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        Text {
+            visible: root.cleanTitleText !== ""
+            text: "—"
+            color: appTheme.textDesc
+            font.pointSize: root.isFullScreen ? 14 : 12
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        Text {
+            text: root.cleanTitleText
+            color: "#FFFFFF"
+            font.bold: true
+            font.pointSize: root.isFullScreen ? 14 : 12
+            renderType: Text.NativeRendering
+            elide: Text.ElideRight
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
         }
     }
 
+    readonly property int _closeBracketIndex: root.epgTitle.indexOf("]")
+    readonly property bool _hasTime: root.epgTitle.startsWith("[") && root._closeBracketIndex !== -1
+    readonly property string cleanTitleText: root._hasTime ? root.epgTitle.substring(root._closeBracketIndex + 1).trim() : root.epgTitle
+
     Item {
-        Layout.fillWidth: true
+        Layout.fillWidth: false
     }
 
     RowLayout {
         spacing: 16
         Layout.alignment: Qt.AlignRight
+
         EpgVolumeSlider {
             isFullScreen: root.isFullScreen
-        }
-
-        Rectangle {
-            color: appTheme.liveBg
-            border.color: appTheme.liveBorder
-            border.width: 1.5
-            radius: 4
-            Layout.preferredHeight: 22
-            Layout.preferredWidth: liveLabelLayout.implicitWidth + 16
-
-            RowLayout {
-                id: liveLabelLayout
-                anchors.centerIn: parent
-                spacing: 6
-
-                Rectangle {
-                    width: 6
-                    height: 6
-                    radius: 3
-                    color: appTheme.liveText
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                Text {
-                    text: "EN DIRECTO AHORA"
-                    color: appTheme.liveText
-                    font.bold: true
-                    font.pointSize: 8
-                    Layout.alignment: Qt.AlignVCenter
-                }
-            }
         }
     }
 }

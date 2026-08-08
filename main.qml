@@ -108,6 +108,7 @@ ApplicationWindow {
             function onEpgForceOpenChanged() {
                 if (epgDrawer.epgForceOpen && typeof playerView !== "undefined") {
                     playerView.resetMouseCursor();
+                    // Fuerza la reevaluación estática y detiene el reloj si la barra está abierta
                     epgBootstrapper.resetTimer();
                 }
             }
@@ -120,12 +121,11 @@ ApplicationWindow {
             isFullScreen: ctrl.isFullScreen
             z: 1
             visible: !ctrl.isConfigMenuOpen && sidebar.sidebarForceOpen
-            appThemeItem: appTheme
-
             onChannelSelected: realIndex => {
                 ctrl.playChannel(realIndex);
                 globalKeyboardHandler.forceActiveFocus();
             }
+            appThemeItem: appTheme
 
             onChannelHovered: name => {
                 if (ctrl.zappingTimer.running || !name)
@@ -148,14 +148,18 @@ ApplicationWindow {
                     ctrl.epgTitle = epgData.title;
                     ctrl.epgDescription = epgData.description;
                 }
+
+                // 🚀 FOCO ESTÁTICO: Forzamos la apertura y detenemos cualquier cuenta atrás residual
                 epgDrawer.epgForceOpen = true;
             }
 
             onExited: {
+                // 🚀 CORRECCIÓN CRÍTICA: Se elimina 'epgDrawer.epgForceOpen = false' de aquí.
+                // El panel ya no se cerrará de forma traicionera al mover el ratón por el borde lateral.
                 sidebar.sidebarForceOpen = false;
-                epgDrawer.epgForceOpen = false;
                 sidebar.forceCenterScrollSync();
                 ctrl.osdHoveredChannelName = "";
+
                 var currentIdx = channelModel.index(ctrl.currentChannelIndex, 0);
                 var currentName = channelModel.data(currentIdx, Qt.UserRole + 1) || "";
                 if (currentName !== "") {

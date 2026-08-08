@@ -48,11 +48,14 @@ ItemDelegate {
         anchors.leftMargin: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(14) : 14
         anchors.rightMargin: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(14) : 14
         spacing: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(12) : 12
+
         // 1. Contenedor del Logotipo Proporcional
         Rectangle {
             Layout.preferredWidth: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(35) : 35
             Layout.preferredHeight: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(35) : 35
-            color: "#0F172A"
+
+            // 🚀 CONTROLADO DESDE EL TEMA: Cambiado color rígido por la propiedad del objeto central de estilos
+            color: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.logoBg : "transparent"
             radius: 4
             Layout.alignment: Qt.AlignVCenter
 
@@ -84,7 +87,7 @@ ItemDelegate {
             renderType: Text.NativeRendering
         }
 
-        // 3. Número de Canal - LÓGICA ESTABLE: Caja blanca con número en color de acento al sintonizarse
+        // 3. Número de Canal
         Rectangle {
             id: channelNumberBadge
             color: delegateRoot.isCurrentlyPlaying ? "#FFFFFF" : (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.bgItemActive : "#3B82F6")
