@@ -45,8 +45,6 @@ Item {
         Rectangle {
             Layout.preferredWidth: 60
             Layout.preferredHeight: 60
-
-            // 🚀 CONTROLADO DESDE EL TEMA: Enlazado al objeto central global appTheme para eliminar el color oscuro fijo
             color: typeof appTheme !== "undefined" ? appTheme.logoBg : "transparent"
             radius: 8
             Layout.alignment: Qt.AlignTop
@@ -105,38 +103,42 @@ Item {
                     readonly property string rawTimeStr: hasTime ? root.epgTitle.substring(1, closeBracketIndex).trim() : ""
                     readonly property string formattedTime: scrollContentLayout.rawTimeStr ? scrollContentLayout.rawTimeStr.replace(/\s*-\s*/, " ➔ ") : ""
 
-                    Rectangle {
-                        id: drawerTimeBadge
-                        visible: scrollContentLayout.hasTime
-                        color: appTheme.bgItemActive
-                        radius: appTheme.px ? appTheme.px(5) : 5
-                        Layout.preferredHeight: appTheme.px ? appTheme.px(24) : 24
-                        Layout.preferredWidth: drawerTimeLayout.implicitWidth + (appTheme.px ? appTheme.px(16) : 16)
-                        Layout.alignment: Qt.AlignLeft
-
-                        RowLayout {
-                            id: drawerTimeLayout
-                            anchors.centerIn: parent
-                            spacing: 0
-
-                            Text {
-                                text: scrollContentLayout.formattedTime
-                                color: appTheme.getW3cContrast(drawerTimeBadge.color)
-                                font.bold: true
-                                font.pointSize: root.isFullScreen ? 11 : 10
-                                font.family: "Monospace"
-                                renderType: Text.NativeRendering
-                                Layout.alignment: Qt.AlignVCenter
-                            }
-                        }
-                    }
-
+                    // Fila horizontal elástica para la píldora y la barra juntas
                     RowLayout {
                         visible: scrollContentLayout.hasTime
-                        Layout.fillWidth: true
                         spacing: 12
                         Layout.alignment: Qt.AlignVCenter
 
+                        // 🚀 CORRECCIÓN DE LAYOUT: Forzamos al RowLayout a rellenar el ancho de la columna de forma explícita
+                        Layout.fillWidth: true
+
+                        // Píldora Horaria
+                        Rectangle {
+                            id: drawerTimeBadge
+                            color: appTheme.bgItemActive
+                            radius: appTheme.px ? appTheme.px(5) : 5
+                            Layout.preferredHeight: appTheme.px ? appTheme.px(24) : 24
+                            Layout.preferredWidth: drawerTimeLayout.implicitWidth + (appTheme.px ? appTheme.px(16) : 16)
+                            Layout.alignment: Qt.AlignVCenter
+
+                            RowLayout {
+                                id: drawerTimeLayout
+                                anchors.centerIn: parent
+                                spacing: 0
+
+                                Text {
+                                    text: scrollContentLayout.formattedTime
+                                    color: appTheme.getW3cContrast(drawerTimeBadge.color)
+                                    font.bold: true
+                                    font.pointSize: root.isFullScreen ? 11 : 10
+                                    font.family: "Monospace"
+                                    renderType: Text.NativeRendering
+                                    Layout.alignment: Qt.AlignVCenter
+                                }
+                            }
+                        }
+
+                        // Barra de progreso elástica alineada a la derecha
                         Rectangle {
                             id: drawerProgressBarContainer
                             visible: root.stopTimestamp > root.startTimestamp
@@ -157,6 +159,7 @@ Item {
                         }
                     }
 
+                    // Cuerpo de la Sinopsis
                     Text {
                         id: descriptionText
                         Layout.fillWidth: true
