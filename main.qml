@@ -45,7 +45,21 @@ ApplicationWindow {
 
     PlaybackController {
         id: ctrl; model: channelModel; mediaPlayer: playerView.mediaPlayer; sidebar: sidebar; epgDrawer: epgDrawer
-        onChannelZappedByKeyboard: { epgDrawer.epgForceOpen = true; keyboardEpgTimer.restart() }
+        // 🚀 SINCRONIZACIÓN DE ZAPPING: Levantamos el panel inferior, pero NO encendemos el temporizador aquí
+        onChannelZappedByKeyboard: { epgDrawer.epgForceOpen = true }
+    }
+
+    // Receptor inteligente ligado al hilo de hardware de reproducción de vídeo de QtMultimedia
+    Connections {
+        target: playerView.mediaPlayer
+        
+        // La función de la API de Qt6 se dispara en cada cambio de estado del motor de decodificación
+        function onPlaybackStateChanged() {
+            if (playerView.mediaPlayer.playbackState === MediaPlayer.PlayingState) {
+                // 🚀 DETONACIÓN BAJO DEMANDA: Solo cuando el vídeo brota en pantalla, arranca la cuenta atrás para esconderlo
+                keyboardEpgTimer.restart()
+            }
+        }
     }
 
     KeyboardHandler {
@@ -67,6 +81,8 @@ ApplicationWindow {
             isFullScreen: ctrl.isFullScreen; sidebarItem: sidebar; z: 1 
             width: sidebar.visible ? (parent.width - sidebar.width) : parent.width
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
+            
+            // Reloj asíncrono centralizado en el nodo del panel para gestionar el retraso
             Timer { id: keyboardEpgTimer; interval: 3000; onTriggered: epgDrawer.epgForceOpen = false }
         }
 
@@ -79,7 +95,8 @@ ApplicationWindow {
             id: sidebar; model: channelModel; currentChannelIndex: ctrl.currentChannelIndex; isFullScreen: ctrl.isFullScreen; z: 1
             visible: !ctrl.isConfigMenuOpen && sidebar.sidebarForceOpen
             onChannelSelected: (realIndex) => { ctrl.playChannel(realIndex); globalKeyboardHandler.forceActiveFocus() }
-            
+            appThemeItem: appTheme
+
             onChannelHovered: (name) => {
                 if (ctrl.zappingTimer.running || !name) return
                 var cleanHoverName = name.toString().trim().replace(/[\r\n]/g, "")
@@ -107,7 +124,6 @@ ApplicationWindow {
                     ctrl.osdChannelNo = channelModel.data(currentIdx, Qt.UserRole + 4) || ctrl.currentChannelIndex.toString()
                 }
                 var currentEpg = channelModel.fetch_current_epg(ctrl.osdChannelName)
-                // 🚀 CORRECCIÓN CRÍTICA: Asignación coherente usando la variable local correcta
                 if (currentEpg && currentEpg.title !== undefined) { ctrl.epgTitle = currentEpg.title; ctrl.epgDescription = currentEpg.description }
                 globalKeyboardHandler.forceActiveFocus()
             }
@@ -131,7 +147,8 @@ ApplicationWindow {
         onLoaded: {
             item.channelModel = channelModel
             item.currentChannelIndex = ctrl.currentChannelIndex
-            
+            item.appThemeItem = appTheme
+
             item.channelSelected.connect(function(realIndex) { 
                 epgGridOverlayLoader.item.visible = false
                 ctrl.playChannel(realIndex)

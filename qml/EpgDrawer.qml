@@ -18,11 +18,14 @@ Rectangle {
 
     readonly property bool containsMouse: epgMouseTracker.containsMouse
 
-    height: root.isFullScreen ? 180 : 160 
+    // 🚀 GEOMETRÍA ESCALABLE DE CONTROL DE FONDO
+    height: root.isFullScreen 
+            ? (appTheme ? appTheme.px(180) : 180) 
+            : (appTheme ? appTheme.px(160) : 160)
+            
     anchors.bottom: parent ? parent.bottom : undefined
     anchors.left: parent ? parent.left : undefined
     
-    // 🚀 ENLACE DINÁMICO DE PALETA: Adopta los fondos del tema en tiempo real
     color: appTheme.bgAbsolute
     opacity: 0.98
     border.color: appTheme.borderActive
@@ -43,7 +46,10 @@ Rectangle {
     }
 
     ColumnLayout {
-        anchors.fill: parent; anchors.margins: 16; spacing: 10
+        anchors.fill: parent
+        anchors.margins: appTheme ? appTheme.px(16) : 16
+        spacing: appTheme ? appTheme.px(10) : 10
+        
         EpgHeaderRow {
             isFullScreen: root.isFullScreen; channelNo: root.channelNo
             channelName: root.channelName; hoveredChannelName: root.hoveredChannelName

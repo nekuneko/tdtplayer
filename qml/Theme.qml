@@ -1,12 +1,23 @@
 // qml/Theme.qml
 import QtQuick
+import QtQuick.Window
 
 Item {
     id: root
 
     property string currentTheme: "CINEMATIC_COLOR"
 
-    // Lista tipada estricta para alimentar la lista del menú de configuración
+    // 🚀 MOTOR DE ESCALA DINÁMICA HIDPI (Qt6 Smart Scaler)
+    // Captura el escalado nativo del sistema operativo (Wayland/X11) y aplica un multiplicador de densidad elástico
+    readonly property real ratio: Screen.devicePixelRatio
+    readonly property real scale: root.ratio > 1.0 ? root.ratio : 1.2
+
+    // Función matemática para escalar celdas y márgenes de forma proporcional
+    function px(value) { return Math.round(value * root.scale) }
+    
+    // Función matemática para escalar fuentes vectoriales de alta definición
+    function pt(value) { return Math.round(value * root.scale) }
+
     readonly property list<string> themeKeys: ["CINEMATIC_COLOR", "DARK_ACCESSIBLE", "NORDIC_FROST", "MONOKAI_PRO", "VAMPIRE_BLOOD", "CYBERPUNK_NEON"]
 
     readonly property var colors: ({
@@ -126,7 +137,6 @@ Item {
         }
     })
 
-    // 🚀 EXTRACCIÓN DINÁMICA CON GRADO DE REACTIVIDAD BLINDADO (Qt6 Evaluators)
     property color bgAbsolute: { return colors[currentTheme]["bgAbsolute"] }
     property color bgItemActive: { return colors[currentTheme]["bgItemActive"] }
     property color bgItemHover: { return colors[currentTheme]["bgItemHover"] }

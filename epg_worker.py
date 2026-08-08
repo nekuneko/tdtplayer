@@ -22,7 +22,7 @@ class EpgPreloaderWorker(QThread):
         try:
             req = urllib.request.Request(api_url, headers=headers)
             with urllib.request.urlopen(req, timeout=10.0) as response:
-                raw_json = json.loads(response.read().decode('utf-8'))
+                raw_json = json.loads(response.read().decode('utf-8', errors='replace'))
                 entries = raw_json.get("entries", [])
                 
                 if not entries:

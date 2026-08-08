@@ -72,15 +72,17 @@ RowLayout {
                 width: descFlickable.width
                 spacing: 4
 
-                // Buscamos el cierre del corchete ']' que inyecta Python para recortar las cadenas limpiamente
                 readonly property int closeBracketIndex: root.epgTitle.indexOf("]")
                 readonly property bool hasTime: root.epgTitle.startsWith("[") && closeBracketIndex !== -1
                 
-                // 🚀 LIMPIEZA TOTAL: Recortamos omitiendo los corchetes exteriores [ ]
-                readonly property string extractedTime: hasTime ? root.epgTitle.substring(1, closeBracketIndex).trim() : ""
+                readonly property string rawTimeStr: hasTime ? root.epgTitle.substring(1, closeBracketIndex).trim() : ""
                 readonly property string cleanTitle: hasTime ? root.epgTitle.substring(closeBracketIndex + 1).trim() : root.epgTitle
 
-                // Bloque 1: Horario Estilizado Limpio con Icono
+                // 🚀 BLINDAJE DE SEGURIDAD CONTRA UNDEFINED:
+                // Evaluamos de forma segura la existencia de la cadena antes de aplicar el formato
+                readonly property string formattedTime: scrollContentLayout.rawTimeStr ? scrollContentLayout.rawTimeStr.replace(/\s*-\s*/, " ➔ ") : ""
+
+                // Bloque 1: Horario Estilizado Limpio con Icono y Flecha
                 RowLayout {
                     visible: scrollContentLayout.hasTime
                     spacing: 6
@@ -89,7 +91,7 @@ RowLayout {
                     Text { text: "🕒"; font.pointSize: root.isFullScreen ? 10 : 9; Layout.alignment: Qt.AlignVCenter }
 
                     Text {
-                        text: scrollContentLayout.extractedTime
+                        text: scrollContentLayout.formattedTime
                         color: "#E2E8F0" 
                         font.bold: true
                         font.pointSize: root.isFullScreen ? 11 : 10
@@ -112,7 +114,7 @@ RowLayout {
 
                 Item { Layout.preferredHeight: 2 }
 
-                // Bloque 3: Cuerpo de la Sinopsis en alto contraste legible
+                // Bloque 3: Cuerpo de la Sinopsis
                 Text {
                     id: descriptionText
                     Layout.fillWidth: true
