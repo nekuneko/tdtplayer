@@ -27,8 +27,8 @@ Popup {
         radius: 12
     }
 
-    onOpened: numInputField.forceActiveFocus();
-    onClosed: numInputField.text = "";
+    onOpened: numInputField.forceActiveFocus()
+    onClosed: numInputField.text = ""
 
     ColumnLayout {
         anchors.fill: parent
@@ -51,7 +51,9 @@ Popup {
             font.bold: true
             color: "white"
             placeholderText: "0"
-            validator: RegularExpressionValidator { regularExpression: /[0-9]+/ }
+            validator: RegularExpressionValidator {
+                regularExpression: /[0-9]+/
+            }
 
             background: Rectangle {
                 color: "#0F172A"
@@ -60,11 +62,13 @@ Popup {
             }
 
             Keys.onReturnPressed: {
-                if (text.length > 0) root.numberAccepted(text);
+                if (text.length > 0)
+                    root.numberAccepted(text);
                 root.close();
             }
             Keys.onEnterPressed: {
-                if (text.length > 0) root.numberAccepted(text);
+                if (text.length > 0)
+                    root.numberAccepted(text);
                 root.close();
             }
         }
@@ -74,22 +78,46 @@ Popup {
             spacing: 10
 
             Button {
+                // 🚀 ID EXPLÍCITO: Asignamos un identificador unívoco al botón de cancelar
+                id: cancelBtn
                 text: "Cancelar"
                 Layout.fillWidth: true
                 onClicked: root.close()
-                background: Rectangle { color: "#475569"; radius: 6 }
-                contentItem: Text { text: parent.text; color: "white"; horizontalAlignment: Text.AlignHCenter }
+                background: Rectangle {
+                    color: "#475569"
+                    radius: 6
+                }
+
+                // 🚀 VINCULACIÓN CUALIFICADA: Apuntamos directamente al ID del botón en lugar de parent
+                contentItem: Text {
+                    text: cancelBtn.text
+                    color: "white"
+                    horizontalAlignment: Text.AlignHCenter
+                }
             }
 
             Button {
+                // 🚀 ID EXPLÍCITO: Asignamos un identificador unívoco al botón de aceptar
+                id: acceptBtn
                 text: "Aceptar"
                 Layout.fillWidth: true
                 onClicked: {
-                    if (numInputField.text.length > 0) root.numberAccepted(numInputField.text);
+                    if (numInputField.text.length > 0)
+                        root.numberAccepted(numInputField.text);
                     root.close();
                 }
-                background: Rectangle { color: "#3B82F6"; radius: 6 }
-                contentItem: Text { text: parent.text; color: "white"; font.bold: true; horizontalAlignment: Text.AlignHCenter }
+                background: Rectangle {
+                    color: "#3B82F6"
+                    radius: 6
+                }
+
+                // 🚀 VINCULACIÓN CUALIFICADA: Apuntamos directamente al ID del botón en lugar de parent
+                contentItem: Text {
+                    text: acceptBtn.text
+                    color: "white"
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                }
             }
         }
     }

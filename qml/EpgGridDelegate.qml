@@ -24,6 +24,23 @@ ItemDelegate {
 
     property int currentTimestamp: Math.floor(Date.now() / 1000)
 
+    // 🚀 VARIABLES REACTIVAS DE CONTROL: Sacamos el EPG de las propiedades fijas y las volvemos dinámicas
+    property var currentEpgObject: null
+    property var nextEpgObject: null
+
+    // Función interna encargada de destrozar la caché e invocar al cursor WAL de SQLite de forma forzada
+    function forceRefreshEpgData() {
+        if (root.channelModel && root.channelNameStr !== "") {
+            root.currentEpgObject = root.channelModel.fetch_current_epg(root.channelNameStr);
+            root.nextEpgObject = root.channelModel.fetch_next_epg(root.channelNameStr);
+        }
+    }
+
+    // Inicializamos los datos al completarse el árbol de renderizado de la tarjeta
+    Component.onCompleted: {
+        root.forceRefreshEpgData();
+    }
+
     Timer {
         id: liveProgressTimer
         interval: 1000
@@ -33,39 +50,32 @@ ItemDelegate {
     }
 
     background: Rectangle {
-        // Al ser 'required', el objeto siempre existe en memoria. Cero rodeos.
-        color: root.isCurrent 
-               ? root.appThemeItem.bgItemActive 
-               : root.hovered 
-                 ? root.appThemeItem.bgItemHover 
-                 : root.appThemeItem.bgItemDefault
-        
+        color: root.isCurrent ? root.appThemeItem.bgItemActive : (root.hovered ? root.appThemeItem.bgItemHover : root.appThemeItem.bgItemDefault)
+
         radius: root.appThemeItem.px(8)
-        border.color: root.isCurrent 
-                      ? root.appThemeItem.borderActive 
-                      : root.hovered 
-                        ? root.appThemeItem.borderHover 
-                        : root.appThemeItem.borderDefault
+        border.color: root.isCurrent ? root.appThemeItem.borderActive : (root.hovered ? root.appThemeItem.borderHover : root.appThemeItem.borderDefault)
         border.width: root.isCurrent ? 2 : 1
-        
-        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on color {
+            ColorAnimation {
+                duration: 120
+            }
+        }
     }
 
     readonly property string channelNameStr: root.name ? root.name.toString().trim().replace(/[\r\n]/g, "") : ""
 
-    readonly property var nowEpg: root.channelModel ? root.channelModel.fetch_current_epg(root.channelNameStr) : null
-    readonly property string nowTitleRaw: nowEpg ? nowEpg.title : "Emisión en directo"
-    readonly property string nowDescRaw: nowEpg ? (nowEpg.description || "Sin descripción disponible.") : "Sin descripción disponible."
+    // Vinculamos los textos de la interfaz a nuestras nuevas propiedades dinámicas reactivas
+    readonly property string nowTitleRaw: root.currentEpgObject ? root.currentEpgObject.title : "Emisión en directo"
+    readonly property string nowDescRaw: root.currentEpgObject ? (root.currentEpgObject.description || "Sin descripción disponible.") : "Sin descripción disponible."
 
-    readonly property var nextEpg: root.channelModel ? root.channelModel.fetch_next_epg(root.channelNameStr) : null
-    readonly property string nextTitleRaw: nextEpg ? nextEpg.title : "Sin datos de programación"
-    readonly property string nextDescRaw: nextEpg ? (nextEpg.description || "No hay más información disponible.") : "No hay más información disponible."
+    readonly property string nextTitleRaw: root.nextEpgObject ? root.nextEpgObject.title : "Sin datos de programación"
+    readonly property string nextDescRaw: root.nextEpgObject ? (root.nextEpgObject.description || "No hay más información disponible.") : "No hay más información disponible."
 
     readonly property string finalTitleRaw: root.viewMode === "NOW" ? nowTitleRaw : nextTitleRaw
     readonly property string finalDesc: root.viewMode === "NOW" ? nowDescRaw : nextDescRaw
 
-    readonly property int startTimestamp: root.viewMode === "NOW" ? (nowEpg ? nowEpg.start_ts : 0) : (nextEpg ? nextEpg.start_ts : 0)
-    readonly property int stopTimestamp: root.viewMode === "NOW" ? (nowEpg ? nowEpg.stop_ts : 0) : (nextEpg ? nextEpg.stop_ts : 0)
+    readonly property int startTimestamp: root.viewMode === "NOW" ? (root.currentEpgObject ? root.currentEpgObject.start_ts : 0) : (root.nextEpgObject ? root.nextEpgObject.start_ts : 0)
+    readonly property int stopTimestamp: root.viewMode === "NOW" ? (root.currentEpgObject ? root.currentEpgObject.stop_ts : 0) : (root.nextEpgObject ? root.nextEpgObject.stop_ts : 0)
 
     readonly property int closeBracketIndex: root.finalTitleRaw.indexOf("]")
     readonly property bool hasTime: root.finalTitleRaw.startsWith("[") && root.closeBracketIndex !== -1
@@ -76,11 +86,12 @@ ItemDelegate {
 
     contentItem: RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: root.appThemeItem ? root.appThemeItem.px(16) : 16
-        anchors.rightMargin: root.appThemeItem ? root.appThemeItem.px(36) : 36
-        anchors.topMargin: root.appThemeItem ? root.appThemeItem.px(12) : 12
-        anchors.bottomMargin: root.appThemeItem ? root.appThemeItem.px(12) : 12
-        spacing: root.appThemeItem ? root.appThemeItem.px(20) : 20
+        anchors.leftMargin: root.appThemeItem.px(16)
+        anchors.rightMargin: root.appThemeItem.px(36)
+        anchors.topMargin: root.appThemeItem.px(12)
+        anchors.bottomMargin: root.appThemeItem.px(12)
+        spacing: root.appThemeItem.px(20)
+
         EpgBadgeNo {
             textNo: root.chNo ? root.chNo.toString() : root.itemIndex.toString()
             isSelected: root.isCurrent
@@ -89,9 +100,9 @@ ItemDelegate {
         }
 
         Rectangle {
-            Layout.preferredWidth: root.appThemeItem ? root.appThemeItem.px(45) : 45
-            Layout.preferredHeight: root.appThemeItem ? root.appThemeItem.px(45) : 45
-            color: root.appThemeItem ? root.appThemeItem.bgAbsolute : "#000000"
+            Layout.preferredWidth: root.appThemeItem.px(45)
+            Layout.preferredHeight: root.appThemeItem.px(45)
+            color: root.appThemeItem.bgAbsolute
             radius: 6
             Layout.alignment: Qt.AlignVCenter
 
@@ -113,29 +124,29 @@ ItemDelegate {
 
         Text {
             text: root.channelNameStr
-            color: root.isCurrent ? (root.appThemeItem ? root.appThemeItem.textTitleActive : "#000000") : (root.appThemeItem ? root.appThemeItem.textTitle : "#FFFFFF")
+            color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
             font.bold: true
-            font.pointSize: root.appThemeItem ? root.appThemeItem.pt(12) : 12
+            font.pointSize: root.appThemeItem.pt(12)
             renderType: Text.NativeRendering
-            Layout.preferredWidth: root.appThemeItem ? root.appThemeItem.px(130) : 130
+            Layout.preferredWidth: root.appThemeItem.px(130)
             elide: Text.ElideRight
             Layout.alignment: Qt.AlignVCenter
         }
 
         Rectangle {
-            Layout.preferredHeight: root.appThemeItem ? root.appThemeItem.px(45) : 45
+            Layout.preferredHeight: root.appThemeItem.px(45)
             Layout.preferredWidth: 1
-            color: root.appThemeItem ? root.appThemeItem.borderHover : "#475569"
+            color: root.appThemeItem.borderHover
             Layout.alignment: Qt.AlignVCenter
         }
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: root.appThemeItem ? root.appThemeItem.px(4) : 4
+            spacing: root.appThemeItem.px(4)
             Layout.alignment: Qt.AlignVCenter
 
             RowLayout {
-                spacing: root.appThemeItem ? root.appThemeItem.px(12) : 12
+                spacing: root.appThemeItem.px(12)
                 Layout.fillWidth: true
 
                 EpgTimePill {
@@ -146,16 +157,18 @@ ItemDelegate {
                     themeItem: root.appThemeItem
                     Layout.alignment: Qt.AlignVCenter
 
+                    // 🚀 SOLUCIÓN: Cuando expira la hora, forzamos la llamada directa para sobreescribir la memoria de Qt6
                     onProgramExpired: {
+                        root.forceRefreshEpgData();
                         root.channelModel.dataChanged(root.channelModel.index(root.itemIndex, 0), root.channelModel.index(root.itemIndex, 0));
                     }
                 }
 
                 Text {
                     text: root.cleanTitle
-                    color: root.isCurrent ? (root.appThemeItem ? root.appThemeItem.textTitleActive : "#000000") : (root.appThemeItem ? root.appThemeItem.textTitle : "#FFFFFF")
+                    color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
                     font.bold: true
-                    font.pointSize: root.appThemeItem ? root.appThemeItem.pt(12.5) : 12.5
+                    font.pointSize: root.appThemeItem.pt(12.5)
                     renderType: Text.NativeRendering
                     Layout.fillWidth: true
                     elide: Text.ElideRight
@@ -165,8 +178,8 @@ ItemDelegate {
 
             Text {
                 text: root.finalDesc
-                color: root.isCurrent ? (root.appThemeItem ? root.appThemeItem.textDescActive : "#111827") : (root.appThemeItem ? root.appThemeItem.textDesc : "#CBD5E1")
-                font.pointSize: root.appThemeItem ? root.appThemeItem.pt(10.5) : 10.5
+                color: root.isCurrent ? root.appThemeItem.textDescActive : root.appThemeItem.textDesc
+                font.pointSize: root.appThemeItem.pt(10.5)
                 renderType: Text.NativeRendering
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
@@ -178,8 +191,8 @@ ItemDelegate {
                 id: gridProgressBarContainer
                 visible: root.hasTime && root.viewMode === "NOW" && root.stopTimestamp > root.startTimestamp
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.appThemeItem ? root.appThemeItem.px(4) : 4
-                Layout.topMargin: root.appThemeItem ? root.appThemeItem.px(2) : 2
+                Layout.preferredHeight: root.appThemeItem.px(4)
+                Layout.topMargin: root.appThemeItem.px(2)
                 color: root.isCurrent ? "rgba(255, 255, 255, 0.3)" : "#334155"
                 radius: 2
 
@@ -189,7 +202,7 @@ ItemDelegate {
                     width: parent.width * parent.progressFactor
                     height: parent.height
                     radius: 2
-                    color: root.isCurrent ? "#FFFFFF" : (root.appThemeItem ? root.appThemeItem.borderActive : "#60A5FA")
+                    color: root.isCurrent ? "#FFFFFF" : root.appThemeItem.borderActive
                 }
             }
         }

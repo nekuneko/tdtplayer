@@ -10,12 +10,12 @@ FocusScope {
     opacity: 0.0
     objectName: "epgGridOverlayLoader"
 
-    property var channelModel
-    property int currentChannelIndex
+    required property var channelModel
+    required property int currentChannelIndex
     property string currentViewMode: "NOW"
 
-    // Enlace explícito de entrada del tema global
-    property var appThemeItem: null
+    // Contrato estricto: El tema es obligatorio para el renderizado
+    required property var appThemeItem
 
     signal channelSelected(int realIndex)
     signal closeRequested
@@ -32,13 +32,10 @@ FocusScope {
             root.opacity = 0.96;
             root.currentViewMode = "NOW";
             overlayListView.forceActiveFocus();
-            // Forzamos la actualización manual leyendo directamente el valor activo del controlador de la app
-            if (typeof ctrl !== "undefined") {
-                root.currentChannelIndex = ctrl.currentChannelIndex;
-            }
+            // 🚀 LIMPIEZA: Enlace directo al controlador global sin comprobaciones redundantes
+            root.currentChannelIndex = ctrl.currentChannelIndex;
 
-            // Sincronizamos el foco del teclado y centramos el scroll sobre el canal sintonizado real
-            if (root.currentChannelIndex >= 0 && root.channelModel && root.currentChannelIndex < root.channelModel.rowCount()) {
+            if (root.currentChannelIndex >= 0 && root.currentChannelIndex < root.channelModel.rowCount()) {
                 overlayListView.currentIndex = root.currentChannelIndex;
                 overlayListView.positionViewAtIndex(root.currentChannelIndex, ListView.Center);
             }
@@ -57,10 +54,9 @@ FocusScope {
         }
     }
 
-    // 🚀 OPACIDAD AJUSTADA: Reducida un 5% adicional, fijada ahora en un 80% (0.80) transparente
     Rectangle {
         anchors.fill: parent
-        color: root.appThemeItem ? Qt.alpha(root.appThemeItem.bgAbsolute, 0.70) : "rgba(0, 0, 0, 0.70)"
+        color: root.appThemeItem.bgAbsolute
     }
 
     MouseArea {
@@ -76,9 +72,10 @@ FocusScope {
         RowLayout {
             Layout.fillWidth: true
             spacing: 30
+
             Text {
                 text: "GUÍA DE PROGRAMACIÓN"
-                color: root.appThemeItem ? root.appThemeItem.textTitle : "#FFFFFF"
+                color: root.appThemeItem.textTitle
                 font.bold: true
                 font.pointSize: 18
                 font.letterSpacing: 2
@@ -86,6 +83,7 @@ FocusScope {
 
             RowLayout {
                 spacing: 8
+
                 Button {
                     id: nowTabBtn
                     text: "Emitiéndose Ahora"
@@ -95,20 +93,21 @@ FocusScope {
                     contentItem: Text {
                         text: nowTabBtn.text
                         font: nowTabBtn.font
-                        color: root.currentViewMode === "NOW" ? (root.appThemeItem ? root.appThemeItem.getW3cContrast(root.appThemeItem.bgItemActive) : "#000000") : (root.appThemeItem ? root.appThemeItem.textDesc : "#94A3B8")
+                        color: root.currentViewMode === "NOW" ? root.appThemeItem.getW3cContrast(root.appThemeItem.bgItemActive) : root.appThemeItem.textDesc
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
                     background: Rectangle {
                         implicitWidth: 160
                         implicitHeight: 36
-                        color: root.currentViewMode === "NOW" ? (root.appThemeItem ? root.appThemeItem.bgItemActive : "#FFFFFF") : "transparent"
-                        border.color: root.appThemeItem ? root.appThemeItem.textTitle : "#FFFFFF"
+                        color: root.currentViewMode === "NOW" ? root.appThemeItem.bgItemActive : "transparent"
+                        border.color: root.appThemeItem.textTitle
                         border.width: 2
                         radius: 6
                     }
                     onClicked: root.currentViewMode = "NOW"
                 }
+
                 Button {
                     id: nextTabBtn
                     text: "A Continuación ➔"
@@ -118,15 +117,15 @@ FocusScope {
                     contentItem: Text {
                         text: nextTabBtn.text
                         font: nextTabBtn.font
-                        color: root.currentViewMode === "NEXT" ? (root.appThemeItem ? root.appThemeItem.getW3cContrast(root.appThemeItem.bgItemActive) : "#000000") : (root.appThemeItem ? root.appThemeItem.textDesc : "#94A3B8")
+                        color: root.currentViewMode === "NEXT" ? root.appThemeItem.getW3cContrast(root.appThemeItem.bgItemActive) : root.appThemeItem.textDesc
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
                     background: Rectangle {
                         implicitWidth: 160
                         implicitHeight: 36
-                        color: root.currentViewMode === "NEXT" ? (root.appThemeItem ? root.appThemeItem.bgItemActive : "#FFFFFF") : "transparent"
-                        border.color: root.appThemeItem ? root.appThemeItem.textTitle : "#FFFFFF"
+                        color: root.currentViewMode === "NEXT" ? root.appThemeItem.bgItemActive : "transparent"
+                        border.color: root.appThemeItem.textTitle
                         border.width: 2
                         radius: 6
                     }
@@ -138,7 +137,7 @@ FocusScope {
             }
             Text {
                 text: "TAB: Alternar | E/ESC: Volver"
-                color: root.appThemeItem ? root.appThemeItem.textDesc : "#94A3B8"
+                color: root.appThemeItem.textDesc
                 font.pointSize: 11
                 font.bold: true
             }
@@ -147,7 +146,7 @@ FocusScope {
         Rectangle {
             Layout.fillWidth: true
             height: 2
-            color: root.appThemeItem ? root.appThemeItem.textTitle : "#FFFFFF"
+            color: root.appThemeItem.textTitle
         }
 
         ListView {
@@ -173,7 +172,7 @@ FocusScope {
                 contentItem: Rectangle {
                     implicitWidth: 6
                     radius: 3
-                    color: root.appThemeItem ? root.appThemeItem.textTitle : "#FFFFFF"
+                    color: root.appThemeItem.textTitle
                 }
             }
         }

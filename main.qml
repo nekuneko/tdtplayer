@@ -1,7 +1,6 @@
 // main.qml
 import QtQuick
 import QtQuick.Controls
-import QtMultimedia
 import QtCore
 import "qml"
 
@@ -21,6 +20,7 @@ ApplicationWindow {
     property alias epgGridOverlayLoaderItemActive: epgGridOverlayLoader.active
     property bool isBooting: true
     property var localLogoCache: ({})
+    property var globalChannelModel: channelModel
 
     // Configuración elástica de arranque de coordenadas
     x: appSettings.windowX !== -1 ? appSettings.windowX : (Screen.width - width) / 2
@@ -189,25 +189,36 @@ ApplicationWindow {
         anchors.fill: parent
         z: 10
         asynchronous: true
-        source: "qml/EpgGridOverlay.qml"
+
+        // 🚀 INYECCIÓN MAESTRA EN TIEMPO DE COMPILACIÓN: Pasamos las variables obligatorias al instanciar el archivo
+        Component.onCompleted: {
+            epgGridOverlayLoader.setSource("qml/EpgGridOverlay.qml", {
+                "channelModel": channelModel,
+                "appThemeItem": appTheme,
+                "currentChannelIndex": Qt.binding(function () {
+                    return ctrl.currentChannelIndex;
+                })
+            });
+        }
+
         onLoaded: {
-            item.channelModel = channelModel;
-            item.appThemeItem = appTheme;
-            item.currentChannelIndex = Qt.binding(function () {
-                return ctrl.currentChannelIndex;
-            });
-
-            item.channelSelected.connect(function (realIndex) {
-                epgGridOverlayLoader.item.visible = false;
-                ctrl.playChannel(realIndex);
-                globalKeyboardHandler.forceActiveFocus();
-            });
-            item.closeRequested.connect(function () {
-                epgGridOverlayLoader.item.visible = false;
-                globalKeyboardHandler.forceActiveFocus();
-            });
-
             item.visible = false;
+        }
+    }
+
+    Connections {
+        target: epgGridOverlayLoader.item
+        ignoreUnknownSignals: true
+
+        function onChannelSelected(realIndex) {
+            epgGridOverlayLoader.item.visible = false;
+            ctrl.playChannel(realIndex);
+            globalKeyboardHandler.forceActiveFocus();
+        }
+
+        function onCloseRequested() {
+            epgGridOverlayLoader.item.visible = false;
+            globalKeyboardHandler.forceActiveFocus();
         }
     }
 
