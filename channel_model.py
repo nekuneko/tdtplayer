@@ -42,7 +42,6 @@ class ChannelModel(QAbstractListModel):
             self.ChNoRole: b"chNo",
         }
 
-    # Instanciación limpia en el cuerpo para evitar referencias mutables fantasma
     def rowCount(self, parent: QModelIndex = None) -> int:
         if parent is None:
             parent = QModelIndex()
@@ -81,6 +80,13 @@ class ChannelModel(QAbstractListModel):
         download_queue = []
         os.makedirs(self.cache_dir, exist_ok=True)
 
+        # 🚀 EVALUACIÓN INTEGRADA DEL ARRANQUE:
+        # Analizamos el archivo buscando de forma explícita la existencia de un canal cero
+        has_channel_zero = any('tvg-chno="0"' in line for line in lines)
+
+        # Si viene un canal 0 de Tvheadend empieza en 0, si no, se fuerza el inicio en 1
+        next_virtual_chno = 0 if has_channel_zero else 1
+
         for line in lines:
             line = line.strip()
             if line.startswith("#EXTINF:"):
@@ -94,7 +100,7 @@ class ChannelModel(QAbstractListModel):
                 current_logo = logo_match.group(1) if logo_match else None
                 ch_no_match = ch_no_regex.search(line)
                 current_ch_no = ch_no_match.group(1) if ch_no_match else None
-            # Fusión optimizada en una sola pasada de C-Engine mediante tupla
+
             elif line.startswith(("http://", "https://")):
                 if current_name:
                     clean_name = current_name.strip().replace("\r", "")
@@ -104,10 +110,12 @@ class ChannelModel(QAbstractListModel):
                         ("http://", "https://")
                     ):
                         parsed_url = urllib.parse.urlparse(current_logo)
-                        file_ext = os.path.splitext(parsed_url.path)
+                        file_ext_tuple = os.path.splitext(parsed_url.path)
+                        detected_ext = file_ext_tuple[1]
+
                         actual_ext = (
-                            file_ext[1]
-                            if file_ext and len(file_ext) > 1 and len(file_ext[1]) <= 5
+                            detected_ext
+                            if detected_ext and 1 < len(detected_ext) <= 5
                             else ".png"
                         )
                         file_name = (
@@ -120,14 +128,31 @@ class ChannelModel(QAbstractListModel):
                     else:
                         local_logo_path = current_logo or ""
 
+                    try:
+                        suggested_no = (
+                            int(current_ch_no) if current_ch_no else next_virtual_chno
+                        )
+                    except ValueError:
+                        suggested_no = next_virtual_chno
+
+                    # Sincronizamos la numeración correlativa evitando duplicados pisados
+                    if suggested_no >= next_virtual_chno:
+                        final_assigned_chno = suggested_no
+                    else:
+                        final_assigned_chno = next_virtual_chno
+
+                    string_assigned_chno = str(final_assigned_chno)
+                    next_virtual_chno = final_assigned_chno + 1
+
                     self._channels.append(
                         M3uChannel(
                             name=clean_name,
                             url=line,
                             logo=local_logo_path,
-                            ch_no=current_ch_no,
+                            ch_no=string_assigned_chno,
                         )
                     )
+
                     if local_logo_path:
                         self._logo_cache[clean_name] = local_logo_path
 
