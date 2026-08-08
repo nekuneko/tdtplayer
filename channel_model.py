@@ -164,7 +164,7 @@ class ChannelModel(QAbstractListModel):
         current_time = int(datetime.now().timestamp())
         try:
             if not self._db_cursor: 
-                return {"title": "Emisión en directo", "description": ""}
+                return {"title": "Emisión en directo", "description": "", "start_ts": 0, "stop_ts": 0}
             self._db_cursor.execute("""
                 SELECT start_ts, stop_ts, title, description FROM epg_store 
                 WHERE channel_name = ? AND stop_ts > ? ORDER BY start_ts ASC LIMIT 1
@@ -174,10 +174,15 @@ class ChannelModel(QAbstractListModel):
                 s_dt = datetime.fromtimestamp(row[0])
                 e_dt = datetime.fromtimestamp(row[1])
                 time_str = f"[{s_dt.strftime('%H:%M')} - {e_dt.strftime('%H:%M')}]"
-                return {"title": f"{time_str} {row[2]}", "description": row[3]}
+                return {
+                    "title": f"{time_str} {row[2]}", 
+                    "description": row[3],
+                    "start_ts": int(row[0]),
+                    "stop_ts": int(row[1])
+                }
         except Exception as e: 
             print(f"Error SQLite now: {e}")
-        return {"title": "Emisión en directo", "description": "Sin descripción detallada disponible."}
+        return {"title": "Emisión en directo", "description": "Sin descripción detallada disponible.", "start_ts": 0, "stop_ts": 0}
 
     # 🚀 EJECUCIÓN EN 0 MS GARANTIZADA: Mapeo de tupla directo a través de la memoria persistente del cursor WAL
     @Slot(str, result='QVariant')
@@ -186,7 +191,7 @@ class ChannelModel(QAbstractListModel):
         current_time = int(datetime.now().timestamp())
         try:
             if not self._db_cursor: 
-                return {"title": "[--:-- - --:--] Sin datos", "description": ""}
+                return {"title": "[--:-- - --:--] Sin datos", "description": "", "start_ts": 0, "stop_ts": 0}
             self._db_cursor.execute("""
                 SELECT start_ts, stop_ts, title, description FROM epg_store 
                 WHERE channel_name = ? AND stop_ts > ? ORDER BY start_ts ASC LIMIT 1 OFFSET 1
@@ -196,10 +201,15 @@ class ChannelModel(QAbstractListModel):
                 s_dt = datetime.fromtimestamp(row[0])
                 e_dt = datetime.fromtimestamp(row[1])
                 time_str = f"[{s_dt.strftime('%H:%M')} - {e_dt.strftime('%H:%M')}]"
-                return {"title": f"{time_str} {row[2]}", "description": row[3]}
+                return {
+                    "title": f"{time_str} {row[2]}", 
+                    "description": row[3],
+                    "start_ts": int(row[0]),
+                    "stop_ts": int(row[1])
+                }
         except Exception as e: 
             print(f"Error SQLite next: {e}")
-        return {"title": "[--:-- - --:--] Sin datos de programación futura", "description": "No se encontraron más eventos planificados en la base de datos local."}
+        return {"title": "[--:-- - --:--] Sin datos de programación futura", "description": "No se encontraron más eventos planificados en la base de datos local.", "start_ts": 0, "stop_ts": 0}
 
     def __del__(self):
         try:

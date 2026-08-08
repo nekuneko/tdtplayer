@@ -27,7 +27,6 @@ FocusScope {
         }
     }
 
-    // 🚀 DETECCIÓN EN TIEMPO REAL: Forzamos la lectura del índice actualizado del controlador de main.qml
     onVisibleChanged: {
         if (visible) {
             root.opacity = 0.96;
@@ -58,10 +57,12 @@ FocusScope {
         }
     }
 
+    // 🚀 OPACIDAD AJUSTADA: Reducida un 5% adicional, fijada ahora en un 80% (0.80) transparente
     Rectangle {
         anchors.fill: parent
-        color: root.appThemeItem ? root.appThemeItem.bgAbsolute : "#000000"
+        color: root.appThemeItem ? Qt.alpha(root.appThemeItem.bgAbsolute, 0.70) : "rgba(0, 0, 0, 0.70)"
     }
+
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true

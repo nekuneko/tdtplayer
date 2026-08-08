@@ -8,16 +8,12 @@ Item {
     property string currentTheme: "CINEMATIC_COLOR"
 
     // 🚀 MOTOR DE ESCALA DINÁMICA HIDPI (Qt6 Smart Scaler)
-    // Captura el escalado nativo del sistema operativo (Wayland/X11) y aplica un multiplicador de densidad elástico
     readonly property real ratio: Screen.devicePixelRatio
     readonly property real scale: root.ratio > 1.0 ? root.ratio : 1.2
 
-    // Función matemática para escalar celdas y márgenes de forma proporcional
     function px(value) {
         return Math.round(value * root.scale);
     }
-
-    // Función matemática para escalar fuentes vectoriales de alta definición
     function pt(value) {
         return Math.round(value * root.scale);
     }
@@ -141,18 +137,20 @@ Item {
             }
         })
 
+    // 🚀 CENTRALIZACIÓN DEL ALFA: El tema gestiona y sirve las opacidades directamente de forma nativa
     property color bgAbsolute: {
-        return colors[currentTheme]["bgAbsolute"];
+        return Qt.alpha(colors[currentTheme]["bgAbsolute"], 0.80);
     }
     property color bgItemActive: {
         return colors[currentTheme]["bgItemActive"];
     }
     property color bgItemHover: {
-        return colors[currentTheme]["bgItemHover"];
+        return Qt.alpha(colors[currentTheme]["bgItemHover"], 0.85);
     }
     property color bgItemDefault: {
-        return colors[currentTheme]["bgItemDefault"];
+        return Qt.alpha(colors[currentTheme]["bgItemDefault"], 0.85);
     }
+
     property color borderActive: {
         return colors[currentTheme]["borderActive"];
     }
@@ -190,27 +188,18 @@ Item {
         return colors[currentTheme]["liveText"];
     }
 
-    // 🚀 ALGORITMO ESTÉTICO YIQ (UI/UX Contrast Standard)
-    // Mapea el brillo percibido basándose en la sensibilidad del ojo para un contraste óptimo en interfaces
     function getW3cContrast(hexColor) {
         if (!hexColor)
             return "#FFFFFF";
         var str = hexColor.toString().replace("#", "");
-        if (str.length === 3) {
+        if (str.length === 3)
             str = str + str + str + str + str + str;
-        }
-        if (str.length === 8) {
+        if (str.length === 8)
             str = str.substring(2);
-        }
-
         var r = parseInt(str.substring(0, 2), 16);
         var g = parseInt(str.substring(2, 4), 16);
         var b = parseInt(str.substring(4, 6), 16);
-
-        // Ecuación de luminosidad YIQ estándar
         var yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-
-        // Retorna negro solo si el fondo es verdaderamente brillante/claro, si no, blanco puro
         return (yiq >= 128) ? "#000000" : "#FFFFFF";
     }
 }
