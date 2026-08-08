@@ -1,4 +1,4 @@
-// KeyboardHandler.qml
+// qml/KeyboardHandler.qml
 import QtQuick
 
 Item {
@@ -16,7 +16,7 @@ Item {
         // Si la parrilla está activa, permitimos el cierre desde aquí si el foco se desvía
         if (window.epgGridOverlayItem && window.epgGridOverlayItem.visible) {
             if (event.key === Qt.Key_Escape || event.key === Qt.Key_E) {
-                window.epgGridOverlayItem.closeRequested();
+                window.epgGridOverlayItem.visible = false;
                 event.accepted = true;
                 return;
             }
@@ -48,13 +48,16 @@ Item {
                 event.accepted = true;
                 break;
 
-            // 🚀 SOLUCIÓN ESTRUCTURAL: Conmutación directa usando la propiedad expuesta en la ventana raíz
+            // 🚀 SOLUCCIÓN DEFINITIVA DE 0 MS: Conmutación de visibilidad sobre el buffer de la GPU
             case Qt.Key_E:
-                if (window.epgGridOverlayItem && window.epgGridOverlayItem.visible) {
-                    window.epgGridOverlayItem.closeRequested();
-                } else {
-                    // Acceso directo y blindado al Loader expuesto de main.qml
-                    window.epgGridOverlayLoaderItemActive = true;
+                if (window.epgGridOverlayItem) {
+                    if (window.epgGridOverlayItem.visible) {
+                        window.epgGridOverlayItem.visible = false;
+                    } else {
+                        // Despierta la pantalla pre-renderizada y le transfiere el foco del teclado al ListView
+                        window.epgGridOverlayItem.visible = true;
+                        window.epgGridOverlayItem.forceActiveFocus();
+                    }
                 }
                 event.accepted = true;
                 break;

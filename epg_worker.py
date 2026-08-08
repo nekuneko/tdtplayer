@@ -2,80 +2,80 @@
 import urllib.request
 import urllib.parse
 import json
+import sqlite3
+import os
 from datetime import datetime
 from PySide6.QtCore import QThread, Signal
 
 class EpgPreloaderWorker(QThread):
-    epg_cache_ready = Signal(dict)
+    epg_cache_ready = Signal(bool)
 
-    def __init__(self, base_url):
+    def __init__(self, base_url, db_path):
         super().__init__()
         self.base_url = base_url
+        self.db_path = db_path
 
     def run(self):
-        # 🚀 Pedimos el grid global masivo para procesarlo todo de una sola tacada por red
         api_url = f"{self.base_url}/api/epg/events/grid?limit=999999"
         headers = {'User-Agent': 'TdtPlayer-Preloader'}
         
         try:
             req = urllib.request.Request(api_url, headers=headers)
-            with urllib.request.urlopen(req, timeout=8.0) as response:
+            with urllib.request.urlopen(req, timeout=10.0) as response:
                 raw_json = json.loads(response.read().decode('utf-8'))
                 entries = raw_json.get("entries", [])
                 
-                # Diccionario intermedio para agrupar los nodos crudos por canal
-                grouped_channels = {}
+                if not entries:
+                    self.epg_cache_ready.emit(False)
+                    return
+
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
                 
+                # 🚀 ALINEACIÓN DE CONCURRENCIA EN INSERCIÓN: El worker opera en armonía con el lector
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS epg_store (
+                        channel_name TEXT,
+                        start_ts INTEGER,
+                        stop_ts INTEGER,
+                        title TEXT,
+                        description TEXT,
+                        PRIMARY KEY (channel_name, start_ts)
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_epg_query ON epg_store (channel_name, stop_ts)")
+                
+                current_timestamp = int(datetime.now().timestamp())
+                cursor.execute("DELETE FROM epg_store WHERE stop_ts < ?", (current_timestamp,))
+                
+                insert_data = []
                 for entry in entries:
                     ch_name = entry.get("channelName")
-                    if not ch_name:
+                    start_ts = entry.get("start", 0)
+                    stop_ts = entry.get("stop", 0)
+                    
+                    if not ch_name or start_ts == 0 or stop_ts == 0:
                         continue
-                    
-                    clean_ch_name = str(ch_name).strip()
-                    if clean_ch_name not in grouped_channels:
-                        grouped_channels[clean_ch_name] = []
-                    
-                    grouped_channels[clean_ch_name].append(entry)
-                
-                final_processed_cache = {}
-                current_timestamp = datetime.now().timestamp()
-                
-                # Procesamos canal por canal aplicando la ordenación cronológica que propusiste
-                for clean_ch_name, event_list in grouped_channels.items():
-                    # 🚀 ALINEACIÓN DE HISTORIAL: Ordenamos de forma ascendente por hora de inicio (start)
-                    event_list.sort(key=lambda x: x.get("start", 0))
-                    
-                    processed_events = []
-                    for entry in event_list:
-                        start_ts = entry.get("start", 0)
-                        stop_ts = entry.get("stop", 0)
                         
-                        # Filtro de obsolescencia: Ignoramos eventos antiguos que ya terminaron hace horas
-                        if stop_ts < current_timestamp:
-                            continue
-                            
-                        time_str = "[--:-- - --:--]"
-                        try:
-                            if start_ts > 0 and stop_ts > 0:
-                                s_dt = datetime.fromtimestamp(start_ts)
-                                e_dt = datetime.fromtimestamp(stop_ts)
-                                time_str = f"[{s_dt.strftime('%H:%M')} - {e_dt.strftime('%H:%M')}]"
-                        except Exception:
-                            pass
-
-                        program_node = {
-                            "title": f"{time_str} {entry.get('title', 'Emisión en directo')}",
-                            "description": entry.get("description") or entry.get("summary") or "Sin descripción detallada disponible."
-                        }
-                        processed_events.append(program_node)
+                    clean_ch_name = str(ch_name).strip()
+                    title = entry.get("title", "Emisión en directo")
+                    description = entry.get("description") or entry.get("summary") or "Sin descripción detallada disponible."
                     
-                    # Guardamos la lista ordenada final si contiene datos
-                    if processed_events:
-                        final_processed_cache[clean_ch_name] = processed_events
+                    insert_data.append((clean_ch_name, int(start_ts), int(stop_ts), title, description))
                 
-                # Despachamos la caché final estructurada hacia el modelo de Qt
-                self.epg_cache_ready.emit(final_processed_cache)
+                cursor.executemany("""
+                    INSERT OR REPLACE INTO epg_store (channel_name, start_ts, stop_ts, title, description)
+                    VALUES (?, ?, ?, ?, ?)
+                """, insert_data)
+                
+                conn.commit()
+                conn.close()
+                
+                self.epg_cache_ready.emit(True)
                 
         except Exception as e:
-            print(f"Error asíncrono ordenando la parrilla EPG: {e}")
-            self.epg_cache_ready.emit({})
+            print(f"Error volcando la parrilla en SQLite: {e}")
+            self.epg_cache_ready.emit(False)

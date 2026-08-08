@@ -10,7 +10,6 @@ ApplicationWindow {
     width: 1024; height: 768; visible: true
     title: "Tvheadend Native Player"
 
-    // Orquestador de estilos raíz sincronizado con la persistencia en disco
     Theme {
         id: appTheme
         currentTheme: appSettings.lastTheme
@@ -41,7 +40,6 @@ ApplicationWindow {
         property string lastM3uUrl: ""; property int lastChannelIndex: 0 
         property int windowX: -1; property int windowY: -1; property int windowWidth: 1024; property int windowHeight: 768
         property bool lastIsFullScreen: false
-        // 🚀 PERSISTENCIA DE TEMA: Almacena la cadena identificadora del perfil visual
         property string lastTheme: "CINEMATIC_COLOR"
     }
 
@@ -109,7 +107,8 @@ ApplicationWindow {
                     ctrl.osdChannelNo = channelModel.data(currentIdx, Qt.UserRole + 4) || ctrl.currentChannelIndex.toString()
                 }
                 var currentEpg = channelModel.fetch_current_epg(ctrl.osdChannelName)
-                if (currentEpg && currentEpg.title !== undefined) { ctrl.epgTitle = ctrl.epgTitle; ctrl.epgDescription = currentEpg.description }
+                // 🚀 CORRECCIÓN CRÍTICA: Asignación coherente usando la variable local correcta
+                if (currentEpg && currentEpg.title !== undefined) { ctrl.epgTitle = currentEpg.title; ctrl.epgDescription = currentEpg.description }
                 globalKeyboardHandler.forceActiveFocus()
             }
         }
@@ -117,20 +116,33 @@ ApplicationWindow {
         ConfigSidebar {
             id: configSidebar; isFullScreen: ctrl.isFullScreen; z: 2; onImportRequested: dataLoader.loadM3uFromUrl("")
             onMouseExitedSidebar: ctrl.restorePanelsAfterConfig(); visible: configSidebar.sidebarForceOpen
-            
-            // 🚀 ENLACE DE PROPIEDADES: Pasamos el control al panel lateral
             appSettingsItem: appSettings
             appThemeItem: appTheme
         }
     } 
 
     Loader {
-        id: epgGridOverlayLoader; anchors.fill: parent; z: 10; active: false; enabled: active; source: "qml/EpgGridOverlay.qml"
+        id: epgGridOverlayLoader
+        anchors.fill: parent
+        z: 10
+        asynchronous: true
+        source: "qml/EpgGridOverlay.qml"
+        
         onLoaded: {
-            item.channelModel = channelModel; item.currentChannelIndex = ctrl.currentChannelIndex
-            item.channelSelected.connect(function(realIndex) { epgGridOverlayLoader.active = false; ctrl.playChannel(realIndex); globalKeyboardHandler.forceActiveFocus() })
-            item.closeRequested.connect(function() { epgGridOverlayLoader.active = false; globalKeyboardHandler.forceActiveFocus() })
-            item.visible = true
+            item.channelModel = channelModel
+            item.currentChannelIndex = ctrl.currentChannelIndex
+            
+            item.channelSelected.connect(function(realIndex) { 
+                epgGridOverlayLoader.item.visible = false
+                ctrl.playChannel(realIndex)
+                globalKeyboardHandler.forceActiveFocus() 
+            })
+            item.closeRequested.connect(function() { 
+                epgGridOverlayLoader.item.visible = false
+                globalKeyboardHandler.forceActiveFocus() 
+            })
+            
+            item.visible = false
         }
     }
 

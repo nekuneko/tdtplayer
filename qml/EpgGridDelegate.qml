@@ -9,7 +9,6 @@ ItemDelegate {
     height: 95 
     hoverEnabled: true
     
-    // Propiedades requeridas por Qt6 desde el modelo
     required property int index
     required property string name
     required property string logo
@@ -17,146 +16,105 @@ ItemDelegate {
 
     required property var channelModel
     required property int currentChannelIndex
+    
+    // 🚀 RESTAURACIÓN CRÍTICA: Propiedad reactiva para enlazar las pestañas del Overlay superior
+    property string viewMode: "NOW"
 
     readonly property int itemIndex: root.index
     readonly property bool isCurrent: ListView.view.currentIndex === root.itemIndex || (root.currentChannelIndex === root.itemIndex && !ListView.view.activeFocus)
 
     background: Rectangle {
-        color: root.isCurrent 
-               ? "#1D4ED8" 
-               : (root.hovered ? "#1E293B" : "#0B0F19") 
-        opacity: root.isCurrent ? 0.7 : 0.9
-        radius: 10
-        border.color: root.isCurrent ? "#60A5FA" : (root.hovered ? "#64748B" : "#1E293B")
-        border.width: root.isCurrent || root.hovered ? 1.5 : 1
+        color: root.isCurrent ? appTheme.bgItemActive : (root.hovered ? appTheme.bgItemHover : appTheme.bgItemDefault)
+        radius: 8
+        border.color: root.isCurrent ? appTheme.borderActive : (root.hovered ? appTheme.borderHover : appTheme.borderDefault)
+        border.width: root.isCurrent ? 2 : 1
         Behavior on color { ColorAnimation { duration: 120 } }
     }
 
-    // Limpieza de strings y procesamiento del EPG en caliente
     readonly property string channelNameStr: root.name ? root.name.toString().trim().replace(/[\r\n]/g, "") : ""
-    readonly property var epgData: root.channelModel ? root.channelModel.fetch_current_epg(root.channelNameStr) : null
-    readonly property string epgRawTitle: epgData ? epgData.title : "Emisión en directo"
-    readonly property string epgDesc: epgData ? (epgData.description || "Sin descripción disponible.") : "..."
-
-    readonly property int closeBracketIndex: root.epgRawTitle.indexOf("]")
-    readonly property bool hasTime: root.epgRawTitle.startsWith("[") && root.closeBracketIndex !== -1
     
-    readonly property string extractedTime: hasTime ? root.epgRawTitle.substring(0, root.closeBracketIndex + 1) : ""
-    readonly property string cleanTitle: hasTime ? root.epgRawTitle.substring(root.closeBracketIndex + 1).trim() : root.epgRawTitle
+    // Consultas SQLite a Python dependiendo de la pestaña activa
+    readonly property var nowEpg: root.channelModel ? root.channelModel.fetch_current_epg(root.channelNameStr) : null
+    readonly property string nowTitleRaw: nowEpg ? nowEpg.title : "Emisión en directo"
+    readonly property string nowDescRaw: nowEpg ? (nowEpg.description || "Sin descripción disponible.") : "Sin descripción disponible."
+
+    readonly property var nextEpg: root.channelModel ? root.channelModel.fetch_next_epg(root.channelNameStr) : null
+    readonly property string nextTitleRaw: nextEpg ? nextEpg.title : "Sin datos de programación"
+    readonly property string nextDescRaw: nextEpg ? (nextEpg.description || "No hay más información disponible.") : "No hay más información disponible."
+
+    readonly property string finalTitleRaw: root.viewMode === "NOW" ? nowTitleRaw : nextTitleRaw
+    readonly property string finalDesc: root.viewMode === "NOW" ? nowDescRaw : nextDescRaw
+
+    readonly property int closeBracketIndex: root.finalTitleRaw.indexOf("]")
+    readonly property bool hasTime: root.finalTitleRaw.startsWith("[") && root.closeBracketIndex !== -1
+    
+    readonly property string extractedTime: hasTime ? root.finalTitleRaw.substring(0, root.closeBracketIndex + 1) : ""
+    readonly property string cleanTitle: hasTime ? root.finalTitleRaw.substring(root.closeBracketIndex + 1).trim() : root.finalTitleRaw
 
     contentItem: RowLayout {
-        anchors.fill: parent
-        anchors.margins: 16 
-        spacing: 20
+        anchors.fill: parent; anchors.margins: 16; spacing: 20
 
-        // 1. Número de Canal con Badge Sólido
         Rectangle {
-            color: root.isCurrent ? "#3B82F6" : "#334155" 
-            radius: 6
-            Layout.preferredWidth: 42
-            Layout.preferredHeight: 28
-            Layout.alignment: Qt.AlignVCenter
-            
+            color: root.isCurrent ? appTheme.bgAbsolute : appTheme.badgeTimeBg 
+            radius: 4; Layout.preferredWidth: 38; Layout.preferredHeight: 24; Layout.alignment: Qt.AlignVCenter
             Text {
-                anchors.centerIn: parent
-                text: root.chNo ? root.chNo.toString().padStart(2, '0') : root.itemIndex.toString().padStart(2, '0')
-                color: "#FFFFFF" 
-                font.bold: true
-                font.pointSize: 11
+                anchors.centerIn: parent; text: root.chNo ? root.chNo.toString().padStart(2, '0') : root.itemIndex.toString().padStart(2, '0')
+                color: "#FFFFFF"; font.bold: true; font.pointSize: 10; renderType: Text.NativeRendering
             }
         }
 
-        // 2. Contenedor del Logotipo
         Rectangle {
-            Layout.preferredWidth: 50
-            Layout.preferredHeight: 50
-            color: "#030712" 
-            radius: 8
-            Layout.alignment: Qt.AlignVCenter
-
+            Layout.preferredWidth: 45; Layout.preferredHeight: 45; color: appTheme.bgAbsolute; radius: 6; Layout.alignment: Qt.AlignVCenter
             Image {
-                anchors.fill: parent
-                anchors.margins: 4
-                source: root.logo ? root.logo : ""
-                fillMode: Image.PreserveAspectFit
-                sourceSize.width: 100
-                sourceSize.height: 100
-                cache: true
+                anchors.fill: parent; anchors.margins: 4; source: root.logo ? root.logo : ""
+                fillMode: Image.PreserveAspectFit; sourceSize.width: 90; sourceSize.height: 90; cache: true
                 onStatusChanged: if (status === Image.Error || root.logo === "") source = "image://theme/media-playback-start"
             }
         }
 
-        // 3. Nombre del Canal en Negrita
         Text {
             text: root.channelNameStr
-            color: root.isCurrent ? "#FFFFFF" : "#F1F5F9" 
-            font.bold: true
-            font.pointSize: 13 
-            Layout.preferredWidth: 160
-            elide: Text.ElideRight
-            Layout.alignment: Qt.AlignVCenter
+            color: root.isCurrent ? appTheme.textTitleActive : appTheme.textTitle 
+            font.bold: true; font.pointSize: 12; Layout.preferredWidth: 150
+            renderType: Text.NativeRendering
+            elide: Text.ElideRight; Layout.alignment: Qt.AlignVCenter
         }
 
-        // Línea divisoria vertical
-        Rectangle {
-            Layout.preferredHeight: 50
-            Layout.preferredWidth: 1
-            color: "#475569"
-            Layout.alignment: Qt.AlignVCenter
-        }
+        Rectangle { Layout.preferredHeight: 45; Layout.preferredWidth: 1; color: appTheme.borderHover; Layout.alignment: Qt.AlignVCenter }
 
-        // 4. Bloque Informativo del Programa
         ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 4 
-            Layout.alignment: Qt.AlignVCenter
+            Layout.fillWidth: true; spacing: 6; Layout.alignment: Qt.AlignVCenter
 
             RowLayout {
-                spacing: 12
-                Layout.fillWidth: true
+                spacing: 12; Layout.fillWidth: true
 
-                // Píldora de horario limpia y nítida
                 Rectangle {
                     visible: root.hasTime
-                    color: "#1E293B"
-                    border.color: "#475569"
-                    border.width: 1
-                    radius: 4
-                    Layout.preferredHeight: 22
-                    Layout.preferredWidth: timeText.implicitWidth + 14
-                    Layout.alignment: Qt.AlignVCenter
+                    color: root.isCurrent ? appTheme.bgAbsolute : appTheme.badgeTimeBg
+                    border.color: root.isCurrent ? appTheme.bgAbsolute : appTheme.borderHover
+                    border.width: 1; radius: 4; Layout.preferredHeight: 22; Layout.preferredWidth: timeText.implicitWidth + 14; Layout.alignment: Qt.AlignVCenter
 
                     Text {
-                        id: timeText
-                        anchors.centerIn: parent
-                        text: root.extractedTime
-                        color: "#60A5FA" 
-                        font.bold: true
-                        font.pointSize: 10 
-                        font.family: "Monospace"
+                        id: timeText; anchors.centerIn: parent; text: root.extractedTime
+                        color: root.isCurrent ? appTheme.textTitle : appTheme.badgeTimeText
+                        font.bold: true; font.pointSize: 10; font.family: "Monospace"; renderType: Text.NativeRendering
                     }
                 }
 
                 Text {
                     text: root.cleanTitle
-                    color: "#FFFFFF" 
-                    font.bold: true
-                    font.pointSize: 13 
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
+                    color: root.isCurrent ? appTheme.textTitleActive : appTheme.textTitle
+                    font.bold: true; font.pointSize: 12.5; renderType: Text.NativeRendering
+                    Layout.fillWidth: true; elide: Text.ElideRight; Layout.alignment: Qt.AlignVCenter
                 }
             }
 
-            // 🚀 REFACTORIZACIÓN CRÍTICA CONTRA DESBORDES:
-            // Forzamos el auto-ajuste y limitamos a un bloque fijo de 2 líneas de texto de alta densidad
             Text {
-                text: root.epgDesc
-                color: root.isCurrent ? "#E2E8F0" : "#CBD5E1" 
-                font.pointSize: 11 
+                text: root.finalDesc
+                color: root.isCurrent ? appTheme.textDescActive : appTheme.textDesc 
+                font.pointSize: 10.5; renderType: Text.NativeRendering
                 Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight
             }
         }
     }

@@ -4,3 +4,4 @@ __pycache__/
 build/*
 dist/*
 TdtPlayer.spec
+epg_cache.db*

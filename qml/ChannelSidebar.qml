@@ -13,13 +13,30 @@ MouseArea {
     signal channelSelected(int realIndex)
     signal channelHovered(string channelName)
 
-    anchors.right: parent.right
     anchors.top: parent.top
     anchors.bottom: parent.bottom
     
+    // 🚀 MEJORA GEOMÉTRICA: Ancho fijado de forma estricta para evitar recálculos de layout continuos
+    width: 290
     visible: !root.isFullScreen || root.sidebarForceOpen
-    width: visible ? 290 : 0
     hoverEnabled: true
+
+    // 🚀 OPTIMIZACIÓN POR HARDWARE DE TRANSICIÓN:
+    // Convierte el panel en una textura estática en la GPU únicamente mientras se está moviendo,
+    // evitando que el ListView recalcule las filas virtuales en caliente.
+    layer.enabled: sidebarXAnimation.running
+    layer.smooth: false
+
+    // Modificación de coordenadas: si debe abrirse se pega al borde derecho (parent.width - width), si no se esconde fuera
+    x: (root.visible && root.sidebarForceOpen) ? (parent.width - width) : parent.width
+
+    Behavior on x { 
+        NumberAnimation { 
+            id: sidebarXAnimation
+            duration: 220 
+            easing.type: Easing.OutCubic // Curva cinemática más suave y rápida para interfaces de TV
+        } 
+    }
 
     onExited: {
         if (root.isFullScreen) { sidebarForceOpen = false }
@@ -60,14 +77,16 @@ MouseArea {
 
     Rectangle {
         anchors.fill: parent
-        // 🚀 ENLACE DINÁMICO DE PALETA: Cambia de color en sintonía con la rejilla principal
         color: appTheme.bgItemDefault
     }
 
-    Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutQuad } }
-
     ListView {
         id: channelListView; anchors.fill: parent; clip: true; model: 1000000
+        
+        // Optimizaciones nativas para listas masivas en Qt6
+        reuseItems: true
+        maximumFlickVelocity: 4000
+        
         Connections {
             target: ctrl 
             function onCurrentChannelIndexChanged() {

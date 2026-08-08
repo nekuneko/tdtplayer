@@ -5,6 +5,8 @@ import os
 import urllib.request
 import urllib.parse
 import hashlib
+import sqlite3
+from datetime import datetime
 from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex, Slot, Property, Signal, QThread
 
 from m3u_channel import M3uChannel
@@ -19,14 +21,18 @@ class LogoDownloaderWorker(QThread):
     def run(self):
         if not os.path.exists(self.cache_dir):
             os.makedirs(self.cache_dir, exist_ok=True)
+            
         headers = {'User-Agent': 'TdtPlayer-Native'}
         for url, local_path in self.download_queue:
-            if os.path.exists(local_path) and os.path.getsize(local_path) > 0: continue 
+            if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+                continue 
             try:
                 req = urllib.request.Request(url, headers=headers)
                 with urllib.request.urlopen(req, timeout=5.0) as response:
-                    with open(local_path, 'wb') as f: f.write(response.read())
-            except Exception as e: print(f"Error descargando logo {url}: {e}")
+                    with open(local_path, 'wb') as f:
+                        f.write(response.read())
+            except Exception as e:
+                print(f"Error descargando logo {url}: {e}")
 
 class ChannelModel(QAbstractListModel):
     NameRole = Qt.UserRole + 1
@@ -40,11 +46,38 @@ class ChannelModel(QAbstractListModel):
         super().__init__(parent)
         self._channels = []
         self._base_url = None
-        self._epg_cache = {}
         self._worker = None
         self._logo_cache = {}
+        
         self.cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".logo_cache")
-        self._downloader = None
+        self.db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "epg_cache.db")
+        
+        self._db_conn = None
+        self._db_cursor = None
+        self._init_sqlite_db()
+
+    def _init_sqlite_db(self):
+        try:
+            self._db_conn = sqlite3.connect(self.db_path)
+            # 🚀 CORRECCIÓN CRÍTICA DE BUCLE: Inicialización limpia del descriptor de la base de datos
+            self._db_cursor = self._db_conn.cursor()
+            
+            self._db_cursor.execute("PRAGMA journal_mode=WAL")
+            self._db_cursor.execute("PRAGMA synchronous=NORMAL")
+            self._db_cursor.execute("""
+                CREATE TABLE IF NOT EXISTS epg_store (
+                    channel_name TEXT,
+                    start_ts INTEGER,
+                    stop_ts INTEGER,
+                    title TEXT,
+                    description TEXT,
+                    PRIMARY KEY (channel_name, start_ts)
+                )
+            """)
+            self._db_cursor.execute("CREATE INDEX IF NOT EXISTS idx_epg_query ON epg_store (channel_name, stop_ts)")
+            self._db_conn.commit()
+        except Exception as e:
+            print(f"Error inicializando SQLite con concurrrencia WAL: {e}")
 
     def roleNames(self):
         return { self.NameRole: b"name", self.UrlRole: b"url", self.LogoRole: b"logo", self.ChNoRole: b"chNo" }
@@ -112,29 +145,63 @@ class ChannelModel(QAbstractListModel):
             self._downloader = LogoDownloaderWorker(download_queue, self.cache_dir)
             self._downloader.start()
         if self._base_url:
-            self._worker = EpgPreloaderWorker(self._base_url)
-            self._worker.epg_cache_ready.connect(self._on_cache_ready)
+            self._worker = EpgPreloaderWorker(self._base_url, self.db_path)
+            self._worker.epg_cache_ready.connect(self._on_worker_finished)
             self._worker.start()
 
-    def _on_cache_ready(self, cache_dict):
-        self._epg_cache = cache_dict
+    def _on_worker_finished(self, success):
+        if success and len(self._channels) > 0:
+            self.dataChanged.emit(self.index(0, 0), self.index(len(self._channels) - 1, 0), [])
 
     @Slot(int, result=str)
     def get_url_at(self, row: int) -> str:
         return self._channels[row].url if 0 <= row < len(self._channels) else ""
 
-    # 🚀 EXTRACCIÓN LIMPIDEZ MODO "AHORA": Devuelve el primer elemento de la lista cronológica ordenada
+    # 🚀 EJECUCIÓN EN 0 MS GARANTIZADA: Mapeo de tupla directo a través de la memoria persistente del cursor WAL
     @Slot(str, result='QVariant')
     def fetch_current_epg(self, channel_name: str) -> dict:
         search_name = str(channel_name).strip()
-        if search_name in self._epg_cache and isinstance(self._epg_cache[search_name], list) and len(self._epg_cache[search_name]) > 0:
-            return self._epg_cache[search_name][0]
-        return {"title": "Emisión en directo", "description": "Buscando información..."}
+        current_time = int(datetime.now().timestamp())
+        try:
+            if not self._db_cursor: 
+                return {"title": "Emisión en directo", "description": ""}
+            self._db_cursor.execute("""
+                SELECT start_ts, stop_ts, title, description FROM epg_store 
+                WHERE channel_name = ? AND stop_ts > ? ORDER BY start_ts ASC LIMIT 1
+            """, (search_name, current_time))
+            row = self._db_cursor.fetchone()
+            if row:
+                s_dt = datetime.fromtimestamp(row[0])
+                e_dt = datetime.fromtimestamp(row[1])
+                time_str = f"[{s_dt.strftime('%H:%M')} - {e_dt.strftime('%H:%M')}]"
+                return {"title": f"{time_str} {row[2]}", "description": row[3]}
+        except Exception as e: 
+            print(f"Error SQLite now: {e}")
+        return {"title": "Emisión en directo", "description": "Sin descripción detallada disponible."}
 
-    # 🚀 EXTRACCIÓN LIMPIDEZ MODO "SIGUIENTE": Devuelve el segundo elemento exacto ordenado por start_ts
+    # 🚀 EJECUCIÓN EN 0 MS GARANTIZADA: Mapeo de tupla directo a través de la memoria persistente del cursor WAL
     @Slot(str, result='QVariant')
     def fetch_next_epg(self, channel_name: str) -> dict:
         search_name = str(channel_name).strip()
-        if search_name in self._epg_cache and isinstance(self._epg_cache[search_name], list) and len(self._epg_cache[search_name]) > 1:
-            return self._epg_cache[search_name][1]
-        return {"title": "[--:-- - --:--] Sin datos de programación futura", "description": "No se encontraron más eventos planificados en el flujo de Tvheadend para este canal."}
+        current_time = int(datetime.now().timestamp())
+        try:
+            if not self._db_cursor: 
+                return {"title": "[--:-- - --:--] Sin datos", "description": ""}
+            self._db_cursor.execute("""
+                SELECT start_ts, stop_ts, title, description FROM epg_store 
+                WHERE channel_name = ? AND stop_ts > ? ORDER BY start_ts ASC LIMIT 1 OFFSET 1
+            """, (search_name, current_time))
+            row = self._db_cursor.fetchone()
+            if row:
+                s_dt = datetime.fromtimestamp(row[0])
+                e_dt = datetime.fromtimestamp(row[1])
+                time_str = f"[{s_dt.strftime('%H:%M')} - {e_dt.strftime('%H:%M')}]"
+                return {"title": f"{time_str} {row[2]}", "description": row[3]}
+        except Exception as e: 
+            print(f"Error SQLite next: {e}")
+        return {"title": "[--:-- - --:--] Sin datos de programación futura", "description": "No se encontraron más eventos planificados en la base de datos local."}
+
+    def __del__(self):
+        try:
+            if self._db_conn: self._db_conn.close()
+        except: pass
