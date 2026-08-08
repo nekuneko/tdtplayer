@@ -2,12 +2,14 @@
 import QtQuick
 import QtQuick.Controls
 import QtMultimedia
-import QtCore 
+import QtCore
 import "qml"
 
 ApplicationWindow {
     id: window
-    width: 1024; height: 768; visible: true
+    width: 1024
+    height: 768
+    visible: true
     title: "Tvheadend Native Player"
 
     Theme {
@@ -20,122 +22,167 @@ ApplicationWindow {
     property bool isBooting: true
     property var localLogoCache: ({})
 
+    // Configuración elástica de arranque de coordenadas
     x: appSettings.windowX !== -1 ? appSettings.windowX : (Screen.width - width) / 2
     y: appSettings.windowY !== -1 ? appSettings.windowY : (Screen.height - height) / 2
     visibility: appSettings.lastIsFullScreen ? Window.FullScreen : Window.Windowed
 
-    onXChanged: if (window.visibility === Window.Windowed && !window.isBooting) appSettings.windowX = window.x
-    onYChanged: if (window.visibility === Window.Windowed && !window.isBooting) appSettings.windowY = window.y
-    onWidthChanged: if (window.visibility === Window.Windowed && !window.isBooting) appSettings.windowWidth = window.width
-    onHeightChanged: if (window.visibility === Window.Windowed && !window.isBooting) appSettings.windowHeight = window.height
-
-    onVisibilityChanged: {
-        if (window.isBooting) return
-        if (window.visibility === Window.FullScreen) { appSettings.lastIsFullScreen = true; ctrl.isFullScreen = true }
-        else if (window.visibility === Window.Windowed) { appSettings.lastIsFullScreen = false; ctrl.isFullScreen = false }
-    }
-
     Settings {
         id: appSettings
-        property string lastM3uUrl: ""; property int lastChannelIndex: 0 
-        property int windowX: -1; property int windowY: -1; property int windowWidth: 1024; property int windowHeight: 768
+        property string lastM3uUrl: ""
+        property int lastChannelIndex: 0
+        property int windowX: -1
+        property int windowY: -1
+        property int windowWidth: 1024
+        property int windowHeight: 768
         property bool lastIsFullScreen: false
         property string lastTheme: "CINEMATIC_COLOR"
     }
 
     PlaybackController {
-        id: ctrl; model: channelModel; mediaPlayer: playerView.mediaPlayer; sidebar: sidebar; epgDrawer: epgDrawer
-        // 🚀 SINCRONIZACIÓN DE ZAPPING: Levantamos el panel inferior, pero NO encendemos el temporizador aquí
-        onChannelZappedByKeyboard: { epgDrawer.epgForceOpen = true }
-    }
-
-    // Receptor inteligente ligado al hilo de hardware de reproducción de vídeo de QtMultimedia
-    Connections {
-        target: playerView.mediaPlayer
-        
-        // La función de la API de Qt6 se dispara en cada cambio de estado del motor de decodificación
-        function onPlaybackStateChanged() {
-            if (playerView.mediaPlayer.playbackState === MediaPlayer.PlayingState) {
-                // 🚀 DETONACIÓN BAJO DEMANDA: Solo cuando el vídeo brota en pantalla, arranca la cuenta atrás para esconderlo
-                keyboardEpgTimer.restart()
-            }
+        id: ctrl
+        model: channelModel
+        mediaPlayer: playerView.mediaPlayer
+        sidebar: sidebar
+        epgDrawer: epgDrawer
+        onChannelZappedByKeyboard: {
+            epgDrawer.epgForceOpen = true;
         }
     }
 
+    // 🚀 INTEGRACIÓN MODULAR: Controladores de ventana y de arranque de flujos
+    WindowController {
+        id: windowController
+        window: window
+        appSettings: appSettings
+        ctrl: ctrl
+    }
+
+    EpgBootstrapper {
+        id: epgBootstrapper
+        window: window
+        playerView: playerView
+        epgDrawer: epgDrawer
+        ctrl: ctrl
+    }
+
     KeyboardHandler {
-        id: globalKeyboardHandler; controller: ctrl; window: window; channelNumPopup: channelNumPopup; focus: true
+        id: globalKeyboardHandler
+        controller: ctrl
+        window: window
+        channelNumPopup: channelNumPopup
+        focus: true
     }
 
     FocusScope {
         id: mainFocusScope
         anchors.fill: parent
-
         VideoPlayerView {
-            id: playerView; window: window; controller: ctrl; sidebarItem: sidebar
-            epgDrawerItem: epgDrawer; configSidebarItem: configSidebar; globalKeyboardHandlerItem: globalKeyboardHandler; anchors.fill: parent 
+            id: playerView
+            window: window
+            controller: ctrl
+            sidebarItem: sidebar
+            epgDrawerItem: epgDrawer
+            configSidebarItem: configSidebar
+            globalKeyboardHandlerItem: globalKeyboardHandler
+            anchors.fill: parent
         }
 
         EpgDrawer {
-            id: epgDrawer; channelName: ctrl.osdChannelName; channelNo: ctrl.osdChannelNo; channelLogo: ctrl.osdChannelLogo 
-            hoveredChannelName: ctrl.osdHoveredChannelName; epgTitle: ctrl.epgTitle; epgDescription: ctrl.epgDescription
-            isFullScreen: ctrl.isFullScreen; sidebarItem: sidebar; z: 1 
+            id: epgDrawer
+            channelName: ctrl.osdChannelName
+            channelNo: ctrl.osdChannelNo
+            channelLogo: ctrl.osdChannelLogo
+            hoveredChannelName: ctrl.osdHoveredChannelName
+            epgTitle: ctrl.epgTitle
+            epgDescription: ctrl.epgDescription
+            isFullScreen: ctrl.isFullScreen
+            sidebarItem: sidebar
+            z: 1
             width: sidebar.visible ? (parent.width - sidebar.width) : parent.width
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
-            
-            // Reloj asíncrono centralizado en el nodo del panel para gestionar el retraso
-            Timer { id: keyboardEpgTimer; interval: 3000; onTriggered: epgDrawer.epgForceOpen = false }
         }
 
         Connections {
             target: epgDrawer
-            function onEpgForceOpenChanged() { if (epgDrawer.epgForceOpen && typeof playerView !== "undefined") playerView.resetMouseCursor() }
+            function onEpgForceOpenChanged() {
+                if (epgDrawer.epgForceOpen && typeof playerView !== "undefined") {
+                    playerView.resetMouseCursor();
+                    epgBootstrapper.resetTimer();
+                }
+            }
         }
 
         ChannelSidebar {
-            id: sidebar; model: channelModel; currentChannelIndex: ctrl.currentChannelIndex; isFullScreen: ctrl.isFullScreen; z: 1
+            id: sidebar
+            model: channelModel
+            currentChannelIndex: ctrl.currentChannelIndex
+            isFullScreen: ctrl.isFullScreen
+            z: 1
             visible: !ctrl.isConfigMenuOpen && sidebar.sidebarForceOpen
-            onChannelSelected: (realIndex) => { ctrl.playChannel(realIndex); globalKeyboardHandler.forceActiveFocus() }
             appThemeItem: appTheme
 
-            onChannelHovered: (name) => {
-                if (ctrl.zappingTimer.running || !name) return
-                var cleanHoverName = name.toString().trim().replace(/[\r\n]/g, "")
-                ctrl.osdHoveredChannelName = cleanHoverName
-                var count = channelModel.rowCount(), foundLogo = "", foundChNo = ""
+            onChannelSelected: realIndex => {
+                ctrl.playChannel(realIndex);
+                globalKeyboardHandler.forceActiveFocus();
+            }
+
+            onChannelHovered: name => {
+                if (ctrl.zappingTimer.running || !name)
+                    return;
+                var cleanHoverName = name.toString().trim().replace(/[\r\n]/g, "");
+                ctrl.osdHoveredChannelName = cleanHoverName;
+                var count = channelModel.rowCount(), foundLogo = "", foundChNo = "";
                 for (var i = 0; i < count; i++) {
-                    var idx = channelModel.index(i, 0), modelName = channelModel.data(idx, Qt.UserRole + 1)
+                    var idx = channelModel.index(i, 0), modelName = channelModel.data(idx, Qt.UserRole + 1);
                     if (modelName && modelName.toString().trim().replace(/[\r\n]/g, "") === cleanHoverName) {
-                        foundLogo = window.localLogoCache[cleanHoverName] || ""
-                        foundChNo = channelModel.data(idx, Qt.UserRole + 4) || i.toString(); break
+                        foundLogo = window.localLogoCache[cleanHoverName] || "";
+                        foundChNo = channelModel.data(idx, Qt.UserRole + 4) || i.toString();
+                        break;
                     }
                 }
-                ctrl.osdChannelNo = foundChNo; ctrl.osdChannelLogo = foundLogo 
-                var epgData = channelModel.fetch_current_epg(cleanHoverName)
-                if (epgData && epgData.title !== undefined) { ctrl.epgTitle = epgData.title; ctrl.epgDescription = epgData.description }
-                epgDrawer.epgForceOpen = true
-            }
-            
-            onExited: {
-                sidebar.sidebarForceOpen = false; epgDrawer.epgForceOpen = false; sidebar.forceCenterScrollSync(); ctrl.osdHoveredChannelName = ""
-                var currentIdx = channelModel.index(ctrl.currentChannelIndex, 0), currentName = channelModel.data(currentIdx, Qt.UserRole + 1) || ""
-                if (currentName !== "") {
-                    var cleanCurrentName = currentName.toString().trim().replace(/[\r\n]/g, "")
-                    ctrl.osdChannelLogo = window.localLogoCache[cleanCurrentName] || ""
-                    ctrl.osdChannelNo = channelModel.data(currentIdx, Qt.UserRole + 4) || ctrl.currentChannelIndex.toString()
+                ctrl.osdChannelNo = foundChNo;
+                ctrl.osdChannelLogo = foundLogo;
+                var epgData = channelModel.fetch_current_epg(cleanHoverName);
+                if (epgData && epgData.title !== undefined) {
+                    ctrl.epgTitle = epgData.title;
+                    ctrl.epgDescription = epgData.description;
                 }
-                var currentEpg = channelModel.fetch_current_epg(ctrl.osdChannelName)
-                if (currentEpg && currentEpg.title !== undefined) { ctrl.epgTitle = currentEpg.title; ctrl.epgDescription = currentEpg.description }
-                globalKeyboardHandler.forceActiveFocus()
+                epgDrawer.epgForceOpen = true;
+            }
+
+            onExited: {
+                sidebar.sidebarForceOpen = false;
+                epgDrawer.epgForceOpen = false;
+                sidebar.forceCenterScrollSync();
+                ctrl.osdHoveredChannelName = "";
+                var currentIdx = channelModel.index(ctrl.currentChannelIndex, 0);
+                var currentName = channelModel.data(currentIdx, Qt.UserRole + 1) || "";
+                if (currentName !== "") {
+                    var cleanCurrentName = currentName.toString().trim().replace(/[\r\n]/g, "");
+                    ctrl.osdChannelLogo = window.localLogoCache[cleanCurrentName] || "";
+                    ctrl.osdChannelNo = channelModel.data(currentIdx, Qt.UserRole + 4) || ctrl.currentChannelIndex.toString();
+                }
+                var currentEpg = channelModel.fetch_current_epg(ctrl.osdChannelName);
+                if (currentEpg && currentEpg.title !== undefined) {
+                    ctrl.epgTitle = currentEpg.title;
+                    ctrl.epgDescription = currentEpg.description;
+                }
+                globalKeyboardHandler.forceActiveFocus();
             }
         }
 
         ConfigSidebar {
-            id: configSidebar; isFullScreen: ctrl.isFullScreen; z: 2; onImportRequested: dataLoader.loadM3uFromUrl("")
-            onMouseExitedSidebar: ctrl.restorePanelsAfterConfig(); visible: configSidebar.sidebarForceOpen
+            id: configSidebar
+            isFullScreen: ctrl.isFullScreen
+            z: 2
+            visible: configSidebar.sidebarForceOpen
             appSettingsItem: appSettings
             appThemeItem: appTheme
+            onImportRequested: dataLoader.loadM3uFromUrl("")
+            onMouseExitedSidebar: ctrl.restorePanelsAfterConfig()
         }
-    } 
+    }
 
     Loader {
         id: epgGridOverlayLoader
@@ -143,34 +190,49 @@ ApplicationWindow {
         z: 10
         asynchronous: true
         source: "qml/EpgGridOverlay.qml"
-        
         onLoaded: {
-            item.channelModel = channelModel
-            item.currentChannelIndex = ctrl.currentChannelIndex
-            item.appThemeItem = appTheme
+            item.channelModel = channelModel;
+            item.appThemeItem = appTheme;
+            item.currentChannelIndex = Qt.binding(function () {
+                return ctrl.currentChannelIndex;
+            });
 
-            item.channelSelected.connect(function(realIndex) { 
-                epgGridOverlayLoader.item.visible = false
-                ctrl.playChannel(realIndex)
-                globalKeyboardHandler.forceActiveFocus() 
-            })
-            item.closeRequested.connect(function() { 
-                epgGridOverlayLoader.item.visible = false
-                globalKeyboardHandler.forceActiveFocus() 
-            })
-            
-            item.visible = false
+            item.channelSelected.connect(function (realIndex) {
+                epgGridOverlayLoader.item.visible = false;
+                ctrl.playChannel(realIndex);
+                globalKeyboardHandler.forceActiveFocus();
+            });
+            item.closeRequested.connect(function () {
+                epgGridOverlayLoader.item.visible = false;
+                globalKeyboardHandler.forceActiveFocus();
+            });
+
+            item.visible = false;
         }
     }
 
-    ChannelNumPopup { id: channelNumPopup; onNumberAccepted: (numberStr) => ctrl.playChannelByNumber(numberStr) }
-    Connections { target: channelModel; function onLogoCacheChanged() { window.localLogoCache = channelModel.logoCache } }
+    ChannelNumPopup {
+        id: channelNumPopup
+        onNumberAccepted: numberStr => ctrl.playChannelByNumber(numberStr)
+    }
 
-    Component.onCompleted: { ctrl.isFullScreen = appSettings.lastIsFullScreen; window.isBooting = false }
+    Connections {
+        target: channelModel
+        function onLogoCacheChanged() {
+            window.localLogoCache = channelModel.logoCache;
+        }
+    }
+
+    Component.onCompleted: {
+        ctrl.isFullScreen = appSettings.lastIsFullScreen;
+    }
 
     EpgDataLoader {
         id: dataLoader
-        window: window; appSettings: appSettings
-        playerView: playerView; ctrl: ctrl; sidebar: sidebar
+        window: window
+        appSettings: appSettings
+        playerView: playerView
+        ctrl: ctrl
+        sidebar: sidebar
     }
 }

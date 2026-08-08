@@ -1,47 +1,55 @@
 // qml/ClockWidget.qml
 import QtQuick
+import QtQuick.Layouts
 
 Rectangle {
     id: root
-    width: 110
-    height: 45
-    radius: 10
-    color: "#1E293B"
-    border.color: "#3B82F6"
-    border.width: 1.5
-    
-    opacity: 0.0
-    Behavior on opacity { NumberAnimation { duration: 250 } }
 
-    property string currentTime: "00:00"
+    // 🚀 MAQUETACIÓN PREMIUM AMPLIADA: Se incrementa drásticamente la escala del recuadro
+    width: typeof appTheme !== "undefined" && appTheme.px ? appTheme.px(130) : 130
+    height: typeof appTheme !== "undefined" && appTheme.px ? appTheme.px(48) : 48
 
-    // SOLUCIÓN: Modularizamos la lógica en una función estándar ejecutable
-    function updateTime() {
-        var date = new Date()
-        var hours = date.getHours().toString().padStart(2, '0')
-        var minutes = date.getMinutes().toString().padStart(2, '0')
-        root.currentTime = hours + ":" + minutes
-    }
+    // Coherencia de píldora: Radio proporcional al nuevo tamaño ampliado
+    radius: typeof appTheme !== "undefined" && appTheme.px ? appTheme.px(6) : 6
+
+    // Color de acento sólido sincronizado dinámicamente con el tema activo
+    color: typeof appTheme !== "undefined" ? appTheme.bgItemActive : "#1E293B"
+    border.width: 0
+
+    property string timeString: "00:00"
 
     Timer {
         id: clockTimer
         interval: 1000
         running: true
         repeat: true
-        // El temporizador simplemente invoca la función en cada ciclo
-        onTriggered: root.updateTime()
+        triggeredOnStart: true
+        onTriggered: {
+            var date = new Date();
+            // 🚀 PURGA DE SEGUNDOS: Formateo limpio omitiendo el bloque de segundos
+            root.timeString = date.toLocaleTimeString(Qt.locale("es_ES"), "hh:mm");
+        }
     }
 
-    // Fuerza la carga de la hora en el milisegundo cero al arrancar la app
-    Component.onCompleted: root.updateTime()
+    RowLayout {
+        anchors.fill: parent
+        spacing: 0
+        Text {
+            id: timeText
+            text: root.timeString
 
-    Text {
-        anchors.centerIn: parent
-        text: root.currentTime
-        color: "#FFFFFF"
-        font.bold: true
-        font.pointSize: 16
-        font.family: "Courier New" 
-        renderType: Text.NativeRendering
+            // Algoritmo YIQ aplicado: El texto cambia automáticamente según el color del tema
+            color: typeof appTheme !== "undefined" ? appTheme.getW3cContrast(root.color) : "#FFFFFF"
+
+            font.bold: true
+            // 🚀 FUENTE VECORIAL MAXIMIZADA: Salto de 11pt a 18pt de alta definición
+            font.pointSize: typeof appTheme !== "undefined" && appTheme.pt ? appTheme.pt(18) : 18
+            font.family: "Monospace"
+            renderType: Text.NativeRendering
+
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+        }
     }
 }

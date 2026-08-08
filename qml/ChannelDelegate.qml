@@ -4,92 +4,104 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 ItemDelegate {
-    id: control
-    width: parent ? parent.width : (appTheme ? appTheme.px(290) : 290)
-    height: appTheme ? appTheme.px(60) : 60
+    id: delegateRoot
+
+    width: ListView.view.width
+    height: appThemeItem ? appThemeItem.px(60) : 60
     hoverEnabled: true
-    
-    required property var sidebarModel
-    required property int modelRow
-    required property int currentChannelIndex
+
+    property var sidebarModel
+    property int modelRow: 0
+    property int currentChannelIndex: 0
+    property var appThemeItem: null
 
     signal clickedReal(int realIndex)
     signal hoveredReal(string channelName)
 
-    readonly property int realIndex: (sidebarModel && sidebarModel.rowCount() > 0) ? (modelRow % sidebarModel.rowCount()) : 0
-    highlighted: currentChannelIndex === realIndex
+    readonly property int virtualIndex: delegateRoot.modelRow
+    readonly property int realChannelCount: delegateRoot.sidebarModel ? delegateRoot.sidebarModel.rowCount() : 0
+    readonly property int finalRealIndex: delegateRoot.realChannelCount > 0 ? (delegateRoot.virtualIndex % delegateRoot.realChannelCount) : 0
+
+    readonly property var indexObj: delegateRoot.sidebarModel ? delegateRoot.sidebarModel.index(delegateRoot.finalRealIndex, 0) : null
+    readonly property string channelName: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 1) || "") : ""
+    readonly property string channelLogo: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 3) || "") : ""
+    readonly property string channelChNo: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 4) || "") : ""
+
+    readonly property bool isCurrentlyPlaying: delegateRoot.currentChannelIndex === delegateRoot.finalRealIndex
 
     background: Rectangle {
-        color: control.highlighted 
-               ? appTheme.bgItemActive 
-               : (control.hovered ? appTheme.bgItemHover : "transparent") 
-        radius: appTheme ? appTheme.px(6) : 6
-        border.color: control.highlighted ? appTheme.borderActive : (control.hovered ? appTheme.borderHover : "transparent")
-        border.width: 1
-        Behavior on color { ColorAnimation { duration: 120 } }
+        color: delegateRoot.isCurrentlyPlaying ? (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.bgItemActive : "#1D4ED8") : (delegateRoot.hovered ? (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.bgItemHover : "#1E293B") : "transparent")
+    }
+
+    onHoveredChanged: {
+        if (delegateRoot.hovered && delegateRoot.channelName !== "") {
+            delegateRoot.hoveredReal(delegateRoot.channelName);
+        }
+    }
+
+    onClicked: {
+        delegateRoot.clickedReal(delegateRoot.finalRealIndex);
     }
 
     contentItem: RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: appTheme ? appTheme.px(16) : 16
-        anchors.rightMargin: appTheme ? appTheme.px(16) : 16
-        spacing: appTheme ? appTheme.px(12) : 12
-        
-        Image {
-            source: (control.sidebarModel && control.sidebarModel.rowCount() > 0) 
-                    ? control.sidebarModel.data(control.sidebarModel.index(control.realIndex, 0), Qt.UserRole + 3) 
-                    : ""
-            Layout.preferredWidth: appTheme ? appTheme.px(35) : 35
-            Layout.preferredHeight: appTheme ? appTheme.px(35) : 35
-            fillMode: Image.PreserveAspectFit
-            cache: true
-            onStatusChanged: if (status === Image.Error) source = "image://theme/media-playback-start"
-        }
-
-        Text {
-            text: (control.sidebarModel && control.sidebarModel.rowCount() > 0) 
-                  ? control.sidebarModel.data(control.sidebarModel.index(control.realIndex, 0), Qt.UserRole + 1) 
-                  : ""
-            color: control.highlighted ? appTheme.textTitleActive : (control.hovered ? appTheme.textTitle : appTheme.textDesc) 
-            font.bold: true
-            font.pointSize: appTheme ? appTheme.pt(11) : 11
-            renderType: Text.NativeRendering
-            Layout.fillWidth: true
-            elide: Text.ElideRight
-        }
-
+        anchors.leftMargin: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(14) : 14
+        anchors.rightMargin: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(14) : 14
+        spacing: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(12) : 12
+        // 1. Contenedor del Logotipo Proporcional
         Rectangle {
-            id: badgeContainer
-            property string chNoStr: (control.sidebarModel && control.sidebarModel.rowCount() > 0) 
-                                     ? control.sidebarModel.data(control.sidebarModel.index(control.realIndex, 0), Qt.UserRole + 4) 
-                                     : ""
-            property string finalChNo: chNoStr !== "" ? chNoStr : control.realIndex.toString()
-
-            color: control.highlighted ? appTheme.bgAbsolute : appTheme.badgeTimeBg
+            Layout.preferredWidth: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(35) : 35
+            Layout.preferredHeight: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(35) : 35
+            color: "#0F172A"
             radius: 4
+            Layout.alignment: Qt.AlignVCenter
 
-            Layout.preferredHeight: appTheme ? appTheme.px(24) : 24
-            Layout.preferredWidth: channelNumberText.implicitWidth + (appTheme ? appTheme.px(14) : 14)
+            Image {
+                anchors.fill: parent
+                anchors.margins: 2
+                source: delegateRoot.channelLogo
+                fillMode: Image.PreserveAspectFit
+                sourceSize.width: 70
+                sourceSize.height: 70
+                cache: true
+                onStatusChanged: {
+                    if (status === Image.Error || delegateRoot.channelLogo === "") {
+                        source = "image://theme/media-playback-start";
+                    }
+                }
+            }
+        }
+
+        // 2. Nombre del Canal
+        Text {
+            text: delegateRoot.channelName
+            color: delegateRoot.isCurrentlyPlaying ? (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.textTitleActive : "#FFFFFF") : (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.textTitle : "#FFFFFF")
+            font.bold: delegateRoot.isCurrentlyPlaying
+            font.pointSize: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.pt(11) : 11
+            elide: Text.ElideRight
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            renderType: Text.NativeRendering
+        }
+
+        // 3. Número de Canal - LÓGICA ESTABLE: Caja blanca con número en color de acento al sintonizarse
+        Rectangle {
+            id: channelNumberBadge
+            color: delegateRoot.isCurrentlyPlaying ? "#FFFFFF" : (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.bgItemActive : "#3B82F6")
+            radius: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(4) : 4
+
+            Layout.preferredWidth: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(34) : 34
+            Layout.preferredHeight: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(34) : 34
             Layout.alignment: Qt.AlignVCenter
 
             Text {
-                id: channelNumberText
                 anchors.centerIn: parent
-                text: parent.finalChNo.padStart(2, '0')
-                color: control.highlighted ? appTheme.textTitle : appTheme.badgeTimeText
+                text: delegateRoot.channelChNo ? delegateRoot.channelChNo.toString().padStart(2, '0') : delegateRoot.finalRealIndex.toString().padStart(2, '0')
+                color: delegateRoot.isCurrentlyPlaying ? (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.bgItemActive : "#3B82F6") : (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.getW3cContrast(channelNumberBadge.color) : "#FFFFFF")
                 font.bold: true
-                font.pointSize: appTheme ? appTheme.pt(10) : 10
+                font.pointSize: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.pt(10.5) : 10.5
                 renderType: Text.NativeRendering
             }
-        }
-    }
-
-    onClicked: control.clickedReal(control.realIndex)
-    
-    onHoveredChanged: {
-        if (hovered && (control.sidebarModel && control.sidebarModel.rowCount() > 0)) {
-            var name = control.sidebarModel.data(control.sidebarModel.index(control.realIndex, 0), Qt.UserRole + 1)
-            if (name !== "") control.hoveredReal(name)
         }
     }
 }

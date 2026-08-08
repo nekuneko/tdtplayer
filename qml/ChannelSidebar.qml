@@ -9,7 +9,6 @@ MouseArea {
     property int currentChannelIndex: 0
     property bool isFullScreen: false
     property bool sidebarForceOpen: false
-
     property var appThemeItem: null
 
     signal channelSelected(int realIndex)
@@ -17,7 +16,7 @@ MouseArea {
 
     anchors.top: parent.top
     anchors.bottom: parent.bottom
-    
+
     width: root.appThemeItem ? root.appThemeItem.px(290) : 290
     visible: !root.isFullScreen || root.sidebarForceOpen
     hoverEnabled: true
@@ -27,59 +26,67 @@ MouseArea {
 
     x: (root.visible && root.sidebarForceOpen) ? (parent.width - width) : parent.width
 
-    Behavior on x { 
-        NumberAnimation { 
+    onSidebarForceOpenChanged: {
+        if (sidebarForceOpen) {
+            root.forceCenterScrollSync();
+        }
+    }
+
+    Behavior on x {
+        NumberAnimation {
             id: sidebarXAnimation
-            duration: 220 
-            easing.type: Easing.OutCubic 
-        } 
+            duration: 220
+            easing.type: Easing.OutCubic
+        }
     }
 
     onExited: {
-        if (sidebarXAnimation.running) return
-        if (root.isFullScreen) { sidebarForceOpen = false }
-        var count = root.model ? root.model.rowCount() : 0
-        if (count > 0) {
-            var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY)
-            var baseVirtual = currentScrollIndex - (currentScrollIndex % count)
-            var targetVirtual = baseVirtual + root.currentChannelIndex
-            channelListView.positionViewAtIndex(targetVirtual, ListView.Center)
+        if (sidebarXAnimation.running)
+            return;
+        if (root.isFullScreen) {
+            sidebarForceOpen = false;
+        }
+        root.forceCenterScrollSync();
+    }
+
+    function positionListView(index, mode) {
+        if (!sidebarXAnimation.running && root.model && index >= 0 && index < root.model.rowCount()) {
+            channelListView.positionViewAtIndex(index, mode);
         }
     }
 
-    // 🚀 RESTAURACIÓN CRÍTICA: Función nativa invocada por EpgDataLoader para indexar posiciones
-    function positionListView(index, mode) { 
-        if (!sidebarXAnimation.running) {
-            channelListView.positionViewAtIndex(index, mode) 
-        }
+    function getCurrentScrollIndex() {
+        return channelListView.indexAt(0, channelListView.contentY);
     }
-
-    function getCurrentScrollIndex() { return channelListView.indexAt(0, channelListView.contentY) }
 
     function forceKeyboardScrollSync() {
-        if (sidebarXAnimation.running) return
-        var count = root.model ? root.model.rowCount() : 0; if (count === 0) return
-        var rowHeight = root.appThemeItem ? root.appThemeItem.px(60) : 60
-        var visibleCount = Math.floor(channelListView.height / rowHeight)
-        var firstVisibleVirtual = channelListView.indexAt(0, channelListView.contentY)
-        var lastVisibleVirtual = firstVisibleVirtual + visibleCount - 1
-        var baseVirtual = firstVisibleVirtual - (firstVisibleVirtual % count)
-        var targetVirtual = baseVirtual + root.currentChannelIndex
-        
-        if (targetVirtual < firstVisibleVirtual && (targetVirtual + count) <= lastVisibleVirtual + count) targetVirtual += count
-        else if (targetVirtual > lastVisibleVirtual && (targetVirtual - count) >= firstVisibleVirtual - count) targetVirtual -= count
-
-        if (targetVirtual > lastVisibleVirtual) channelListView.positionViewAtIndex(targetVirtual, ListView.Beginning)
-        else if (targetVirtual < firstVisibleVirtual) channelListView.positionViewAtIndex(targetVirtual, ListView.End)
+        if (sidebarXAnimation.running || !root.model)
+            return;
+        var count = root.model.rowCount();
+        if (count === 0)
+            return;
+        var rowHeight = root.appThemeItem ? root.appThemeItem.px(60) : 60;
+        var visibleCount = Math.floor(channelListView.height / rowHeight);
+        var firstVisible = channelListView.indexAt(0, channelListView.contentY);
+        var lastVisible = firstVisible + visibleCount - 1;
+        var target = root.currentChannelIndex;
+        if (target >= 0 && target < count) {
+            if (target > lastVisible)
+                channelListView.positionViewAtIndex(target, ListView.Beginning);
+            else if (target < firstVisible)
+                channelListView.positionViewAtIndex(target, ListView.End);
+        }
     }
 
     function forceCenterScrollSync() {
-        if (sidebarXAnimation.running) return
-        var count = root.model ? root.model.rowCount() : 0; if (count === 0) return
-        var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY)
-        var baseVirtual = currentScrollIndex - (currentScrollIndex % count)
-        var targetVirtual = baseVirtual + root.currentChannelIndex
-        channelListView.positionViewAtIndex(targetVirtual, ListView.Center)
+        if (sidebarXAnimation.running || !root.model)
+            return;
+        var count = root.model.rowCount();
+        if (count === 0)
+            return;
+        if (root.currentChannelIndex >= 0 && root.currentChannelIndex < count) {
+            channelListView.positionViewAtIndex(root.currentChannelIndex, ListView.Center);
+        }
     }
 
     Rectangle {
@@ -91,33 +98,46 @@ MouseArea {
         id: channelListView
         anchors.fill: parent
         clip: true
-        model: 1000000
-        
+        model: root.model
         reuseItems: true
         maximumFlickVelocity: 4000
         cacheBuffer: root.appThemeItem ? root.appThemeItem.px(120) : 120
-        
-        Connections {
-            target: ctrl 
-            function onCurrentChannelIndexChanged() {
-                if (sidebarXAnimation.running || !root.model || root.containsMouse) return
-                var count = root.model.rowCount()
-                if (count === 0) return
-                var currentScrollIndex = channelListView.indexAt(0, channelListView.contentY)
-                var baseVirtual = currentScrollIndex - (currentScrollIndex % count)
-                var targetVirtual = baseVirtual + ctrl.currentChannelIndex
-                channelListView.positionViewAtIndex(targetVirtual, ListView.Center)
+
+        WheelHandler {
+            id: sidebarExploreWheel
+            orientation: Qt.Vertical
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+            onWheel: event => {
+                channelListView.flick(0, event.angleDelta.y * 10);
             }
         }
-        
+
+        Connections {
+            target: ctrl
+            function onCurrentChannelIndexChanged() {
+                if (sidebarXAnimation.running || !root.model || root.containsMouse)
+                    return;
+                var count = root.model.rowCount();
+                if (count === 0)
+                    return;
+                if (ctrl.currentChannelIndex >= 0 && ctrl.currentChannelIndex < count) {
+                    channelListView.positionViewAtIndex(ctrl.currentChannelIndex, ListView.Center);
+                }
+            }
+        }
+
         delegate: ChannelDelegate {
             sidebarModel: root.model
             required property int index
-            required property var model
             modelRow: index
             currentChannelIndex: root.currentChannelIndex
-            onClickedReal: function(realIndex) { root.channelSelected(realIndex) }
-            onHoveredReal: function(channelName) { root.channelHovered(channelName) }
+            onClickedReal: function (realIndex) {
+                root.channelSelected(realIndex);
+            }
+            onHoveredReal: function (channelName) {
+                root.channelHovered(channelName);
+            }
+            appThemeItem: root.appThemeItem
         }
     }
 }

@@ -14,40 +14,76 @@ RowLayout {
     required property string hoveredChannelName
 
     RowLayout {
-        spacing: 8; Layout.alignment: Qt.AlignLeft
-
+        spacing: 8
+        Layout.alignment: Qt.AlignLeft
+        // CABECERA EPG: CUADRADO CON ESQUINAS REDONDEADAS DE ACENTO SÓLIDO YIQ CONTRONTRATE
         Rectangle {
             visible: root.channelNo !== ""
-            color: appTheme.badgeTimeBg
-            border.color: appTheme.borderHover; border.width: 1; radius: 4; Layout.preferredWidth: 42; Layout.preferredHeight: 22
+            color: appTheme.bgItemActive
+            radius: appTheme.px ? appTheme.px(6) : 6
+            Layout.preferredWidth: 36
+            Layout.preferredHeight: 36
+            Layout.alignment: Qt.AlignVCenter
+
             Text {
-                anchors.centerIn: parent; text: root.channelNo.padStart(2, '0')
-                color: appTheme.textTitle; font.bold: true; font.pointSize: 10; renderType: Text.NativeRendering
+                anchors.centerIn: parent
+                text: root.channelNo.padStart(2, '0')
+                color: appTheme.getW3cContrast(parent.color)
+                font.bold: true
+                font.pointSize: 11
+                renderType: Text.NativeRendering
             }
         }
 
         Text {
             text: root.hoveredChannelName !== "" ? root.hoveredChannelName : root.channelName
-            color: appTheme.textTitle; font.bold: true; font.pointSize: root.isFullScreen ? 14 : 12; renderType: Text.NativeRendering; elide: Text.ElideRight
+            color: appTheme.textTitle
+            font.bold: true
+            font.pointSize: root.isFullScreen ? 14 : 12
+            renderType: Text.NativeRendering
+            elide: Text.ElideRight
         }
     }
 
-    Item { Layout.fillWidth: true }
+    Item {
+        Layout.fillWidth: true
+    }
 
     RowLayout {
-        spacing: 16; Layout.alignment: Qt.AlignRight
-
-        EpgVolumeSlider { isFullScreen: root.isFullScreen }
+        spacing: 16
+        Layout.alignment: Qt.AlignRight
+        EpgVolumeSlider {
+            isFullScreen: root.isFullScreen
+        }
 
         Rectangle {
-            color: appTheme.liveBg 
-            border.color: appTheme.liveBorder; border.width: 1.5; radius: 4
-            Layout.preferredHeight: 22; Layout.preferredWidth: liveLabelLayout.implicitWidth + 16 
+            color: appTheme.liveBg
+            border.color: appTheme.liveBorder
+            border.width: 1.5
+            radius: 4
+            Layout.preferredHeight: 22
+            Layout.preferredWidth: liveLabelLayout.implicitWidth + 16
 
             RowLayout {
-                id: liveLabelLayout; anchors.centerIn: parent; spacing: 6
-                Rectangle { width: 6; height: 6; radius: 3; color: appTheme.liveText; Layout.alignment: Qt.AlignVCenter }
-                Text { text: "EN DIRECTO AHORA"; color: appTheme.liveText; font.bold: true; font.pointSize: 8; Layout.alignment: Qt.AlignVCenter }
+                id: liveLabelLayout
+                anchors.centerIn: parent
+                spacing: 6
+
+                Rectangle {
+                    width: 6
+                    height: 6
+                    radius: 3
+                    color: appTheme.liveText
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                Text {
+                    text: "EN DIRECTO AHORA"
+                    color: appTheme.liveText
+                    font.bold: true
+                    font.pointSize: 8
+                    Layout.alignment: Qt.AlignVCenter
+                }
             }
         }
     }

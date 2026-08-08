@@ -17,15 +17,15 @@ RowLayout {
     WheelHandler {
         id: contentScrollShield
         orientation: Qt.Vertical
-        onWheel: (event) => {
+        onWheel: event => {
             if (descFlickable.visible) {
                 if (event.angleDelta.y > 0) {
-                    descFlickable.contentY = Math.max(0, descFlickable.contentY - 25)
+                    descFlickable.contentY = Math.max(0, descFlickable.contentY - 25);
                 } else {
-                    descFlickable.contentY = Math.min(descFlickable.contentHeight - descFlickable.height, descFlickable.contentY + 25)
+                    descFlickable.contentY = Math.min(descFlickable.contentHeight - descFlickable.height, descFlickable.contentY + 25);
                 }
             }
-            event.accepted = true
+            event.accepted = true;
         }
     }
 
@@ -35,7 +35,6 @@ RowLayout {
         color: "#1E293B"
         radius: 8
         Layout.alignment: Qt.AlignTop
-
         Image {
             id: targetChannelLogoItem
             anchors.fill: parent
@@ -48,7 +47,7 @@ RowLayout {
             asynchronous: false
             onStatusChanged: {
                 if (status === Image.Error || root.channelLogo === "") {
-                    source = "image://theme/media-playback-start"
+                    source = "image://theme/media-playback-start";
                 }
             }
         }
@@ -58,7 +57,6 @@ RowLayout {
         id: scrollableWrapper
         Layout.fillWidth: true
         Layout.fillHeight: true
-        
         Flickable {
             id: descFlickable
             anchors.fill: parent
@@ -70,56 +68,66 @@ RowLayout {
             ColumnLayout {
                 id: scrollContentLayout
                 width: descFlickable.width
-                spacing: 4
+                spacing: 6
 
                 readonly property int closeBracketIndex: root.epgTitle.indexOf("]")
                 readonly property bool hasTime: root.epgTitle.startsWith("[") && closeBracketIndex !== -1
-                
+
                 readonly property string rawTimeStr: hasTime ? root.epgTitle.substring(1, closeBracketIndex).trim() : ""
                 readonly property string cleanTitle: hasTime ? root.epgTitle.substring(closeBracketIndex + 1).trim() : root.epgTitle
 
-                // 🚀 BLINDAJE DE SEGURIDAD CONTRA UNDEFINED:
-                // Evaluamos de forma segura la existencia de la cadena antes de aplicar el formato
                 readonly property string formattedTime: scrollContentLayout.rawTimeStr ? scrollContentLayout.rawTimeStr.replace(/\s*-\s*/, " ➔ ") : ""
 
-                // Bloque 1: Horario Estilizado Limpio con Icono y Flecha
-                RowLayout {
+                // 🚀 PÍLDORA HORARIA COMPLETAMENTE LIMPIA (SIN RELOJ)
+                Rectangle {
+                    id: drawerTimeBadge
                     visible: scrollContentLayout.hasTime
-                    spacing: 6
-                    Layout.fillWidth: true
 
-                    Text { text: "🕒"; font.pointSize: root.isFullScreen ? 10 : 9; Layout.alignment: Qt.AlignVCenter }
+                    color: appTheme.bgItemActive
+                    radius: appTheme.px ? appTheme.px(5) : 5
 
-                    Text {
-                        text: scrollContentLayout.formattedTime
-                        color: "#E2E8F0" 
-                        font.bold: true
-                        font.pointSize: root.isFullScreen ? 11 : 10
-                        font.family: "Monospace"
-                        renderType: Text.NativeRendering
-                        Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredHeight: appTheme.px ? appTheme.px(24) : 24
+                    Layout.preferredWidth: drawerTimeLayout.implicitWidth + (appTheme.px ? appTheme.px(16) : 16)
+                    Layout.alignment: Qt.AlignLeft
+
+                    RowLayout {
+                        id: drawerTimeLayout
+                        anchors.centerIn: parent
+                        spacing: 0
+
+                        Text {
+                            text: scrollContentLayout.formattedTime
+                            color: appTheme.getW3cContrast(drawerTimeBadge.color)
+                            font.bold: true
+                            font.pointSize: root.isFullScreen ? 11 : 10
+                            font.family: "Monospace"
+                            renderType: Text.NativeRendering
+                            Layout.alignment: Qt.AlignVCenter
+                        }
                     }
                 }
 
                 // Bloque 2: Título Principal del Programa
                 Text {
                     text: scrollContentLayout.cleanTitle
-                    color: "#FFFFFF" 
+                    color: "#FFFFFF"
                     font.bold: true
                     font.pointSize: root.isFullScreen ? 15 : 13
                     renderType: Text.NativeRendering
                     Layout.fillWidth: true
-                    wrapMode: Text.WordWrap 
+                    wrapMode: Text.WordWrap
                 }
 
-                Item { Layout.preferredHeight: 2 }
+                Item {
+                    Layout.preferredHeight: 2
+                }
 
                 // Bloque 3: Cuerpo de la Sinopsis
                 Text {
                     id: descriptionText
                     Layout.fillWidth: true
                     text: root.epgDescription
-                    color: "#CBD5E1" 
+                    color: "#CBD5E1"
                     font.pointSize: root.isFullScreen ? 11 : 10
                     renderType: Text.NativeRendering
                     wrapMode: Text.WordWrap
@@ -128,7 +136,11 @@ RowLayout {
 
             ScrollBar.vertical: ScrollBar {
                 policy: descFlickable.contentHeight > descFlickable.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
-                contentItem: Rectangle { implicitWidth: 4; radius: 2; color: "#FFFFFF" } 
+                contentItem: Rectangle {
+                    implicitWidth: 4
+                    radius: 2
+                    color: "#FFFFFF"
+                }
             }
         }
     }
