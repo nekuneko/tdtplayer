@@ -7,22 +7,20 @@ Item {
 
     property string currentTheme: "CINEMATIC_COLOR"
 
-    // 🚀 MOTOR DE ESCALA DINÁMICA HIDPI (Qt6 Smart Scaler)
-    // Cambiado 'scale' por 'factorScale' para fulminar el error 'property-override' de qmllint
+    // MOTOR DE ESCALA DINÁMICA HIDPI (Qt6 Smart Scaler)
     readonly property real ratio: Screen.devicePixelRatio
     readonly property real factorScale: root.ratio > 1.0 ? root.ratio : 1.2
 
-    // Función matemática para escalar celdas y márgenes de forma proporcional
     function px(value) {
         return Math.round(value * root.factorScale);
     }
 
-    // Función matemática para escalar fuentes vectoriales de alta definición
     function pt(value) {
         return Math.round(value * root.factorScale);
     }
 
-    readonly property list<string> themeKeys: ["CINEMATIC_COLOR", "DARK_ACCESSIBLE", "NORDIC_FROST", "MONOKAI_PRO", "VAMPIRE_BLOOD", "CYBERPUNK_NEON"]
+    // 🚀 LISTA ACTUALIZADA: Se añade la clave para el nuevo tema de Samsung
+    readonly property list<string> themeKeys: ["CINEMATIC_COLOR", "DARK_ACCESSIBLE", "NORDIC_FROST", "MONOKAI_PRO", "VAMPIRE_BLOOD", "CYBERPUNK_NEON", "NETFLIX_DARK", "SAMSUNG_ONEUI"]
 
     readonly property var colors: ({
             "DARK_ACCESSIBLE": {
@@ -144,59 +142,110 @@ Item {
                 "liveBorder": "transparent",
                 "liveText": "#FFFFFF",
                 "logoBg": "transparent"
+            },
+            "NETFLIX_DARK": {
+                "name": "Estilo Cine Rojo",
+                "bgAbsolute": "#141414",
+                "bgItemActive": "#E50914",
+                "bgItemHover": "#2F2F2F",
+                "bgItemDefault": "#1F1F1F",
+                "borderActive": "#E50914",
+                "borderHover": "#555555",
+                "borderDefault": "#222222",
+                "textTitle": "#FFFFFF",
+                "textTitleActive": "#FFFFFF",
+                "textDesc": "#AAAAAA",
+                "textDescActive": "#E5E5E5",
+                "badgeTimeBg": "#2F2F2F",
+                "badgeTimeText": "#FFFFFF",
+                "liveBg": "#E50914",
+                "liveBorder": "transparent",
+                "liveText": "#FFFFFF",
+                "logoBg": "transparent"
+            },
+            // 🚀 NUEVA PALETA: "Estilo Samsung One UI" oscuro moderno
+            "SAMSUNG_ONEUI": {
+                "name": "Samsung One UI",
+                "bgAbsolute": "#0A0E1A"    // Azul noche muy profundo oscuro
+                ,
+                "bgItemActive": "#0377FF"  // El icónico azul eléctrico de One UI
+                ,
+                "bgItemHover": "#252D3A"   // Gris azulado intermedio para el hover
+                ,
+                "bgItemDefault": "#121926" // Fondo de las tarjetas individuales
+                ,
+                "borderActive": "#0377FF",
+                "borderHover": "#4C5A6F",
+                "borderDefault": "#1C2635",
+                "textTitle": "#F8FAFC"     // Blanco nítido
+                ,
+                "textTitleActive": "#FFFFFF",
+                "textDesc": "#94A3B8"      // Gris Slate suave para la sinopsis
+                ,
+                "textDescActive": "#E2E8F0",
+                "badgeTimeBg": "#252D3A"   // Cápsulas de tiempo integradas
+                ,
+                "badgeTimeText": "#0377FF" // Texto horaria resaltado en azul de One UI
+                ,
+                "liveBg": "#0377FF",
+                "liveBorder": "transparent",
+                "liveText": "#FFFFFF",
+                "logoBg": "transparent"
             }
         })
 
+    readonly property var currentColors: colors[currentTheme] ? colors[currentTheme] : colors["CINEMATIC_COLOR"]
+
     property color bgAbsolute: {
-        return Qt.alpha(colors[currentTheme]["bgAbsolute"], 0.80);
+        return Qt.alpha(root.currentColors["bgAbsolute"], 0.80);
     }
     property color bgItemActive: {
-        return colors[currentTheme]["bgItemActive"];
+        return root.currentColors["bgItemActive"];
     }
     property color bgItemHover: {
-        return Qt.alpha(colors[currentTheme]["bgItemHover"], 0.85);
+        return Qt.alpha(root.currentColors["bgItemHover"], 0.85);
     }
     property color bgItemDefault: {
-        return Qt.alpha(colors[currentTheme]["bgItemDefault"], 0.85);
+        return Qt.alpha(root.currentColors["bgItemDefault"], 0.85);
     }
     property color borderActive: {
-        return colors[currentTheme]["borderActive"];
+        return root.currentColors["borderActive"];
     }
     property color borderHover: {
-        return colors[currentTheme]["borderHover"];
+        return root.currentColors["borderHover"];
     }
     property color borderDefault: {
-        return colors[currentTheme]["borderDefault"];
+        return root.currentColors["borderDefault"];
     }
     property color textTitle: {
-        return colors[currentTheme]["textTitle"];
+        return root.currentColors["textTitle"];
     }
     property color textTitleActive: {
-        return colors[currentTheme]["textTitleActive"];
+        return root.currentColors["textTitleActive"];
     }
     property color textDesc: {
-        return colors[currentTheme]["textDesc"];
+        return root.currentColors["textDesc"];
     }
     property color textDescActive: {
-        return colors[currentTheme]["textDescActive"];
+        return root.currentColors["textDescActive"];
     }
     property color badgeTimeBg: {
-        return colors[currentTheme]["badgeTimeBg"];
+        return root.currentColors["badgeTimeBg"];
     }
     property color badgeTimeText: {
-        return colors[currentTheme]["badgeTimeText"];
+        return root.currentColors["badgeTimeText"];
     }
     property color liveBg: {
-        return colors[currentTheme]["liveBg"];
+        return root.currentColors["liveBg"];
     }
     property color liveBorder: {
-        return colors[currentTheme]["liveBorder"];
+        return root.currentColors["liveBorder"];
     }
     property color liveText: {
-        return colors[currentTheme]["liveText"];
+        return root.currentColors["liveText"];
     }
     property color logoBg: {
-        return colors[currentTheme]["logoBg"];
+        return root.currentColors["logoBg"];
     }
 
     function getW3cContrast(hexColor) {
