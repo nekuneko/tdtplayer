@@ -22,6 +22,7 @@ ItemDelegate {
     readonly property int realChannelCount: delegateRoot.sidebarModel ? delegateRoot.sidebarModel.rowCount() : 0
     readonly property int finalRealIndex: delegateRoot.realChannelCount > 0 ? (delegateRoot.virtualIndex % delegateRoot.realChannelCount) : 0
 
+    // Reactivamos las propiedades directas enlazadas para que el reciclaje nativo (reuseItems) funcione al vuelo
     readonly property var indexObj: delegateRoot.sidebarModel ? delegateRoot.sidebarModel.index(delegateRoot.finalRealIndex, 0) : null
     readonly property string channelName: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 1) || "") : ""
     readonly property string channelLogo: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 3) || "") : ""
@@ -49,12 +50,10 @@ ItemDelegate {
         anchors.rightMargin: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(14) : 14
         spacing: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(12) : 12
 
-        // 1. Contenedor del Logotipo Proporcional
         Rectangle {
+            id: logoWrapperContainer
             Layout.preferredWidth: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(35) : 35
             Layout.preferredHeight: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(35) : 35
-
-            // 🚀 CONTROLADO DESDE EL TEMA: Cambiado color rígido por la propiedad del objeto central de estilos
             color: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.logoBg : "transparent"
             radius: 4
             Layout.alignment: Qt.AlignVCenter
@@ -66,7 +65,12 @@ ItemDelegate {
                 fillMode: Image.PreserveAspectFit
                 sourceSize.width: 70
                 sourceSize.height: 70
+
                 cache: true
+                asynchronous: true
+                smooth: false
+                mipmap: false
+
                 onStatusChanged: {
                     if (status === Image.Error || delegateRoot.channelLogo === "") {
                         source = "image://theme/media-playback-start";
@@ -75,7 +79,6 @@ ItemDelegate {
             }
         }
 
-        // 2. Nombre del Canal
         Text {
             text: delegateRoot.channelName
             color: delegateRoot.isCurrentlyPlaying ? (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.textTitleActive : "#FFFFFF") : (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.textTitle : "#FFFFFF")
@@ -84,10 +87,11 @@ ItemDelegate {
             elide: Text.ElideRight
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-            renderType: Text.NativeRendering
+
+            // 🚀 SOLUCIÓN AL INPUT LAG: Cambiado NativeRendering por QtRendering (Hardware Distance Fields)
+            renderType: Text.QtRendering
         }
 
-        // 3. Número de Canal
         Rectangle {
             id: channelNumberBadge
             color: delegateRoot.isCurrentlyPlaying ? "#FFFFFF" : (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.bgItemActive : "#3B82F6")
@@ -103,7 +107,9 @@ ItemDelegate {
                 color: delegateRoot.isCurrentlyPlaying ? (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.bgItemActive : "#3B82F6") : (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.getW3cContrast(channelNumberBadge.color) : "#FFFFFF")
                 font.bold: true
                 font.pointSize: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.pt(10.5) : 10.5
-                renderType: Text.NativeRendering
+
+                // 🚀 SOLUCIÓN AL INPUT LAG: Cambiado NativeRendering por QtRendering (Hardware Distance Fields)
+                renderType: Text.QtRendering
             }
         }
     }

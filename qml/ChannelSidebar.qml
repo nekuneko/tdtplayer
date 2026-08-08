@@ -70,6 +70,7 @@ MouseArea {
         var firstVisible = channelListView.indexAt(0, channelListView.contentY);
         var lastVisible = firstVisible + visibleCount - 1;
         var target = root.currentChannelIndex;
+
         if (target >= 0 && target < count) {
             if (target > lastVisible)
                 channelListView.positionViewAtIndex(target, ListView.Beginning);
@@ -99,16 +100,19 @@ MouseArea {
         anchors.fill: parent
         clip: true
         model: root.model
+
+        // 🚀 LIBERACIÓN TOTAL DE VRAM: Activamos el reciclaje veloz y bajamos el buffer a cero
+        // Esto destruye los elementos invisibles al instante liberando la GPU para el vídeo de Tvheadend
         reuseItems: true
-        maximumFlickVelocity: 4000
-        cacheBuffer: root.appThemeItem ? root.appThemeItem.px(120) : 120
+        cacheBuffer: 0
+        maximumFlickVelocity: 2000
 
         WheelHandler {
             id: sidebarExploreWheel
             orientation: Qt.Vertical
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
             onWheel: event => {
-                channelListView.flick(0, event.angleDelta.y * 10);
+                channelListView.flick(0, event.angleDelta.y * 8);
             }
         }
 

@@ -121,42 +121,67 @@ ApplicationWindow {
             isFullScreen: ctrl.isFullScreen
             z: 1
             visible: !ctrl.isConfigMenuOpen && sidebar.sidebarForceOpen
+            appThemeItem: appTheme
+
             onChannelSelected: realIndex => {
                 ctrl.playChannel(realIndex);
                 globalKeyboardHandler.forceActiveFocus();
             }
-            appThemeItem: appTheme
 
+            // 🚀 SISTEMA DE AMORTIGUACIÓN (DEBOUNCE): Almacenamiento intermedio de memoria
+            property string pendingHoverName: ""
+
+            Timer {
+                id: debounceHoverTimer
+                interval: 150 // Milisegundos de espera para confirmar que el usuario quiere ver el EPG
+                repeat: false
+                onTriggered: {
+                    if (sidebar.pendingHoverName === "")
+                        return;
+                    ctrl.osdHoveredChannelName = sidebar.pendingHoverName;
+                    var count = channelModel.rowCount(), foundLogo = "", foundChNo = "";
+
+                    // Ejecución bajo demanda: El bucle pesado solo corre si el ratón se queda quieto
+                    for (var i = 0; i < count; i++) {
+                        var idx = channelModel.index(i, 0);
+                        var modelName = channelModel.data(idx, Qt.UserRole + 1);
+                        if (modelName && modelName.toString().trim().replace(/[\r\n]/g, "") === sidebar.pendingHoverName) {
+                            foundLogo = window.localLogoCache[sidebar.pendingHoverName] || "";
+                            foundChNo = channelModel.data(idx, Qt.UserRole + 4) || i.toString();
+                            break;
+                        }
+                    }
+
+                    ctrl.osdChannelNo = foundChNo;
+                    ctrl.osdChannelLogo = foundLogo;
+
+                    var epgData = channelModel.fetch_current_epg(sidebar.pendingHoverName);
+                    if (epgData && epgData.title !== undefined) {
+                        ctrl.epgTitle = epgData.title;
+                        ctrl.epgDescription = epgData.description;
+                    }
+                    epgDrawer.epgForceOpen = true;
+                }
+            }
+
+            // 🚀 MANEJADOR ULTRA LIGERO: Al deslizar el ratón rápido, solo guardamos el nombre y posponemos la carga pesada
             onChannelHovered: name => {
                 if (ctrl.zappingTimer.running || !name)
                     return;
                 var cleanHoverName = name.toString().trim().replace(/[\r\n]/g, "");
-                ctrl.osdHoveredChannelName = cleanHoverName;
-                var count = channelModel.rowCount(), foundLogo = "", foundChNo = "";
-                for (var i = 0; i < count; i++) {
-                    var idx = channelModel.index(i, 0), modelName = channelModel.data(idx, Qt.UserRole + 1);
-                    if (modelName && modelName.toString().trim().replace(/[\r\n]/g, "") === cleanHoverName) {
-                        foundLogo = window.localLogoCache[cleanHoverName] || "";
-                        foundChNo = channelModel.data(idx, Qt.UserRole + 4) || i.toString();
-                        break;
-                    }
-                }
-                ctrl.osdChannelNo = foundChNo;
-                ctrl.osdChannelLogo = foundLogo;
-                var epgData = channelModel.fetch_current_epg(cleanHoverName);
-                if (epgData && epgData.title !== undefined) {
-                    ctrl.epgTitle = epgData.title;
-                    ctrl.epgDescription = epgData.description;
-                }
 
-                // 🚀 FOCO ESTÁTICO: Forzamos la apertura y detenemos cualquier cuenta atrás residual
-                epgDrawer.epgForceOpen = true;
+                // Si el ratón está en movimiento constante, reiniciamos el temporizador sin saturar la CPU
+                sidebar.pendingHoverName = cleanHoverName;
+                debounceHoverTimer.restart();
             }
 
             onExited: {
-                // 🚀 CORRECCIÓN CRÍTICA: Se elimina 'epgDrawer.epgForceOpen = false' de aquí.
-                // El panel ya no se cerrará de forma traicionera al mover el ratón por el borde lateral.
+                // Cancelamos cualquier petición pendiente de inmediato al sacar el ratón de la barra
+                debounceHoverTimer.stop();
+                sidebar.pendingHoverName = "";
+
                 sidebar.sidebarForceOpen = false;
+                epgDrawer.epgForceOpen = false;
                 sidebar.forceCenterScrollSync();
                 ctrl.osdHoveredChannelName = "";
 
