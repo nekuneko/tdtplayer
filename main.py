@@ -2,14 +2,20 @@
 import os
 import sys
 
-# 🚀 CONFIGURACIÓN OFICIAL Y ESTABLE DE QT 6 (Antes de importar PySide6)
-# 1. Fuerza el backend EGL estable para la GPU Intel en servidores gráficos X11
+# 🚀 MOTOR DE SINCRONIZACIÓN NATIVO PARA PERFIL 'PASS' (MPEG-TS EN BRUTO)
+# Ampliamos el análisis de cabeceras para que Qt Multimedia asimile el flujo de BeMad HD
+# junto con todas sus pistas síncronas (EPG, audios alternos y teletexto) de una sola pasada.
+os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = (
+    "probesize=20000000;analyzeduration=10000000"
+)
+
+# Fuerza el backend de integración EGL estable para la GPU Intel en servidores X11
 os.environ["QT_XCB_GL_INTEGRATION"] = "xcb_egl"
 
-# 2. Permite explícitamente que los objetos XMLHttpRequest de QML lean archivos locales
+# Permitir explícitamente que los objetos XMLHttpRequest de QML lean archivos locales
 os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
 
-# 3. Forzar el uso estricto de la API de aceleración por hardware de Intel (VA-API)
+# Forzar el uso estricto de la API de aceleración por hardware de Intel (VA-API)
 os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "vaapi"
 
 from PySide6.QtGui import QGuiApplication

@@ -88,7 +88,6 @@ ItemDelegate {
         anchors.bottomMargin: root.appThemeItem.px(12)
         spacing: root.appThemeItem.px(20)
 
-        // Bloque Fijo Izquierdo: Canal
         EpgBadgeNo {
             textNo: root.chNo ? root.chNo.toString() : root.itemIndex.toString()
             isSelected: root.isCurrent
@@ -103,19 +102,26 @@ ItemDelegate {
             radius: 6
             Layout.alignment: Qt.AlignVCenter
 
+            Text {
+                anchors.centerIn: parent
+                visible: gridChannelLogo.status === Image.Error || root.logo === ""
+                text: root.channelNameStr !== "" ? root.channelNameStr.substring(0, 1).toUpperCase() : "📺"
+                color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
+                font.bold: true
+                font.pointSize: root.appThemeItem.pt(13)
+                renderType: Text.QtRendering
+            }
+
             Image {
+                id: gridChannelLogo
                 anchors.fill: parent
                 anchors.margins: 4
                 source: root.logo ? root.logo : ""
                 fillMode: Image.PreserveAspectFit
                 sourceSize.width: 90
                 sourceSize.height: 90
+                visible: status === Image.Ready && root.logo !== ""
                 cache: true
-                onStatusChanged: {
-                    if (status === Image.Error || root.logo === "") {
-                        source = "image://theme/media-playback-start";
-                    }
-                }
             }
         }
 
@@ -137,13 +143,11 @@ ItemDelegate {
             Layout.alignment: Qt.AlignVCenter
         }
 
-        // Bloque Elástico Derecho: Programa Organizado Estrictamente por Niveles
         ColumnLayout {
             Layout.fillWidth: true
             spacing: root.appThemeItem.px(5)
             Layout.alignment: Qt.AlignVCenter
 
-            // 🚀 PISO 1: Nombre del programa arriba del todo
             Text {
                 text: root.cleanTitle
                 color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
@@ -155,7 +159,6 @@ ItemDelegate {
                 Layout.alignment: Qt.AlignLeft
             }
 
-            // 🚀 PISO 2: Fila horizontal con la píldora a la izquierda y la barra a su derecha
             RowLayout {
                 Layout.fillWidth: true
                 spacing: root.appThemeItem.px(12)
@@ -175,7 +178,6 @@ ItemDelegate {
                     }
                 }
 
-                // La barra de progreso se renderiza directamente aquí a la derecha de la píldora
                 Rectangle {
                     id: gridProgressBarContainer
                     visible: root.hasTime
@@ -196,7 +198,6 @@ ItemDelegate {
                 }
             }
 
-            // 🚀 PISO 3: Descripción del programa abajo del todo
             Text {
                 text: root.finalDesc
                 color: root.isCurrent ? root.appThemeItem.textDescActive : root.appThemeItem.textDesc

@@ -22,7 +22,6 @@ ItemDelegate {
     readonly property int realChannelCount: delegateRoot.sidebarModel ? delegateRoot.sidebarModel.rowCount() : 0
     readonly property int finalRealIndex: delegateRoot.realChannelCount > 0 ? (delegateRoot.virtualIndex % delegateRoot.realChannelCount) : 0
 
-    // Reactivamos las propiedades directas enlazadas para que el reciclaje nativo (reuseItems) funcione al vuelo
     readonly property var indexObj: delegateRoot.sidebarModel ? delegateRoot.sidebarModel.index(delegateRoot.finalRealIndex, 0) : null
     readonly property string channelName: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 1) || "") : ""
     readonly property string channelLogo: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 3) || "") : ""
@@ -51,14 +50,25 @@ ItemDelegate {
         spacing: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(12) : 12
 
         Rectangle {
-            id: logoWrapperContainer
             Layout.preferredWidth: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(35) : 35
             Layout.preferredHeight: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(35) : 35
             color: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.logoBg : "transparent"
             radius: 4
             Layout.alignment: Qt.AlignVCenter
 
+            // 🚀 DETECTOR REACTIVO LIGERO: Muestra un marcador de texto elegante si el PNG falla
+            Text {
+                anchors.centerIn: parent
+                visible: channelLogoImage.status === Image.Error || delegateRoot.channelLogo === ""
+                text: delegateRoot.channelName !== "" ? delegateRoot.channelName.substring(0, 1).toUpperCase() : "📺"
+                color: delegateRoot.isCurrentlyPlaying ? "#FFFFFF" : (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.textTitle : "#FFFFFF")
+                font.bold: true
+                font.pointSize: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.pt(12) : 12
+                renderType: Text.QtRendering
+            }
+
             Image {
+                id: channelLogoImage
                 anchors.fill: parent
                 anchors.margins: 2
                 source: delegateRoot.channelLogo
@@ -66,16 +76,12 @@ ItemDelegate {
                 sourceSize.width: 70
                 sourceSize.height: 70
 
+                // 🚀 PURGA DE CUALIFICADORES: Quitamos el onStatusChanged con los fallbacks de texto rotos
+                visible: status === Image.Ready && delegateRoot.channelLogo !== ""
                 cache: true
                 asynchronous: true
                 smooth: false
                 mipmap: false
-
-                onStatusChanged: {
-                    if (status === Image.Error || delegateRoot.channelLogo === "") {
-                        source = "image://theme/media-playback-start";
-                    }
-                }
             }
         }
 
@@ -87,8 +93,6 @@ ItemDelegate {
             elide: Text.ElideRight
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-
-            // 🚀 SOLUCIÓN AL INPUT LAG: Cambiado NativeRendering por QtRendering (Hardware Distance Fields)
             renderType: Text.QtRendering
         }
 
@@ -107,8 +111,6 @@ ItemDelegate {
                 color: delegateRoot.isCurrentlyPlaying ? (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.bgItemActive : "#3B82F6") : (delegateRoot.appThemeItem ? delegateRoot.appThemeItem.getW3cContrast(channelNumberBadge.color) : "#FFFFFF")
                 font.bold: true
                 font.pointSize: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.pt(10.5) : 10.5
-
-                // 🚀 SOLUCIÓN AL INPUT LAG: Cambiado NativeRendering por QtRendering (Hardware Distance Fields)
                 renderType: Text.QtRendering
             }
         }

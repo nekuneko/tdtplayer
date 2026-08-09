@@ -80,11 +80,8 @@ class ChannelModel(QAbstractListModel):
         download_queue = []
         os.makedirs(self.cache_dir, exist_ok=True)
 
-        # 🚀 EVALUACIÓN INTEGRADA DEL ARRANQUE:
         # Analizamos el archivo buscando de forma explícita la existencia de un canal cero
         has_channel_zero = any('tvg-chno="0"' in line for line in lines)
-
-        # Si viene un canal 0 de Tvheadend empieza en 0, si no, se fuerza el inicio en 1
         next_virtual_chno = 0 if has_channel_zero else 1
 
         for line in lines:
@@ -110,8 +107,11 @@ class ChannelModel(QAbstractListModel):
                         ("http://", "https://")
                     ):
                         parsed_url = urllib.parse.urlparse(current_logo)
+                        # 🚀 CORRECCIÓN DE DESEMPAQUETADO STRICTO: Extraemos limpiamente el string de la extensión (índice 1 de la tupla)
                         file_ext_tuple = os.path.splitext(parsed_url.path)
-                        detected_ext = file_ext_tuple[1]
+                        detected_ext = (
+                            file_ext_tuple[1] if len(file_ext_tuple) > 1 else ".png"
+                        )
 
                         actual_ext = (
                             detected_ext
@@ -135,7 +135,6 @@ class ChannelModel(QAbstractListModel):
                     except ValueError:
                         suggested_no = next_virtual_chno
 
-                    # Sincronizamos la numeración correlativa evitando duplicados pisados
                     if suggested_no >= next_virtual_chno:
                         final_assigned_chno = suggested_no
                     else:

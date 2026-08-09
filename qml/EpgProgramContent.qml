@@ -49,20 +49,26 @@ Item {
             radius: 8
             Layout.alignment: Qt.AlignTop
 
+            Text {
+                anchors.centerIn: parent
+                visible: drawerChannelLogo.status === Image.Error || root.channelLogo === ""
+                text: root.activeChannelName !== "" ? root.activeChannelName.substring(0, 1).toUpperCase() : "📺"
+                color: "#FFFFFF"
+                font.bold: true
+                font.pointSize: appTheme ? appTheme.pt(16) : 16
+                renderType: Text.QtRendering
+            }
+
             Image {
-                id: targetChannelLogoItem
+                id: drawerChannelLogo
                 anchors.fill: parent
                 anchors.margins: 4
                 source: root.channelLogo
                 fillMode: Image.PreserveAspectFit
                 sourceSize.width: 120
                 sourceSize.height: 120
+                visible: status === Image.Ready && root.channelLogo !== ""
                 cache: true
-                onStatusChanged: {
-                    if (status === Image.Error || root.channelLogo === "") {
-                        source = "image://theme/media-playback-start";
-                    }
-                }
             }
         }
 
@@ -103,16 +109,12 @@ Item {
                     readonly property string rawTimeStr: hasTime ? root.epgTitle.substring(1, closeBracketIndex).trim() : ""
                     readonly property string formattedTime: scrollContentLayout.rawTimeStr ? scrollContentLayout.rawTimeStr.replace(/\s*-\s*/, " ➔ ") : ""
 
-                    // Fila horizontal elástica para la píldora y la barra juntas
                     RowLayout {
                         visible: scrollContentLayout.hasTime
                         spacing: 12
                         Layout.alignment: Qt.AlignVCenter
-
-                        // 🚀 CORRECCIÓN DE LAYOUT: Forzamos al RowLayout a rellenar el ancho de la columna de forma explícita
                         Layout.fillWidth: true
 
-                        // Píldora Horaria
                         Rectangle {
                             id: drawerTimeBadge
                             color: appTheme.bgItemActive
@@ -138,7 +140,6 @@ Item {
                             }
                         }
 
-                        // Barra de progreso elástica alineada a la derecha
                         Rectangle {
                             id: drawerProgressBarContainer
                             visible: root.stopTimestamp > root.startTimestamp
@@ -159,7 +160,6 @@ Item {
                         }
                     }
 
-                    // Cuerpo de la Sinopsis
                     Text {
                         id: descriptionText
                         Layout.fillWidth: true
