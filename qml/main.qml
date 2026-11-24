@@ -223,6 +223,11 @@ ApplicationWindow {
 
             onMouseExitedSidebar: ctrl.restorePanelsAfterConfig()
         }
+
+        ScreenshotToast {
+            z: 20
+        }
+
     }
 
     Loader {

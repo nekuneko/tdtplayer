@@ -56,6 +56,13 @@ Item {
                 event.accepted = true;
                 break;
 
+            case Qt.Key_S:
+                if (typeof screenshotHelper !== "undefined") {
+                    screenshotHelper.capture_frame(root.controller.osdChannelName);
+                }
+                event.accepted = true;
+                break;
+
             // 🚀 SOLUCCIÓN DEFINITIVA DE 0 MS: Conmutación de visibilidad sobre el buffer de la GPU
             case Qt.Key_E:
                 if (!root.windowController || !root.windowController.isPipMode) {

@@ -43,10 +43,12 @@ def configure_environment() -> None:
 configure_environment()
 
 from PySide6.QtCore import QUrl  # noqa: E402
-from PySide6.QtGui import QGuiApplication, QIcon # noqa: E402
+from PySide6.QtGui import QGuiApplication, QIcon  # noqa: E402
+from PySide6.QtMultimedia import QMediaPlayer, QVideoSink  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
 
 from channel_model import ChannelModel  # noqa: E402
+from screenshot_helper import ScreenshotHelper  # noqa: E402
 
 
 def main():
@@ -82,9 +84,11 @@ def main():
     engine.warnings.connect(handle_qml_warnings)
 
     channel_model = ChannelModel()
+    screenshot_helper = ScreenshotHelper(parent=app)
 
     context = engine.rootContext()
     context.setContextProperty("channelModel", channel_model)
+    context.setContextProperty("screenshotHelper", screenshot_helper)
 
     qml_file = os.path.join(qml_dir, "main.qml")
     engine.load(QUrl.fromLocalFile(qml_file))
@@ -100,13 +104,15 @@ def main():
     if os.path.exists(icon_path):
         root_obj.setIcon(QIcon(icon_path))
 
+    player = root_obj.findChild(QMediaPlayer)
+    # En QML VideoOutput expone la propiedad 'videoSink' (QVideoSink)
+    video_out = root_obj.findChild(QVideoSink)
+    if video_out:
+        screenshot_helper.set_video_sink(video_out)
+
     if sys.platform == "win32":
-        from PySide6.QtMultimedia import QMediaPlayer, QVideoSink
         from deinterlace_filter import WindowsDeinterlacer
 
-        player = root_obj.findChild(QMediaPlayer)
-        # En QML VideoOutput expone la propiedad 'videoSink' (QVideoSink)
-        video_out = root_obj.findChild(QVideoSink)
         if player and video_out:
             app._win_deinterlacer = WindowsDeinterlacer(player, video_out)
 

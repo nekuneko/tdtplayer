@@ -4,19 +4,22 @@
 
 <h1 align="center">TDTPlayer (Tvheadend Native Player)</h1>
 
-<p align="center">
-  Reproductor nativo de TDT / IPTV basado en <strong>Python</strong>, <strong>PySide6 (Qt 6 / QML)</strong> y <strong>FFmpeg</strong>, diseñado para flujos MPEG-TS en bruto (<code>?profile=pass</code>) con baja latencia, EPG local en SQLite y compatibilidad total con <strong>Linux</strong> y <strong>Windows</strong>.
-</p>
+Reproductor nativo de TDT / IPTV basado en **Python**, **PySide6 (Qt 6 / QML)** y **FFmpeg**, diseñado para flujos MPEG-TS en bruto (`?profile=pass`) con baja latencia, EPG local en SQLite y compatibilidad total con **Linux** y **Windows**.
+
+> [!WARNING]
+> **🚧 Proyecto en construcción (Work in Progress):** Este repositorio se encuentra en desarrollo activo y **no representa una versión definitiva**. La interfaz, la arquitectura interna, los controles y las funcionalidades están en constante evolución y pueden cambiar o estar sujetos a modificaciones sin previo aviso.
 
 ---
 
 ## Características principales
 
+* **Interfaz moderna y responsiva:** Paneles flotantes redondeados que encogen y desplazan suavemente el reproductor sin tapar la emisión, adaptándose tanto a pantalla completa como a ventanas compactas y 7 paletas visuales personalizables.
 * **Multiplataforma real (Linux y Windows):**
   * **Linux:** Aceleración por hardware Intel `VA-API` con integración `xcb_egl`.
   * **Windows:** Aceleración por hardware `Direct3D 11` (`d3d11va`) y filtro de desentrelazado en tiempo real (`WindowsDeinterlacer`) para emisiones TDT `1080i`.
-* **Modo Picture-in-Picture (PiP) / Always on Top:** Ventana flotante sin bordes siempre visible en primer plano, arrastrable y redimensionable con controles rápidos al pasar el ratón.
-* **Guía EPG integrada:** Precarga asíncrona en SQLite (`epg_cache.db`), barra de progreso en tiempo real y parrilla completa de programación.
+* **Captura de pantalla instantánea:** Extracción del fotograma limpio directamente desde el *sink* de vídeo en máxima calidad PNG (`Imágenes/TdtPlayer`) sin menús superpuestos ni interrupciones en la reproducción.
+* **Modo Picture-in-Picture (PiP) / Always on Top:** Ventana flotante sin bordes siempre visible en primer plano, arrastrable y redimensionable desde cualquiera de sus 4 esquinas y 4 bordes manteniendo la relación de aspecto `16:9` sin franjas negras.
+* **Guía EPG integrada:** Precarga asíncrona en SQLite (`epg_cache.db`), barra de progreso en tiempo real y parrilla completa de programación (`Ahora` / `A Continuación`).
 * **Caché local de logotipos:** Descarga en segundo plano de iconos de canales (`tvg-logo`).
 
 ---
@@ -30,8 +33,10 @@
 | **`↑` / `↓`** | Canal anterior / siguiente |
 | **`←` / `→`** | Subir / bajar volumen (`±5%`) |
 | **`0` – `9`** | Marcación directa por número de canal |
+| **`S`** | **Capturar pantalla** del fotograma actual en PNG (`Imágenes/TdtPlayer`) |
 | **`P`** | Activar / desactivar **Modo PiP** (*Siempre encima*) |
 | **`E`** | Abrir / cerrar la **parrilla EPG** completa |
+| **`Tab`** | Alternar entre *Emitiéndose Ahora* y *A Continuación* (dentro de la parrilla EPG) |
 | **`M`** | Silenciar / activar audio (*Mute*) |
 | **`Esc`** | Salir de PiP o cerrar paneles abiertos |
 
@@ -41,11 +46,11 @@
 | :--- | :--- |
 | **Clic izquierdo** | Pausar / reanudar reproducción |
 | **Doble clic** | Alternar pantalla completa (o salir del modo PiP) |
-| **Rueda del ratón** | Cambiar de canal arriba / abajo |
+| **Rueda del ratón** | Cambiar de canal arriba / abajo (o ajustar volumen sobre el cajón inferior) |
 | **Borde derecho** | Desplegar lista de canales (con vista previa EPG al pasar el cursor) |
-| **Borde izquierdo** | Abrir menú de configuración y temas visuales |
-| **Borde inferior** | Mostrar información del programa actual |
-| **Arrastrar en PiP** | Mover la ventana flotante libremente; redimensionar desde la esquina inferior derecha |
+| **Borde izquierdo** | Abrir menú de configuración, temas visuales y captura de pantalla |
+| **Borde inferior** | Mostrar información del programa actual, volumen y botón de captura rápida |
+| **Arrastrar en PiP** | Mover la ventana flotante libremente; redimensionar desde cualquiera de sus 4 esquinas o bordes |
 
 ---
 
@@ -101,6 +106,7 @@
        --add-data "qml;qml" ^
        --add-data "docs/icon.png;docs" ^
        --hidden-import "deinterlace_filter" ^
+       --hidden-import "screenshot_helper" ^
        --exclude-module "PySide6.QtWebEngineCore" ^
        --exclude-module "PySide6.QtWebEngineQuick" ^
        --exclude-module "PySide6.QtPdf" ^
@@ -113,6 +119,7 @@
        --icon="docs/icon.png" \
        --add-data "qml:qml" \
        --add-data "docs/icon.png:docs" \
+       --hidden-import "screenshot_helper" \
        --exclude-module "PySide6.QtWebEngineCore" \
        --exclude-module "PySide6.QtWebEngineQuick" \
        --exclude-module "PySide6.QtPdf" \
@@ -133,6 +140,7 @@ Si añades nuevas librerías al proyecto y quieres regenerar `requirements.txt`:
 python -m pip install pipreqs
 python -m pipreqs.pipreqs . --force --ignore venv
 ```
+
 
 ---
 

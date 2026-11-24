@@ -86,11 +86,63 @@ RowLayout {
 
     RowLayout {
         visible: !root.isCompact
-        spacing: 16
+        spacing: 12
         Layout.alignment: Qt.AlignRight
+
+        Rectangle {
+            id: snapQuickBtn
+            width: 32
+            height: 32
+            radius: appTheme ? appTheme.px(8) : 8
+            color: snapQuickArea.containsMouse ? appTheme.bgItemActive : appTheme.bgItemDefault
+            border.color: snapQuickArea.containsMouse ? appTheme.borderActive : appTheme.borderDefault
+            border.width: 1
+            Layout.alignment: Qt.AlignVCenter
+
+            Canvas {
+                anchors.centerIn: parent
+                width: 16
+                height: 16
+                property color tint: snapQuickArea.containsMouse ? appTheme.textTitleActive : appTheme.textTitle
+                onTintChanged: requestPaint()
+                onPaint: {
+                    var ctx = getContext("2d");
+                    ctx.reset();
+                    ctx.strokeStyle = tint;
+                    ctx.lineWidth = 1.7;
+                    ctx.lineCap = "round";
+                    ctx.lineJoin = "round";
+                    ctx.beginPath();
+                    ctx.roundedRect(1.5, 4.5, 13, 9.5, 2.2, 2.2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(5.2, 4.5);
+                    ctx.lineTo(6.4, 2.5);
+                    ctx.lineTo(9.6, 2.5);
+                    ctx.lineTo(10.8, 4.5);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(8, 9.2, 2.5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            MouseArea {
+                id: snapQuickArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (typeof screenshotHelper !== "undefined") {
+                        screenshotHelper.capture_frame(root.channelName);
+                    }
+                }
+            }
+        }
 
         EpgVolumeSlider {
             isFullScreen: root.isFullScreen
         }
     }
+
 }

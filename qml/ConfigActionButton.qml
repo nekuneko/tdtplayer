@@ -7,7 +7,7 @@ ItemDelegate {
     id: root
 
     required property string labelText
-    required property string iconType // "import" | "power"
+    required property string iconType // "camera" | "import" | "power"
     required property var appThemeItem
     property bool isDanger: false
 
@@ -36,6 +36,7 @@ ItemDelegate {
         anchors.rightMargin: root.appThemeItem ? root.appThemeItem.px(12) : 12
         spacing: root.appThemeItem ? root.appThemeItem.px(10) : 10
 
+        // Icono vectorial "+"
         Item {
             visible: root.iconType === "import"
             Layout.preferredWidth: root.appThemeItem ? root.appThemeItem.px(15) : 15
@@ -58,10 +59,11 @@ ItemDelegate {
             }
         }
 
+        // Iconos vectoriales Cámara y Power
         Canvas {
-            visible: root.iconType === "power"
-            Layout.preferredWidth: root.appThemeItem ? root.appThemeItem.px(15) : 15
-            Layout.preferredHeight: root.appThemeItem ? root.appThemeItem.px(15) : 15
+            visible: root.iconType === "power" || root.iconType === "camera"
+            Layout.preferredWidth: root.appThemeItem ? root.appThemeItem.px(16) : 16
+            Layout.preferredHeight: root.appThemeItem ? root.appThemeItem.px(16) : 16
             Layout.alignment: Qt.AlignVCenter
 
             property color strokeColor: root.iconTint
@@ -70,18 +72,35 @@ ItemDelegate {
                 var ctx = getContext("2d");
                 ctx.reset();
                 ctx.strokeStyle = strokeColor;
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 1.8;
                 ctx.lineCap = "round";
-                var cx = width / 2;
-                var cy = height / 2;
-                var r = Math.min(width, height) * 0.36;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, -Math.PI * 0.25, Math.PI * 1.25, false);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(cx, cy - r * 1.15);
-                ctx.lineTo(cx, cy);
-                ctx.stroke();
+                ctx.lineJoin = "round";
+
+                if (root.iconType === "camera") {
+                    ctx.beginPath();
+                    ctx.roundedRect(1.5, 4.5, width - 3, height - 6.5, 2.5, 2.5);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(5.2, 4.5);
+                    ctx.lineTo(6.4, 2.5);
+                    ctx.lineTo(width - 6.4, 2.5);
+                    ctx.lineTo(width - 5.2, 4.5);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(width / 2, (height + 2.5) / 2, 2.6, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else {
+                    var cx = width / 2;
+                    var cy = height / 2;
+                    var r = Math.min(width, height) * 0.36;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, -Math.PI * 0.25, Math.PI * 1.25, false);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy - r * 1.15);
+                    ctx.lineTo(cx, cy);
+                    ctx.stroke();
+                }
             }
         }
 

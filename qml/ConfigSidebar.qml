@@ -83,6 +83,18 @@ MouseArea {
         }
 
         ConfigActionButton {
+            labelText: "Capturar Pantalla (S)"
+            iconType: "camera"
+            appThemeItem: root.appThemeItem
+            onClicked: {
+                if (typeof screenshotHelper !== "undefined") {
+                    screenshotHelper.capture_frame(typeof ctrl !== "undefined" ? ctrl.osdChannelName : "");
+                }
+                if (root.isFullScreen) root.sidebarForceOpen = false;
+            }
+        }
+
+        ConfigActionButton {
             labelText: "Importar Lista M3U"
             iconType: "import"
             appThemeItem: root.appThemeItem
