@@ -20,6 +20,8 @@ def configure_environment() -> None:
     if sys.platform == "win32":
         # Registra el directorio de DLLs de PySide6 en Windows (necesario en entornos Store/venv)
         import PySide6
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("TvheadendNative.TdtPlayer.1")
 
         pyside_dir = os.path.dirname(PySide6.__file__)
         os.add_dll_directory(pyside_dir)
@@ -38,7 +40,7 @@ def configure_environment() -> None:
 configure_environment()
 
 from PySide6.QtCore import QUrl  # noqa: E402
-from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtGui import QGuiApplication, QIcon  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
 
 from channel_model import ChannelModel  # noqa: E402
@@ -51,13 +53,18 @@ def main():
     QGuiApplication.setApplicationName("TvheadendNativePlayer")
 
     app = QGuiApplication(sys.argv)
-    engine = QQmlApplicationEngine()
 
-    # Asegura que Qt6 encuentre tus nuevos archivos .qml modularizados de la subcarpeta qml/
+    # Carga el icono de la aplicación desde docs/icon.png (compatible con .exe y desarrollo)
     base_dir = getattr(
         sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))
     )
+    icon_path = os.path.join(base_dir, "docs", "icon.png")
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
 
+    engine = QQmlApplicationEngine()
+
+    # Asegura que Qt6 encuentre tus nuevos archivos .qml modularizados de la subcarpeta qml/
     qml_dir = (
         os.path.join(base_dir, "qml")
         if os.path.exists(os.path.join(base_dir, "qml"))
@@ -86,11 +93,14 @@ def main():
         )
         sys.exit(-1)
 
+    root_obj = engine.rootObjects()[0]
+    if os.path.exists(icon_path):
+        root_obj.setIcon(QIcon(icon_path))
+
     if sys.platform == "win32":
         from PySide6.QtMultimedia import QMediaPlayer, QVideoSink
         from deinterlace_filter import WindowsDeinterlacer
 
-        root_obj = engine.rootObjects()[0]
         player = root_obj.findChild(QMediaPlayer)
         # En QML VideoOutput expone la propiedad 'videoSink' (QVideoSink)
         video_out = root_obj.findChild(QVideoSink)

@@ -1,0 +1,40 @@
+<svg xmlns="http://w3.org" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#131D33"/>
+      <stop offset="100%" stop-color="#090E1A"/>
+    </linearGradient>
+    <linearGradient id="scrGrad" x1="34" y1="46" x2="152" y2="136" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="actGrad" x1="164" y1="104" x2="224" y2="152" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo principal -->
+  <rect x="14" y="14" width="228" height="228" rx="56" fill="url(#bgGrad)" stroke="#3B82F6" stroke-opacity="0.29" stroke-width="3"/>
+
+  <!-- Reproductor de vídeo oscuro -->
+  <rect x="34" y="46" width="118" height="90" rx="20" fill="url(#scrGrad)" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="2"/>
+  <polygon points="80,72 114,91 80,110" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Panel EPG inferior con dos líneas -->
+  <rect x="34" y="146" width="118" height="64" rx="16" fill="#11192E" stroke="#3B82F6" stroke-opacity="0.2" stroke-width="2"/>
+  <rect x="46" y="158" width="42" height="11" rx="5.5" fill="#2563EB"/>
+  <rect x="46" y="176" width="94" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.82"/>
+  <rect x="46" y="190" width="72" height="8" rx="4" fill="#64748B" fill-opacity="0.75"/>
+
+  <!-- Barra lateral derecha de canales -->
+  <rect x="168" y="48" width="54" height="42" rx="12" fill="#2563EB"/>
+  <rect x="180" y="65" width="30" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.75"/>
+
+  <!-- Canal activo destacado -->
+  <rect x="164" y="104" width="60" height="48" rx="14" fill="url(#actGrad)"/>
+  <rect x="176" y="123" width="36" height="10" rx="5" fill="#FFFFFF"/>
+
+  <rect x="168" y="166" width="54" height="42" rx="12" fill="#2563EB"/>
+  <rect x="180" y="183" width="30" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.75"/>
+</svg>

@@ -1,6 +1,14 @@
-# TdtPlayer (Tvheadend Native Player)
+<p align="center">
 
-Reproductor nativo de TDT / IPTV basado en **Python**, **PySide6 (Qt 6 / QML)** y **FFmpeg**, diseñado para reproducir flujos MPEG-TS en bruto (`?profile=pass`) de Tvheadend con baja latencia, EPG local en SQLite y compatibilidad total con **Linux** y **Windows**.
+![TDTPlayer Logo](docs/icon.svg)
+
+</p>
+
+<h1 align="center">TDTPlayer (Tvheadend Native Player)</h1>
+
+<p align="center">
+  Reproductor nativo de TDT / IPTV basado en <strong>Python</strong>, <strong>PySide6 (Qt 6 / QML)</strong> y <strong>FFmpeg</strong>, diseñado para flujos MPEG-TS en bruto (<code>?profile=pass</code>) con baja latencia, EPG local en SQLite y compatibilidad total con <strong>Linux</strong> y <strong>Windows</strong>.
+</p>
 
 ---
 
@@ -45,19 +53,24 @@ Reproductor nativo de TDT / IPTV basado en **Python**, **PySide6 (Qt 6 / QML)** 
 
 ## Requisitos previos (Windows)
 
-* **Python 3.10+** (recomendado usar el instalador oficial de [python.org](https://python.org)).
-* **[Microsoft Visual C++ Redistributable (x64)](https://aka.ms)** (requerido para cargar las librerías nativas de Qt 6).
+* **Python 3.10+** (instalador oficial disponible en `python.org/downloads/windows/`).
+* **Microsoft Visual C++ Redistributable (x64)** (requerido para cargar las librerías nativas de Qt 6: `aka.ms/vc14/vc_redist.x64.exe`).
 
 ---
 
 ## Instalación y ejecución en desarrollo
 
 1. **Crear y activar el entorno virtual:**
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate
-   ```
-   *(En Linux: `python3 -m venv venv && source venv/bin/activate`)*
+   * **Windows:**
+     ```bash
+     python -m venv venv
+     venv\Scripts\activate
+     ```
+   * **Linux:**
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
 
 2. **Instalar dependencias:**
    ```bash
@@ -71,30 +84,46 @@ Reproductor nativo de TDT / IPTV basado en **Python**, **PySide6 (Qt 6 / QML)** 
 
 ---
 
-## Compilar ejecutable (`.exe`) para Windows
+## Compilar ejecutable (Windows y Linux)
 
 1. **Activar el entorno virtual e instalar PyInstaller:**
+   * **Windows:** `venv\Scripts\activate`
+   * **Linux:** `source venv/bin/activate`
+
    ```bash
-   venv\Scripts\activate
    pip install pyinstaller
    ```
 
-2. **Generar la aplicación empaquetada (sin ventana de consola):**
-   ```bash
-   pyinstaller --noconfirm --onedir --windowed --name "TdtPlayer" ^
-     --add-data "main.qml;." ^
-     --add-data "qml;qml" ^
-     --hidden-import "deinterlace_filter" ^
-     --exclude-module "PySide6.QtWebEngineCore" ^
-     --exclude-module "PySide6.QtWebEngineQuick" ^
-     --exclude-module "PySide6.QtPdf" ^
-     main.py
-   ```
+2. **Generar la aplicación empaquetada:**
+
+   * **Windows (CMD):**
+     ```bash
+     pyinstaller --noconfirm --onedir --windowed --name "TDTPlayer" ^
+       --icon="docs/icon.ico" ^
+       --add-data "qml;qml" ^
+       --add-data "docs/icon.png;docs" ^
+       --hidden-import "deinterlace_filter" ^
+       --exclude-module "PySide6.QtWebEngineCore" ^
+       --exclude-module "PySide6.QtWebEngineQuick" ^
+       --exclude-module "PySide6.QtPdf" ^
+       main.py
+     ```
+
+   * **Linux:**
+     ```bash
+     pyinstaller --noconfirm --onedir --windowed --name "TDTPlayer" \
+       --icon="docs/icon.png" \
+       --add-data "qml:qml" \
+       --add-data "docs/icon.png:docs" \
+       --exclude-module "PySide6.QtWebEngineCore" \
+       --exclude-module "PySide6.QtWebEngineQuick" \
+       --exclude-module "PySide6.QtPdf" \
+       main.py
+     ```
 
 3. **Ejecutar el binario generado:**
-   ```bash
-   dist\TdtPlayer\TdtPlayer.exe
-   ```
+   * **Windows:** `dist\TDTPlayer\TDTPlayer.exe`
+   * **Linux:** `./dist/TDTPlayer/TDTPlayer`
 
 ---
 
@@ -106,3 +135,20 @@ Si añades nuevas librerías al proyecto y quieres regenerar `requirements.txt`:
 python -m pip install pipreqs
 python -m pipreqs.pipreqs . --force --ignore venv
 ```
+
+---
+
+## ☕ Apoya este proyecto
+
+Si te gusta **TDTPlayer** o mejora tu experiencia viendo la televisión, ¡considera invitarme a un café!  
+Tu apoyo me ayuda a mantener y mejorar este reproductor gratuito y de código abierto.
+
+<p align="center">
+  <a href="https://ko-fi.com/nekuneko">
+    <img
+      src="https://img.shields.io/badge/Ko--fi-Support%20me-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white"
+      alt="Support me on Ko-fi"
+    >
+  </a>
+</p>
+
