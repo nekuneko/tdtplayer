@@ -158,11 +158,15 @@ ApplicationWindow {
                     ctrl.osdChannelLogo = foundLogo;
 
                     var epgData = channelModel.fetch_current_epg(sidebar.pendingHoverName);
-                    if (epgData && epgData.title !== undefined) {
+                    if (epgData && epgData.title) {
                         ctrl.epgTitle = epgData.title;
-                        ctrl.epgDescription = epgData.description;
+                        ctrl.epgDescription = epgData.description || "Sin descripción disponible.";
+                    } else {
+                        ctrl.epgTitle = "Sin información EPG";
+                        ctrl.epgDescription = "No hay guía de programación disponible para " + sidebar.pendingHoverName + ".";
                     }
                     epgDrawer.epgForceOpen = true;
+
                 }
             }
 

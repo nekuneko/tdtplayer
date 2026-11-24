@@ -14,7 +14,7 @@ Item {
     required property string epgDescription
 
     property var activeChannelModel: typeof channelModel !== "undefined" ? channelModel : null
-    property string activeChannelName: typeof ctrl !== "undefined" ? ctrl.osdChannelName : ""
+        property string activeChannelName: typeof ctrl !== "undefined" ? (ctrl.osdHoveredChannelName !== "" ? ctrl.osdHoveredChannelName : ctrl.osdChannelName) : ""
     property int currentTimestamp: Math.floor(Date.now() / 1000)
 
     Timer {
