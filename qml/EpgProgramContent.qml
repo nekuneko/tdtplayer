@@ -14,7 +14,7 @@ Item {
     required property string epgDescription
 
     property var activeChannelModel: typeof channelModel !== "undefined" ? channelModel : null
-        property string activeChannelName: typeof ctrl !== "undefined" ? (ctrl.osdHoveredChannelName !== "" ? ctrl.osdHoveredChannelName : ctrl.osdChannelName) : ""
+    property string activeChannelName: typeof ctrl !== "undefined" ? (ctrl.osdHoveredChannelName !== "" ? ctrl.osdHoveredChannelName : ctrl.osdChannelName) : ""
     property int currentTimestamp: Math.floor(Date.now() / 1000)
 
     Timer {
@@ -40,9 +40,10 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        spacing: 20
+        spacing: root.width < (typeof appTheme !== "undefined" && appTheme ? appTheme.px(260) : 260) ? 10 : 20
 
         Rectangle {
+            visible: root.width >= (typeof appTheme !== "undefined" && appTheme ? appTheme.px(230) : 230)
             Layout.preferredWidth: 60
             Layout.preferredHeight: 60
             color: typeof appTheme !== "undefined" ? appTheme.logoBg : "transparent"
@@ -74,6 +75,7 @@ Item {
 
         Item {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             Layout.fillHeight: true
 
             Flickable {
@@ -81,7 +83,7 @@ Item {
                 anchors.fill: parent
                 contentWidth: width
                 contentHeight: scrollContentLayout.implicitHeight
-                anchors.rightMargin: 24
+                anchors.rightMargin: descFlickable.contentHeight > descFlickable.height ? 16 : 0
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
 
@@ -142,8 +144,9 @@ Item {
 
                         Rectangle {
                             id: drawerProgressBarContainer
-                            visible: root.stopTimestamp > root.startTimestamp
+                            visible: root.stopTimestamp > root.startTimestamp && width > 24
                             Layout.fillWidth: true
+                            Layout.minimumWidth: 0
                             Layout.preferredHeight: appTheme.px ? appTheme.px(4) : 4
                             Layout.alignment: Qt.AlignVCenter
                             color: "#334155"

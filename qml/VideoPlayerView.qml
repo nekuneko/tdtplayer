@@ -18,6 +18,12 @@ FocusScope {
     readonly property bool isPip: Boolean(windowController && windowController.isPipMode)
     readonly property bool isUhdHdr: videoOutput.sourceRect.height > 1080
 
+    readonly property bool isSidebarOpen: Boolean(sidebarItem && sidebarItem.visible && sidebarItem.sidebarForceOpen)
+    readonly property bool isConfigOpen: Boolean(configSidebarItem && configSidebarItem.visible && configSidebarItem.sidebarForceOpen)
+    readonly property bool isEpgOpen: Boolean(epgDrawerItem && epgDrawerItem.visible)
+    readonly property bool isCardMode: !scope.isPip && (scope.isSidebarOpen || scope.isConfigOpen || scope.isEpgOpen)
+    readonly property real cardMargin: (typeof appTheme !== "undefined" && appTheme) ? appTheme.px(12) : 12
+
     function resetMouseCursor() {
         videoMouseTracker.cursorShape = scope.isPip ? Qt.OpenHandCursor : Qt.ArrowCursor;
         mouseInactivityTimer.restart();
@@ -30,11 +36,9 @@ FocusScope {
     }
 
     Rectangle {
-        id: videoContainer
+        id: rootBackdrop
         anchors.fill: parent
-        color: "black"
-        border.color: scope.isPip ? "#334155" : "transparent"
-        border.width: scope.isPip ? 1 : 0
+        color: scope.isCardMode && typeof appTheme !== "undefined" && appTheme ? appTheme.bgAbsolute : "black"
 
         HoverHandler { id: containerHover }
 
@@ -59,14 +63,14 @@ FocusScope {
             id: videoMouseTracker
             anchors.fill: parent
             hoverEnabled: true
-            z: -1
+            z: 0
 
             onPositionChanged: {
                 scope.resetMouseCursor();
                 if (scope.isPip || window.visibility === Window.Minimized || sidebarItem.visible || configSidebarItem.visible)
                     return;
 
-                var epgTopBoundary = videoContainer.height - controller.epgDrawer.height;
+                var epgTopBoundary = rootBackdrop.height - controller.epgDrawer.height - scope.cardMargin;
                 if (videoMouseTracker.mouseY >= epgTopBoundary) {
                     controller.epgDrawer.epgForceOpen = true;
                 } else if (videoMouseTracker.mouseY < (epgTopBoundary - 10)) {
@@ -75,10 +79,39 @@ FocusScope {
             }
         }
 
-        VideoOutput {
-            id: videoOutput
-            anchors.fill: parent
-            fillMode: VideoOutput.PreserveAspectFit
+        Rectangle {
+            id: videoContainer
+            z: 1
+            color: "black"
+
+            readonly property real leftInset: scope.isCardMode ? (scope.isConfigOpen ? configSidebarItem.width : scope.cardMargin) : 0
+            readonly property real rightInset: scope.isCardMode ? (scope.isSidebarOpen ? sidebarItem.width : scope.cardMargin) : 0
+            readonly property real bottomInset: scope.isCardMode ? (scope.cardMargin + (scope.isEpgOpen ? (epgDrawerItem.height + scope.cardMargin) : 0)) : 0
+
+            x: leftInset
+            y: scope.isCardMode ? scope.cardMargin : 0
+            width: Math.max(100, rootBackdrop.width - leftInset - rightInset)
+            height: Math.max(80, rootBackdrop.height - y - bottomInset)
+
+            radius: scope.isCardMode ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.px(16) : 16) : 0
+            border.color: scope.isPip
+                          ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderHover : "#334155")
+                          : (scope.isCardMode && typeof appTheme !== "undefined" && appTheme ? appTheme.borderDefault : "transparent")
+            border.width: (scope.isPip || scope.isCardMode) ? 1 : 0
+            clip: true
+
+            Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            Behavior on height { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            Behavior on radius { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+
+            VideoOutput {
+                id: videoOutput
+                anchors.fill: parent
+                anchors.margins: videoContainer.border.width
+                fillMode: VideoOutput.PreserveAspectFit
+            }
         }
 
         VideoGesturesLayer {

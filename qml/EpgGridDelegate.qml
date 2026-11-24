@@ -5,8 +5,8 @@ import QtQuick.Layouts
 
 ItemDelegate {
     id: root
-    width: ListView.view.width
-    height: root.appThemeItem.px(100)
+    width: ListView.view ? ListView.view.width : 600
+    height: root.isCompact ? root.appThemeItem.px(108) : root.appThemeItem.px(102)
     hoverEnabled: true
 
     required property int index
@@ -21,9 +21,9 @@ ItemDelegate {
 
     readonly property int itemIndex: root.index
     readonly property bool isCurrent: ListView.view.currentIndex === root.itemIndex || (root.currentChannelIndex === root.itemIndex && !ListView.view.activeFocus)
+    readonly property bool isCompact: width < root.appThemeItem.px(680)
 
     property int currentTimestamp: Math.floor(Date.now() / 1000)
-
     property var currentEpgObject: null
     property var nextEpgObject: null
 
@@ -34,9 +34,8 @@ ItemDelegate {
         }
     }
 
-    Component.onCompleted: {
-        root.forceRefreshEpgData();
-    }
+    Component.onCompleted: root.forceRefreshEpgData()
+    onChannelNameStrChanged: root.forceRefreshEpgData()
 
     Timer {
         id: liveProgressTimer
@@ -48,15 +47,10 @@ ItemDelegate {
 
     background: Rectangle {
         color: root.isCurrent ? root.appThemeItem.bgItemActive : (root.hovered ? root.appThemeItem.bgItemHover : root.appThemeItem.bgItemDefault)
-
-        radius: root.appThemeItem.px(8)
+        radius: root.appThemeItem.px(12)
         border.color: root.isCurrent ? root.appThemeItem.borderActive : (root.hovered ? root.appThemeItem.borderHover : root.appThemeItem.borderDefault)
-        border.width: root.isCurrent ? 2 : 1
-        Behavior on color {
-            ColorAnimation {
-                duration: 120
-            }
-        }
+        border.width: root.isCurrent ? 1.5 : 1
+        Behavior on color { ColorAnimation { duration: 120 } }
     }
 
     readonly property string channelNameStr: root.name ? root.name.toString().trim().replace(/[\r\n]/g, "") : ""
@@ -82,11 +76,11 @@ ItemDelegate {
 
     contentItem: RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: root.appThemeItem.px(16)
-        anchors.rightMargin: root.appThemeItem.px(36)
-        anchors.topMargin: root.appThemeItem.px(12)
-        anchors.bottomMargin: root.appThemeItem.px(12)
-        spacing: root.appThemeItem.px(20)
+        anchors.leftMargin: root.appThemeItem.px(14)
+        anchors.rightMargin: root.appThemeItem.px(18)
+        anchors.topMargin: root.appThemeItem.px(10)
+        anchors.bottomMargin: root.appThemeItem.px(10)
+        spacing: root.isCompact ? root.appThemeItem.px(10) : root.appThemeItem.px(16)
 
         EpgBadgeNo {
             textNo: root.chNo ? root.chNo.toString() : root.itemIndex.toString()
@@ -96,10 +90,10 @@ ItemDelegate {
         }
 
         Rectangle {
-            Layout.preferredWidth: root.appThemeItem.px(45)
-            Layout.preferredHeight: root.appThemeItem.px(45)
+            Layout.preferredWidth: root.isCompact ? root.appThemeItem.px(38) : root.appThemeItem.px(44)
+            Layout.preferredHeight: root.isCompact ? root.appThemeItem.px(38) : root.appThemeItem.px(44)
             color: root.appThemeItem.logoBg
-            radius: 6
+            radius: root.appThemeItem.px(8)
             Layout.alignment: Qt.AlignVCenter
 
             Text {
@@ -108,106 +102,59 @@ ItemDelegate {
                 text: root.channelNameStr !== "" ? root.channelNameStr.substring(0, 1).toUpperCase() : "📺"
                 color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
                 font.bold: true
-                font.pointSize: root.appThemeItem.pt(13)
+                font.pointSize: root.appThemeItem.pt(12)
                 renderType: Text.QtRendering
             }
 
             Image {
                 id: gridChannelLogo
                 anchors.fill: parent
-                anchors.margins: 4
+                anchors.margins: 3
                 source: root.logo ? root.logo : ""
                 fillMode: Image.PreserveAspectFit
-                sourceSize.width: 90
-                sourceSize.height: 90
+                sourceSize.width: 88
+                sourceSize.height: 88
                 visible: status === Image.Ready && root.logo !== ""
                 cache: true
+                asynchronous: true
             }
         }
 
         Text {
+            visible: !root.isCompact
             text: root.channelNameStr
             color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
             font.bold: true
-            font.pointSize: root.appThemeItem.pt(12)
+            font.pointSize: root.appThemeItem.pt(11.5)
             renderType: Text.NativeRendering
-            Layout.preferredWidth: root.appThemeItem.px(130)
+            Layout.preferredWidth: root.appThemeItem.px(135)
             elide: Text.ElideRight
             Layout.alignment: Qt.AlignVCenter
         }
 
         Rectangle {
-            Layout.preferredHeight: root.appThemeItem.px(45)
+            visible: !root.isCompact
+            Layout.preferredHeight: root.appThemeItem.px(44)
             Layout.preferredWidth: 1
             color: root.appThemeItem.borderHover
             Layout.alignment: Qt.AlignVCenter
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: root.appThemeItem.px(5)
-            Layout.alignment: Qt.AlignVCenter
+        EpgGridProgramColumn {
+            cleanTitle: root.cleanTitle
+            finalDesc: root.finalDesc
+            hasTime: root.hasTime
+            formattedTime: root.formattedTime
+            startTimestamp: root.startTimestamp
+            stopTimestamp: root.stopTimestamp
+            currentTimestamp: root.currentTimestamp
+            viewMode: root.viewMode
+            isCurrent: root.isCurrent
+            themeItem: root.appThemeItem
 
-            Text {
-                text: root.cleanTitle
-                color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
-                font.bold: true
-                font.pointSize: root.appThemeItem.pt(12.5)
-                renderType: Text.NativeRendering
-                Layout.fillWidth: true
-                elide: Text.ElideRight
-                Layout.alignment: Qt.AlignLeft
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: root.appThemeItem.px(12)
-                Layout.alignment: Qt.AlignVCenter
-
-                EpgTimePill {
-                    isSelected: root.isCurrent
-                    hasValidTime: root.hasTime
-                    timeTextStr: root.formattedTime
-                    stopTime: root.stopTimestamp
-                    themeItem: root.appThemeItem
-                    Layout.alignment: Qt.AlignVCenter
-
-                    onProgramExpired: {
-                        root.forceRefreshEpgData();
-                        root.channelModel.dataChanged(root.channelModel.index(root.itemIndex, 0), root.channelModel.index(root.itemIndex, 0));
-                    }
-                }
-
-                Rectangle {
-                    id: gridProgressBarContainer
-                    visible: root.hasTime
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: root.appThemeItem.px(4)
-                    Layout.alignment: Qt.AlignVCenter
-                    color: root.isCurrent ? "rgba(255, 255, 255, 0.3)" : "#334155"
-                    radius: 2
-
-                    readonly property real progressFactor: root.viewMode === "NOW" ? (root.stopTimestamp > root.startTimestamp ? Math.max(0.0, Math.min(1.0, (root.currentTimestamp - root.startTimestamp) / (root.stopTimestamp - root.startTimestamp))) : 0.0) : 0.0
-
-                    Rectangle {
-                        width: gridProgressBarContainer.width * gridProgressBarContainer.progressFactor
-                        height: parent.height
-                        radius: 2
-                        color: root.isCurrent ? "#FFFFFF" : root.appThemeItem.borderActive
-                    }
-                }
-            }
-
-            Text {
-                text: root.finalDesc
-                color: root.isCurrent ? root.appThemeItem.textDescActive : root.appThemeItem.textDesc
-                font.pointSize: root.appThemeItem.pt(10.5)
-                renderType: Text.NativeRendering
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                maximumLineCount: 1
-                elide: Text.ElideRight
-                Layout.alignment: Qt.AlignLeft
+            onProgramExpired: {
+                root.forceRefreshEpgData();
+                root.channelModel.dataChanged(root.channelModel.index(root.itemIndex, 0), root.channelModel.index(root.itemIndex, 0));
             }
         }
     }

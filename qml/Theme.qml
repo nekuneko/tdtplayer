@@ -19,8 +19,7 @@ Item {
         return Math.round(value * root.factorScale);
     }
 
-    // 🚀 LISTA ACTUALIZADA: Se añade la clave para el nuevo tema de Samsung
-    readonly property list<string> themeKeys: ["CINEMATIC_COLOR", "DARK_ACCESSIBLE", "NORDIC_FROST", "MONOKAI_PRO", "VAMPIRE_BLOOD", "CYBERPUNK_NEON", "NETFLIX_DARK", "SAMSUNG_ONEUI"]
+    readonly property list<string> themeKeys: ["CINEMATIC_COLOR", "DARK_ACCESSIBLE", "NORDIC_FROST", "MONOKAI_PRO", "VAMPIRE_BLOOD", "CYBERPUNK_NEON", "NETFLIX_DARK"]
 
     readonly property var colors: ({
             "DARK_ACCESSIBLE": {
@@ -159,35 +158,6 @@ Item {
                 "badgeTimeBg": "#2F2F2F",
                 "badgeTimeText": "#FFFFFF",
                 "liveBg": "#E50914",
-                "liveBorder": "transparent",
-                "liveText": "#FFFFFF",
-                "logoBg": "transparent"
-            },
-            // 🚀 NUEVA PALETA: "Estilo Samsung One UI" oscuro moderno
-            "SAMSUNG_ONEUI": {
-                "name": "Samsung One UI",
-                "bgAbsolute": "#0A0E1A"    // Azul noche muy profundo oscuro
-                ,
-                "bgItemActive": "#0377FF"  // El icónico azul eléctrico de One UI
-                ,
-                "bgItemHover": "#252D3A"   // Gris azulado intermedio para el hover
-                ,
-                "bgItemDefault": "#121926" // Fondo de las tarjetas individuales
-                ,
-                "borderActive": "#0377FF",
-                "borderHover": "#4C5A6F",
-                "borderDefault": "#1C2635",
-                "textTitle": "#F8FAFC"     // Blanco nítido
-                ,
-                "textTitleActive": "#FFFFFF",
-                "textDesc": "#94A3B8"      // Gris Slate suave para la sinopsis
-                ,
-                "textDescActive": "#E2E8F0",
-                "badgeTimeBg": "#252D3A"   // Cápsulas de tiempo integradas
-                ,
-                "badgeTimeText": "#0377FF" // Texto horaria resaltado en azul de One UI
-                ,
-                "liveBg": "#0377FF",
                 "liveBorder": "transparent",
                 "liveText": "#FFFFFF",
                 "logoBg": "transparent"

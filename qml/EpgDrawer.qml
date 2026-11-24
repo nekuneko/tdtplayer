@@ -16,16 +16,20 @@ Rectangle {
     property bool epgForceOpen: false
 
     readonly property bool containsMouse: epgMouseTracker.containsMouse
+    readonly property real outerMargin: appTheme ? appTheme.px(12) : 12
 
     height: root.isFullScreen ? (appTheme ? appTheme.px(180) : 180) : (appTheme ? appTheme.px(160) : 160)
 
     anchors.bottom: parent ? parent.bottom : undefined
     anchors.left: parent ? parent.left : undefined
+    anchors.bottomMargin: outerMargin
+    anchors.leftMargin: outerMargin
 
     color: appTheme.bgAbsolute
     opacity: 0.98
-    border.color: appTheme.borderActive
-    border.width: root.isFullScreen ? 1.5 : 0
+    radius: appTheme ? appTheme.px(16) : 16
+    border.color: root.isFullScreen ? appTheme.borderActive : appTheme.borderDefault
+    border.width: root.isFullScreen ? 1.5 : 1
 
     Behavior on height {
         NumberAnimation {
@@ -45,6 +49,8 @@ Rectangle {
     MouseArea {
         id: epgMouseTracker
         anchors.fill: parent
+        anchors.bottomMargin: -root.outerMargin
+        anchors.leftMargin: -root.outerMargin
         hoverEnabled: true
         z: -1
         cursorShape: Qt.ArrowCursor

@@ -14,10 +14,15 @@ MouseArea {
     signal channelSelected(int realIndex)
     signal channelHovered(string channelName)
 
+    readonly property real outerMargin: root.appThemeItem ? root.appThemeItem.px(12) : 12
+
     anchors.top: parent.top
     anchors.bottom: parent.bottom
 
-    width: root.appThemeItem ? root.appThemeItem.px(320) : 320
+    width: (parent
+           ? Math.min(root.appThemeItem ? root.appThemeItem.px(320) : 320, Math.max(root.appThemeItem ? root.appThemeItem.px(195) : 195, parent.width * 0.44))
+           : (root.appThemeItem ? root.appThemeItem.px(320) : 320)) + outerMargin
+
     visible: !root.isFullScreen || root.sidebarForceOpen
     hoverEnabled: true
 
@@ -80,7 +85,7 @@ MouseArea {
         var count = root.model.rowCount();
         if (count === 0)
             return;
-        var rowHeight = root.appThemeItem ? root.appThemeItem.px(74) : 74;
+        var rowHeight = root.appThemeItem ? root.appThemeItem.px(72) : 72;
         var visibleCount = Math.floor(channelListView.height / rowHeight);
         var firstVisible = channelListView.indexAt(0, channelListView.contentY);
         var lastVisible = firstVisible + visibleCount - 1;
@@ -107,14 +112,17 @@ MouseArea {
 
     Rectangle {
         anchors.fill: parent
+        anchors.margins: root.outerMargin
         color: root.appThemeItem ? root.appThemeItem.bgAbsolute : "#0B0F17"
+        radius: root.appThemeItem ? root.appThemeItem.px(16) : 16
+        border.color: root.appThemeItem ? root.appThemeItem.borderDefault : "#1E293B"
+        border.width: 1
     }
 
     ListView {
         id: channelListView
         anchors.fill: parent
-        anchors.topMargin: root.appThemeItem ? root.appThemeItem.px(10) : 10
-        anchors.bottomMargin: root.appThemeItem ? root.appThemeItem.px(10) : 10
+        anchors.margins: root.outerMargin + (root.appThemeItem ? root.appThemeItem.px(10) : 10)
         spacing: root.appThemeItem ? root.appThemeItem.px(8) : 8
         clip: true
         model: root.model

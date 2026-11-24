@@ -16,11 +16,14 @@ RowLayout {
     // Esto permite que el Component.onCompleted de tu EpgDrawer le inyecte el Binding dinámico sin errores de arranque
     property string epgTitle: ""
 
+    readonly property bool isCompact: root.width < (appTheme ? appTheme.px(360) : 360)
+
     // Bloque Izquierdo: [Número] Nombre del Canal — Programa Activo
     RowLayout {
         spacing: 8
         Layout.alignment: Qt.AlignLeft
         Layout.fillWidth: true
+        Layout.minimumWidth: 0
 
         Rectangle {
             visible: root.channelNo !== ""
@@ -47,6 +50,8 @@ RowLayout {
             font.pointSize: root.isFullScreen ? 14 : 12
             renderType: Text.NativeRendering
             elide: Text.ElideRight
+            Layout.minimumWidth: 0
+            Layout.maximumWidth: root.cleanTitleText !== "" ? (root.width * 0.42) : root.width
             Layout.alignment: Qt.AlignVCenter
         }
 
@@ -66,6 +71,7 @@ RowLayout {
             renderType: Text.NativeRendering
             elide: Text.ElideRight
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             Layout.alignment: Qt.AlignVCenter
         }
     }
@@ -79,6 +85,7 @@ RowLayout {
     }
 
     RowLayout {
+        visible: !root.isCompact
         spacing: 16
         Layout.alignment: Qt.AlignRight
 

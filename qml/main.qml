@@ -101,7 +101,7 @@ ApplicationWindow {
             isFullScreen: ctrl.isFullScreen
             sidebarItem: sidebar
             z: 1
-            width: sidebar.visible ? (parent.width - sidebar.width) : parent.width
+            width: sidebar.visible ? (parent.width - sidebar.width - appTheme.px(36)) : (parent.width - appTheme.px(24))
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
         }
 
