@@ -14,6 +14,7 @@ class ChannelModel(QAbstractListModel):
     UrlRole = Qt.UserRole + 2
     LogoRole = Qt.UserRole + 3
     ChNoRole = Qt.UserRole + 4
+    EpgTitleRole = Qt.UserRole + 5
 
     logoCacheChanged = Signal()
 
@@ -23,6 +24,7 @@ class ChannelModel(QAbstractListModel):
         self._worker = None
         self._downloader = None
         self._logo_cache = {}
+        self._epg_title_cache = {}
 
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self.cache_dir = os.path.join(base_dir, ".logo_cache")
@@ -37,10 +39,26 @@ class ChannelModel(QAbstractListModel):
             self.UrlRole: b"url",
             self.LogoRole: b"logo",
             self.ChNoRole: b"chNo",
+            self.EpgTitleRole: b"epgTitle",
         }
 
     def rowCount(self, parent: QModelIndex = None) -> int:
         return len(self._channels)
+
+    def _get_clean_epg_title(self, channel_name: str) -> str:
+        clean_name = channel_name.strip().replace("\r", "").replace("\n", "")
+        if clean_name in self._epg_title_cache:
+            return self._epg_title_cache[clean_name]
+
+        epg = self._repository.fetch_current_program(clean_name)
+        title = ""
+        if epg and epg.get("title"):
+            raw = str(epg["title"]).strip()
+            close_idx = raw.find("]")
+            title = raw[close_idx + 1 :].strip() if raw.startswith("[") and close_idx != -1 else raw
+
+        self._epg_title_cache[clean_name] = title
+        return title
 
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
         if not index.isValid() or not (0 <= index.row() < len(self._channels)):
@@ -58,6 +76,8 @@ class ChannelModel(QAbstractListModel):
             return ch.logo if (local_file and os.path.exists(local_file)) else ""
         if role == self.ChNoRole:
             return ch.ch_no or ""
+        if role == self.EpgTitleRole:
+            return self._get_clean_epg_title(ch.name)
         return None
 
     @Property(dict, notify=logoCacheChanged)
@@ -86,6 +106,14 @@ class ChannelModel(QAbstractListModel):
         self._stop_active_workers()
         self._parser.clear_cache_dir()
 
+    @Slot()
+    def refresh_sidebar_epg(self) -> None:
+        self._epg_title_cache.clear()
+        if self._channels:
+            self.dataChanged.emit(
+                self.index(0, 0), self.index(len(self._channels) - 1, 0), [self.EpgTitleRole]
+            )
+
     @Slot(str)
     @Slot(str, bool)
     def parse_m3u_content(self, content: str, clear_cache: bool = False) -> None:
@@ -95,6 +123,7 @@ class ChannelModel(QAbstractListModel):
             self._stop_active_workers()
 
         self.beginResetModel()
+        self._epg_title_cache.clear()
         self._channels, download_queue, self._logo_cache, base_url = self._parser.parse(content)
         self.endResetModel()
         self.logoCacheChanged.emit()
@@ -112,7 +141,10 @@ class ChannelModel(QAbstractListModel):
 
     def _on_worker_finished(self, success: bool) -> None:
         if success and self._channels:
-            self.dataChanged.emit(self.index(0, 0), self.index(len(self._channels) - 1, 0), [])
+            self._epg_title_cache.clear()
+            self.dataChanged.emit(
+                self.index(0, 0), self.index(len(self._channels) - 1, 0), []
+            )
 
     def _on_single_logo_downloaded(self, row: int) -> None:
         if 0 <= row < len(self._channels):

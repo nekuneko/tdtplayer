@@ -17,7 +17,7 @@ MouseArea {
     anchors.top: parent.top
     anchors.bottom: parent.bottom
 
-    width: root.appThemeItem ? root.appThemeItem.px(290) : 290
+    width: root.appThemeItem ? root.appThemeItem.px(320) : 320
     visible: !root.isFullScreen || root.sidebarForceOpen
     hoverEnabled: true
 
@@ -29,6 +29,21 @@ MouseArea {
     onSidebarForceOpenChanged: {
         if (sidebarForceOpen) {
             root.forceCenterScrollSync();
+            if (root.model && root.model.refresh_sidebar_epg) {
+                root.model.refresh_sidebar_epg();
+            }
+        }
+    }
+
+    Timer {
+        id: sidebarEpgRefreshTimer
+        interval: 60000
+        running: root.visible && root.sidebarForceOpen
+        repeat: true
+        onTriggered: {
+            if (root.model && root.model.refresh_sidebar_epg) {
+                root.model.refresh_sidebar_epg();
+            }
         }
     }
 
@@ -65,7 +80,7 @@ MouseArea {
         var count = root.model.rowCount();
         if (count === 0)
             return;
-        var rowHeight = root.appThemeItem ? root.appThemeItem.px(60) : 60;
+        var rowHeight = root.appThemeItem ? root.appThemeItem.px(74) : 74;
         var visibleCount = Math.floor(channelListView.height / rowHeight);
         var firstVisible = channelListView.indexAt(0, channelListView.contentY);
         var lastVisible = firstVisible + visibleCount - 1;
@@ -98,6 +113,9 @@ MouseArea {
     ListView {
         id: channelListView
         anchors.fill: parent
+        anchors.topMargin: root.appThemeItem ? root.appThemeItem.px(10) : 10
+        anchors.bottomMargin: root.appThemeItem ? root.appThemeItem.px(10) : 10
+        spacing: root.appThemeItem ? root.appThemeItem.px(8) : 8
         clip: true
         model: root.model
 

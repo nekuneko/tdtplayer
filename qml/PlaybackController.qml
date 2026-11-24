@@ -62,6 +62,7 @@ QtObject {
         
         if (root.mediaPlayer) { 
             root.mediaPlayer.stop()
+            root.mediaPlayer.source = ""
             if (!root.isVoluntarilyStopped) {
                 root.zappingTimer.start() 
             }
