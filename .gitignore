@@ -5,3 +5,5 @@ build/*
 dist/*
 TdtPlayer.spec
 epg_cache.db*
+channels.m3u
+venv/

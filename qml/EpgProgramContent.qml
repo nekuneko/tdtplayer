@@ -63,11 +63,11 @@ Item {
                 id: drawerChannelLogo
                 anchors.fill: parent
                 anchors.margins: 4
-                source: root.channelLogo
+                source: (root.channelLogo.startsWith("file://") || root.channelLogo.startsWith("http")) ? root.channelLogo : ""
                 fillMode: Image.PreserveAspectFit
                 sourceSize.width: 120
                 sourceSize.height: 120
-                visible: status === Image.Ready && root.channelLogo !== ""
+                visible: status === Image.Ready && source !== ""
                 cache: true
             }
         }

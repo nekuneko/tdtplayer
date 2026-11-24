@@ -4,7 +4,7 @@ import os
 import re
 import urllib.parse
 
-from PySide6.QtCore import Property, QAbstractListModel, QModelIndex, Qt, Signal, Slot
+from PySide6.QtCore import Property, QAbstractListModel, QModelIndex, Qt, QUrl, Signal, Slot
 
 from epg_repository import EpgRepository
 from epg_worker import EpgPreloaderWorker
@@ -107,7 +107,6 @@ class ChannelModel(QAbstractListModel):
                         ("http://", "https://")
                     ):
                         parsed_url = urllib.parse.urlparse(current_logo)
-                        # 🚀 CORRECCIÓN DE DESEMPAQUETADO STRICTO: Extraemos limpiamente el string de la extensión (índice 1 de la tupla)
                         file_ext_tuple = os.path.splitext(parsed_url.path)
                         detected_ext = (
                             file_ext_tuple[1] if len(file_ext_tuple) > 1 else ".png"
@@ -124,9 +123,14 @@ class ChannelModel(QAbstractListModel):
                         )
                         full_local_path = os.path.join(self.cache_dir, file_name)
                         download_queue.append((current_logo, full_local_path))
-                        local_logo_path = "file://" + full_local_path
+                        local_logo_path = QUrl.fromLocalFile(full_local_path).toString()
+                    elif current_logo and os.path.exists(current_logo):
+                        local_logo_path = QUrl.fromLocalFile(
+                            os.path.abspath(current_logo)
+                        ).toString()
                     else:
-                        local_logo_path = current_logo or ""
+                        local_logo_path = ""
+
 
                     try:
                         suggested_no = (
@@ -169,6 +173,7 @@ class ChannelModel(QAbstractListModel):
 
         if download_queue:
             self._downloader = LogoDownloaderWorker(download_queue, self.cache_dir)
+            self._downloader.finished.connect(self._on_logos_downloaded)
             self._downloader.start()
 
         if self._base_url:
@@ -180,6 +185,15 @@ class ChannelModel(QAbstractListModel):
         if success and len(self._channels) > 0:
             self.dataChanged.emit(
                 self.index(0, 0), self.index(len(self._channels) - 1, 0), []
+            )
+
+    def _on_logos_downloaded(self) -> None:
+        self.logoCacheChanged.emit()
+        if len(self._channels) > 0:
+            self.dataChanged.emit(
+                self.index(0, 0),
+                self.index(len(self._channels) - 1, 0),
+                [self.LogoRole],
             )
 
     @Slot(int, result=str)
