@@ -2,7 +2,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtCore
-import "qml"
 
 ApplicationWindow {
     id: window
@@ -231,7 +230,7 @@ ApplicationWindow {
 
         // 🚀 INYECCIÓN MAESTRA EN TIEMPO DE COMPILACIÓN: Pasamos las variables obligatorias al instanciar el archivo
         Component.onCompleted: {
-            epgGridOverlayLoader.setSource("qml/EpgGridOverlay.qml", {
+            epgGridOverlayLoader.setSource("EpgGridOverlay.qml", {
                 "channelModel": channelModel,
                 "appThemeItem": appTheme,
                 "currentChannelIndex": Qt.binding(function () {

@@ -19,9 +19,12 @@ def configure_environment() -> None:
 
     if sys.platform == "win32":
         # Registra el directorio de DLLs de PySide6 en Windows (necesario en entornos Store/venv)
-        import PySide6
         import ctypes
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("TvheadendNative.TdtPlayer.1")
+        import PySide6
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "TvheadendNative.TdtPlayer.1"
+        )
 
         pyside_dir = os.path.dirname(PySide6.__file__)
         os.add_dll_directory(pyside_dir)
@@ -64,7 +67,7 @@ def main():
 
     engine = QQmlApplicationEngine()
 
-    # Asegura que Qt6 encuentre tus nuevos archivos .qml modularizados de la subcarpeta qml/
+    # Asegura que Qt6 encuentre los archivos .qml modularizados de la subcarpeta qml/
     qml_dir = (
         os.path.join(base_dir, "qml")
         if os.path.exists(os.path.join(base_dir, "qml"))
@@ -83,7 +86,7 @@ def main():
     context = engine.rootContext()
     context.setContextProperty("channelModel", channel_model)
 
-    qml_file = os.path.join(base_dir, "main.qml")
+    qml_file = os.path.join(qml_dir, "main.qml")
     engine.load(QUrl.fromLocalFile(qml_file))
 
     if not engine.rootObjects():
