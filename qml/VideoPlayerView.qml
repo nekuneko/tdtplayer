@@ -1,11 +1,13 @@
 // qml/VideoPlayerView.qml
 import QtQuick
+import QtQuick.Controls
 import QtMultimedia
 
 FocusScope {
     id: scope
 
     required property var window
+    required property var windowController
     required property var controller
     required property var sidebarItem
     required property var epgDrawerItem
@@ -13,9 +15,10 @@ FocusScope {
     required property var globalKeyboardHandlerItem
 
     property alias mediaPlayer: mediaPlayer
+    readonly property bool isPip: Boolean(windowController && windowController.isPipMode)
 
     function resetMouseCursor() {
-        videoMouseTracker.cursorShape = Qt.ArrowCursor;
+        videoMouseTracker.cursorShape = scope.isPip ? Qt.OpenHandCursor : Qt.ArrowCursor;
         mouseInactivityTimer.restart();
     }
 
@@ -29,13 +32,23 @@ FocusScope {
         id: videoContainer
         anchors.fill: parent
         color: "black"
+        border.color: scope.isPip ? "#334155" : "transparent"
+        border.width: scope.isPip ? 1 : 0
+
+        HoverHandler {
+            id: containerHover
+        }
 
         Timer {
             id: mouseInactivityTimer
-            interval: 500
+            interval: scope.isPip ? 1500 : 500
             running: !controller.isVoluntarilyStopped && (controller.epgDrawer ? !controller.epgDrawer.epgForceOpen : true)
             repeat: false
-            onTriggered: videoMouseTracker.cursorShape = Qt.BlankCursor
+            onTriggered: {
+                if (!scope.isPip) {
+                    videoMouseTracker.cursorShape = Qt.BlankCursor;
+                }
+            }
         }
 
         Connections {
@@ -55,7 +68,7 @@ FocusScope {
             onPositionChanged: {
                 scope.resetMouseCursor();
 
-                if (window.visibility === Window.Minimized || sidebarItem.visible || configSidebarItem.visible)
+                if (scope.isPip || window.visibility === Window.Minimized || sidebarItem.visible || configSidebarItem.visible)
                     return;
                 var epgHeight = controller.epgDrawer.height;
                 var epgTopBoundary = videoContainer.height - epgHeight;
@@ -63,7 +76,6 @@ FocusScope {
                 if (videoMouseTracker.mouseY >= epgTopBoundary) {
                     controller.epgDrawer.epgForceOpen = true;
                 } else if (videoMouseTracker.mouseY < (epgTopBoundary - 10)) {
-                    // 🚀 CIERRE POR CONTACTO REAL: Cuando el ratón vuelve a la zona del reproductor de vídeo, se oculta el drawer
                     controller.epgDrawer.epgForceOpen = false;
                 }
             }
@@ -73,6 +85,18 @@ FocusScope {
             id: videoOutput
             anchors.fill: parent
             fillMode: VideoOutput.PreserveAspectFit
+
+            // Arrastre nativo de ventana cuando estamos en modo PiP
+            DragHandler {
+                id: pipWindowDragger
+                enabled: scope.isPip
+                target: null
+                onActiveChanged: {
+                    if (active) {
+                        scope.window.startSystemMove();
+                    }
+                }
+            }
 
             TapHandler {
                 id: videoGestureOrchestrator
@@ -85,6 +109,10 @@ FocusScope {
 
                 onDoubleTapped: {
                     Qt.callLater(function () {
+                        if (scope.isPip) {
+                            scope.windowController.togglePipMode();
+                            return;
+                        }
                         if (window.visibility === Window.FullScreen) {
                             window.visibility = Window.Windowed;
                             controller.isFullScreen = false;
@@ -115,7 +143,7 @@ FocusScope {
                 anchors.bottom: parent.bottom
                 width: 50
                 hoverEnabled: true
-                enabled: !epgDrawerItem.epgForceOpen && !sidebarItem.visible
+                enabled: !scope.isPip && !epgDrawerItem.epgForceOpen && !sidebarItem.visible
                 onEntered: {
                     controller.openConfigAndCollapseOthers();
                     configSidebarItem.sidebarForceOpen = true;
@@ -129,24 +157,121 @@ FocusScope {
                 anchors.bottom: parent.bottom
                 width: 50
                 hoverEnabled: true
-                enabled: !epgDrawerItem.epgForceOpen && !configSidebarItem.visible
+                enabled: !scope.isPip && !epgDrawerItem.epgForceOpen && !configSidebarItem.visible
                 onEntered: sidebarItem.sidebarForceOpen = true
             }
 
             MouseArea {
                 anchors.fill: parent
                 anchors.rightMargin: sidebarItem.width
-                visible: sidebarItem.sidebarForceOpen
+                visible: !scope.isPip && sidebarItem.sidebarForceOpen
                 onClicked: sidebarItem.sidebarForceOpen = false
             }
 
             MouseArea {
                 anchors.fill: parent
                 anchors.leftMargin: configSidebarItem.width
-                visible: configSidebarItem.visible
+                visible: !scope.isPip && configSidebarItem.visible
                 onClicked: {
                     configSidebarItem.sidebarForceOpen = false;
                     controller.restorePanelsAfterConfig();
+                }
+            }
+
+            // Controles flotantes estilo Firefox cuando está en modo PiP
+            Item {
+                id: pipOverlayHud
+                anchors.fill: parent
+                visible: scope.isPip
+                opacity: containerHover.hovered ? 1.0 : 0.0
+                Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                // Botón superior derecho: Restaurar ventana normal
+                Rectangle {
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    anchors.margins: 10
+                    width: 32
+                    height: 32
+                    radius: 16
+                    color: "#CC0F172A"
+                    border.color: "#475569"
+                    border.width: 1
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "⧉"
+                        color: "#FFFFFF"
+                        font.pixelSize: 15
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: scope.windowController.togglePipMode()
+                    }
+                }
+
+                // Barra inferior centrada: Silenciar y Play/Pause
+                Row {
+                    anchors.bottom: parent.bottom
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottomMargin: 12
+                    spacing: 12
+
+                    Rectangle {
+                        width: 34
+                        height: 34
+                        radius: 17
+                        color: "#CC0F172A"
+                        border.color: "#475569"
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: mediaPlayer.audioOutput && mediaPlayer.audioOutput.muted ? "🔇" : "🔊"
+                            color: "#FFFFFF"
+                            font.pixelSize: 14
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: controller.toggleMute()
+                        }
+                    }
+
+                    Rectangle {
+                        width: 34
+                        height: 34
+                        radius: 17
+                        color: "#CC0F172A"
+                        border.color: "#475569"
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: mediaPlayer.playbackState === MediaPlayer.PlayingState ? "⏸" : "▶"
+                            color: "#FFFFFF"
+                            font.pixelSize: 13
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: controller.togglePlayback()
+                        }
+                    }
+                }
+
+                // Esquina inferior derecha para redimensionar el PiP libremente
+                MouseArea {
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    width: 18
+                    height: 18
+                    cursorShape: Qt.SizeFDiagCursor
+                    onPressed: scope.window.startSystemResize(Qt.RightEdge | Qt.BottomEdge)
                 }
             }
         }

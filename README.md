@@ -1,11 +1,52 @@
 # TdtPlayer (Tvheadend Native Player)
 
-Reproductor nativo de TDT / IPTV basado en Python, PySide6 (Qt 6 / QML) y FFmpeg, compatible con **Linux** y **Windows**.
+Reproductor nativo de TDT / IPTV basado en **Python**, **PySide6 (Qt 6 / QML)** y **FFmpeg**, diseñado para reproducir flujos MPEG-TS en bruto (`?profile=pass`) de Tvheadend con baja latencia, EPG local en SQLite y compatibilidad total con **Linux** y **Windows**.
+
+---
+
+## Características principales
+
+* **Multiplataforma real (Linux y Windows):**
+  * **Linux:** Aceleración por hardware Intel `VA-API` con integración `xcb_egl`.
+  * **Windows:** Aceleración por hardware `Direct3D 11` (`d3d11va`) y filtro de desentrelazado en tiempo real (`WindowsDeinterlacer`) para emisiones TDT `1080i`.
+* **Modo Picture-in-Picture (PiP) / Always on Top:** Ventana flotante sin bordes siempre visible en primer plano, arrastrable y redimensionable con controles rápidos al pasar el ratón.
+* **Guía EPG integrada:** Precarga asíncrona en SQLite (`epg_cache.db`), barra de progreso en tiempo real y parrilla completa de programación.
+* **Caché local de logotipos:** Descarga en segundo plano de iconos de canales (`tvg-logo`).
+
+---
+
+## Controles y atajos de teclado
+
+### Teclado
+
+| Tecla | Acción |
+| :--- | :--- |
+| **`↑` / `↓`** | Canal anterior / siguiente |
+| **`←` / `→`** | Subir / bajar volumen (`±5%`) |
+| **`0` – `9`** | Marcación directa por número de canal |
+| **`P`** | Activar / desactivar **Modo PiP** (*Siempre encima*) |
+| **`E`** | Abrir / cerrar la **parrilla EPG** completa |
+| **`M`** | Silenciar / activar audio (*Mute*) |
+| **`Esc`** | Salir de PiP o cerrar paneles abiertos |
+
+### Ratón y gestos
+
+| Acción | Resultado |
+| :--- | :--- |
+| **Clic izquierdo** | Pausar / reanudar reproducción |
+| **Doble clic** | Alternar pantalla completa (o salir del modo PiP) |
+| **Rueda del ratón** | Cambiar de canal arriba / abajo |
+| **Borde derecho** | Desplegar lista de canales (con vista previa EPG al pasar el cursor) |
+| **Borde izquierdo** | Abrir menú de configuración y temas visuales |
+| **Borde inferior** | Mostrar información del programa actual |
+| **Arrastrar en PiP** | Mover la ventana flotante libremente; redimensionar desde la esquina inferior derecha |
+
+---
 
 ## Requisitos previos (Windows)
 
 * **Python 3.10+** (recomendado usar el instalador oficial de [python.org](https://python.org)).
-* **[Microsoft Visual C++ Redistributable (x64)](https://aka.ms)** (necesario para cargar las librerías nativas de Qt 6).
+* **[Microsoft Visual C++ Redistributable (x64)](https://aka.ms)** (requerido para cargar las librerías nativas de Qt 6).
 
 ---
 
@@ -49,7 +90,6 @@ Reproductor nativo de TDT / IPTV basado en Python, PySide6 (Qt 6 / QML) y FFmpeg
      --exclude-module "PySide6.QtPdf" ^
      main.py
    ```
-   *(Nota: En PowerShell sustituye el carácter de salto de línea `^` por `` ` `` o ejecútalo en una sola línea).*
 
 3. **Ejecutar el binario generado:**
    ```bash

@@ -6,6 +6,7 @@ Item {
     
     required property var controller
     required property var window
+    required property var windowController
     required property var channelNumPopup
 
     Keys.onPressed: (event) => {
@@ -48,21 +49,34 @@ Item {
                 event.accepted = true;
                 break;
 
+            case Qt.Key_P:
+                if (root.windowController) {
+                    root.windowController.togglePipMode();
+                }
+                event.accepted = true;
+                break;
+
             // 🚀 SOLUCCIÓN DEFINITIVA DE 0 MS: Conmutación de visibilidad sobre el buffer de la GPU
             case Qt.Key_E:
-                if (window.epgGridOverlayItem) {
-                    if (window.epgGridOverlayItem.visible) {
-                        window.epgGridOverlayItem.visible = false;
-                    } else {
-                        // Despierta la pantalla pre-renderizada y le transfiere el foco del teclado al ListView
-                        window.epgGridOverlayItem.visible = true;
-                        window.epgGridOverlayItem.forceActiveFocus();
+                if (!root.windowController || !root.windowController.isPipMode) {
+                    if (window.epgGridOverlayItem) {
+                        if (window.epgGridOverlayItem.visible) {
+                            window.epgGridOverlayItem.visible = false;
+                        } else {
+                            window.epgGridOverlayItem.visible = true;
+                            window.epgGridOverlayItem.forceActiveFocus();
+                        }
                     }
                 }
                 event.accepted = true;
                 break;
 
             case Qt.Key_Escape:
+                if (root.windowController && root.windowController.isPipMode) {
+                    root.windowController.togglePipMode();
+                    event.accepted = true;
+                    break;
+                }
                 if (root.controller.sidebar && root.controller.sidebar.sidebarForceOpen) {
                     root.controller.sidebar.sidebarForceOpen = false;
                 }

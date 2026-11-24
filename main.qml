@@ -70,9 +70,11 @@ ApplicationWindow {
         id: globalKeyboardHandler
         controller: ctrl
         window: window
+        windowController: windowController
         channelNumPopup: channelNumPopup
         focus: true
     }
+
 
     FocusScope {
         id: mainFocusScope
@@ -80,6 +82,7 @@ ApplicationWindow {
         VideoPlayerView {
             id: playerView
             window: window
+            windowController: windowController
             controller: ctrl
             sidebarItem: sidebar
             epgDrawerItem: epgDrawer
