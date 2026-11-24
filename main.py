@@ -2,40 +2,46 @@
 import os
 import sys
 
-os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
 
-# 🚀 MOTOR DE SINCRONIZACIÓN NATIVO PARA PERFIL 'PASS' (MPEG-TS EN BRUTO)
-# Ampliamos el análisis de cabeceras para que Qt Multimedia asimile el flujo de BeMad HD
-# junto con todas sus pistas síncronas (EPG, audios alternos y teletexto) de una sola pasada.
-os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = (
-    "probesize=20000000;analyzeduration=10000000"
-)
+def configure_environment() -> None:
+    """Configura variables de entorno y rutas nativas de Qt/FFmpeg antes de cargar PySide6."""
+    os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
 
-# Permitir explícitamente que los objetos XMLHttpRequest de QML lean archivos locales
-os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
+    # 🚀 MOTOR DE SINCRONIZACIÓN NATIVO PARA PERFIL 'PASS' (MPEG-TS EN BRUTO)
+    # Ampliamos el análisis de cabeceras para que Qt Multimedia asimile el flujo de BeMad HD
+    # junto con todas sus pistas síncronas (EPG, audios alternos y teletexto) de una sola pasada.
+    os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = (
+        "probesize=20000000;analyzeduration=10000000"
+    )
 
-if sys.platform == "win32":
-    # Registra el directorio de DLLs de PySide6 en Windows (necesario en entornos Store/venv)
-    import PySide6
+    # Permitir explícitamente que los objetos XMLHttpRequest de QML lean archivos locales
+    os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
 
-    pyside_dir = os.path.dirname(PySide6.__file__)
-    os.add_dll_directory(pyside_dir)
-    os.environ["PATH"] = pyside_dir + os.pathsep + os.environ.get("PATH", "")
+    if sys.platform == "win32":
+        # Registra el directorio de DLLs de PySide6 en Windows (necesario en entornos Store/venv)
+        import PySide6
 
-    # Aceleración por hardware nativa de Windows (Direct3D 11)
-    os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "d3d11va"
-else:
-    # Fuerza el backend de integración EGL estable para la GPU Intel en servidores X11 (Linux)
-    os.environ["QT_XCB_GL_INTEGRATION"] = "xcb_egl"
+        pyside_dir = os.path.dirname(PySide6.__file__)
+        os.add_dll_directory(pyside_dir)
+        os.environ["PATH"] = pyside_dir + os.pathsep + os.environ.get("PATH", "")
 
-    # Forzar el uso estricto de la API de aceleración por hardware de Intel (VA-API)
-    os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "vaapi"
+        # Aceleración por hardware nativa de Windows (Direct3D 11)
+        os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "d3d11va"
+    else:
+        # Fuerza el backend de integración EGL estable para la GPU Intel en servidores X11 (Linux)
+        os.environ["QT_XCB_GL_INTEGRATION"] = "xcb_egl"
 
-from PySide6.QtCore import QUrl
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlApplicationEngine
+        # Forzar el uso estricto de la API de aceleración por hardware de Intel (VA-API)
+        os.environ["QT_MULTIMEDIA_FFMPEG_HWACCEL"] = "vaapi"
 
-from channel_model import ChannelModel
+
+configure_environment()
+
+from PySide6.QtCore import QUrl  # noqa: E402
+from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+
+from channel_model import ChannelModel  # noqa: E402
 
 
 def main():
@@ -48,7 +54,10 @@ def main():
     engine = QQmlApplicationEngine()
 
     # Asegura que Qt6 encuentre tus nuevos archivos .qml modularizados de la subcarpeta qml/
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = getattr(
+        sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))
+    )
+
     qml_dir = (
         os.path.join(base_dir, "qml")
         if os.path.exists(os.path.join(base_dir, "qml"))
@@ -76,6 +85,17 @@ def main():
             file=sys.stderr,
         )
         sys.exit(-1)
+
+    if sys.platform == "win32":
+        from PySide6.QtMultimedia import QMediaPlayer, QVideoSink
+        from deinterlace_filter import WindowsDeinterlacer
+
+        root_obj = engine.rootObjects()[0]
+        player = root_obj.findChild(QMediaPlayer)
+        # En QML VideoOutput expone la propiedad 'videoSink' (QVideoSink)
+        video_out = root_obj.findChild(QVideoSink)
+        if player and video_out:
+            app._win_deinterlacer = WindowsDeinterlacer(player, video_out)
 
     sys.exit(app.exec())
 

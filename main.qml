@@ -176,6 +176,10 @@ ApplicationWindow {
             }
 
             onExited: {
+                // En Windows, Qt dispara onExited en el MouseArea padre cuando un ItemDelegate hijo captura el hover
+                if (sidebar.containsMouse)
+                    return;
+                    
                 // Cancelamos cualquier petición pendiente de inmediato al sacar el ratón de la barra
                 debounceHoverTimer.stop();
                 sidebar.pendingHoverName = "";
