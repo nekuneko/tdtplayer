@@ -43,7 +43,7 @@ def configure_environment() -> None:
 configure_environment()
 
 from PySide6.QtCore import QUrl  # noqa: E402
-from PySide6.QtGui import QGuiApplication, QIcon  # noqa: E402
+from PySide6.QtGui import QGuiApplication, QIcon # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
 
 from channel_model import ChannelModel  # noqa: E402
