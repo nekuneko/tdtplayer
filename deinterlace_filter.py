@@ -18,6 +18,12 @@ class WindowsDeinterlacer(QObject):
         if not frame.isValid():
             return
 
+        # Los canales 4K UHD (2160p) y 720p son progresivos: no requieren desentrelazado
+        # y deben permanecer en la memoria de la GPU sin copiarse a RAM.
+        if frame.height() != 1080:
+            self._target_sink.setVideoFrame(frame)
+            return
+
         # Mapea el frame en modo lectura/escritura (copia de GPU a memoria si viene de D3D11)
         if frame.map(QVideoFrame.MapMode.ReadWrite):
             try:
