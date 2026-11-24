@@ -16,7 +16,7 @@ Item {
 
     Component.onCompleted: {
         if (root.appSettings.lastM3uUrl !== "") {
-            root.loadM3uFromUrl(root.appSettings.lastM3uUrl);
+            root.loadM3uFromUrl(root.appSettings.lastM3uUrl, false);
         } else {
             fileDialog.open();
         }
@@ -27,18 +27,23 @@ Item {
         fileDialog.open();
     }
 
-    function loadM3uFromUrl(url) {
+    function loadM3uFromUrl(url, isImport) {
         if (!url || url === "") {
             fileDialog.open();
             return;
         }
 
+        var clearCache = Boolean(isImport);
         var request = new XMLHttpRequest();
         request.open("GET", url, true);
         request.onreadystatechange = function () {
             if (request.readyState === XMLHttpRequest.DONE) {
                 if (request.status === 200 || request.status === 0) {
-                    channelModel.parse_m3u_content(request.responseText);
+                    if (clearCache && root.playerView && root.playerView.mediaPlayer) {
+                        root.playerView.mediaPlayer.stop();
+                        root.playerView.mediaPlayer.source = "";
+                    }
+                    channelModel.parse_m3u_content(request.responseText, clearCache);
                     initScrollTimer.restart();
                 } else {
                     console.log("Error al cargar el archivo persistente, abriendo selector de archivos.");
@@ -75,7 +80,7 @@ Item {
         onAccepted: {
             var selected = fileDialog.selectedFile.toString();
             root.appSettings.lastM3uUrl = selected;
-            root.loadM3uFromUrl(selected);
+            root.loadM3uFromUrl(selected, true);
         }
     }
 }

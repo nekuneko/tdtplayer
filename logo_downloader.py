@@ -4,10 +4,12 @@ import os
 import urllib.error
 import urllib.request
 
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QThread, Signal
 
 
 class LogoDownloaderWorker(QThread):
+    logo_downloaded = Signal(int)
+
     def __init__(self, download_queue: list, cache_dir: str):
         super().__init__()
         self.download_queue = download_queue
@@ -19,8 +21,12 @@ class LogoDownloaderWorker(QThread):
 
         headers = {"User-Agent": "TdtPlayer-Native"}
 
-        for url, local_path in self.download_queue:
+        for row_idx, url, local_path in self.download_queue:
+            if self.isInterruptionRequested():
+                break
+
             if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+                self.logo_downloaded.emit(row_idx)
                 continue
 
             try:
@@ -28,28 +34,36 @@ class LogoDownloaderWorker(QThread):
 
                 # 🚀 SINTAXIS MODERNA:
                 # Combinación de múltiples contextos en una sola línea limpia.
-                with (
-                    urllib.request.urlopen(req, timeout=5.0) as response,
-                    open(local_path, "wb") as f,
-                ):
-                    f.write(response.read())
+                with urllib.request.urlopen(req, timeout=2.5) as response:
+                    data = response.read()
+
+                if self.isInterruptionRequested():
+                    break
+
+                if data:
+                    with open(local_path, "wb") as f:
+                        f.write(data)
+                    self.logo_downloaded.emit(row_idx)
 
             except urllib.error.HTTPError as http_err:
-                print(
-                    f"[LogoWorker] Código de error HTTP "
-                    f"{http_err.code} para la URL: {url}"
-                )
+                if not self.isInterruptionRequested():
+                    print(
+                        f"[LogoWorker] Código de error HTTP "
+                        f"{http_err.code} para la URL: {url}"
+                    )
 
             except urllib.error.URLError as net_err:
-                print(
-                    f"[LogoWorker] Fallo de red o timeout al descargar "
-                    f"el logo: {net_err.reason}"
-                )
+                if not self.isInterruptionRequested():
+                    print(
+                        f"[LogoWorker] Fallo de red o timeout al descargar "
+                        f"el logo: {net_err.reason}"
+                    )
 
             # 🚀 SUSTITUCIÓN DE ALIAS:
             # Reemplazo estricto de IOError por la excepción integrada OSError.
             except OSError as os_err:
-                print(
-                    f"[LogoWorker] Error de sistema o escritura en disco "
-                    f"en {local_path}: {os_err}"
-                )
+                if not self.isInterruptionRequested():
+                    print(
+                        f"[LogoWorker] Error de sistema o escritura en disco "
+                        f"en {local_path}: {os_err}"
+                    )

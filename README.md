@@ -1,7 +1,5 @@
 <p align="center">
-
-![TDTPlayer Logo](docs/icon.svg)
-
+  <img src="docs/icon.png" alt="TDTPlayer Logo" width="128">
 </p>
 
 <h1 align="center">TDTPlayer (Tvheadend Native Player)</h1>
