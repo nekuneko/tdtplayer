@@ -63,6 +63,11 @@ Item {
                 event.accepted = true;
                 break;
 
+            case Qt.Key_Space:
+                root.controller.togglePlayback();
+                event.accepted = true;
+                break;
+
             // 🚀 SOLUCCIÓN DEFINITIVA DE 0 MS: Conmutación de visibilidad sobre el buffer de la GPU
             case Qt.Key_E:
                 if (!root.windowController || !root.windowController.isPipMode) {

@@ -33,6 +33,7 @@ Reproductor nativo de TDT / IPTV basado en **Python**, **PySide6 (Qt 6 / QML)** 
 | **`↑` / `↓`** | Canal anterior / siguiente |
 | **`←` / `→`** | Subir / bajar volumen (`±5%`) |
 | **`0` – `9`** | Marcación directa por número de canal |
+| **`Espacio`** | Pausar / reanudar reproducción |
 | **`S`** | **Capturar pantalla** del fotograma actual en PNG (`Imágenes/TdtPlayer`) |
 | **`P`** | Activar / desactivar **Modo PiP** (*Siempre encima*) |
 | **`E`** | Abrir / cerrar la **parrilla EPG** completa |

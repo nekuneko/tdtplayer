@@ -105,62 +105,12 @@ Item {
                     width: descFlickable.width
                     spacing: 8
 
-                    readonly property int closeBracketIndex: root.epgTitle.indexOf("]")
-                    readonly property bool hasTime: root.epgTitle.startsWith("[") && closeBracketIndex !== -1
-
-                    readonly property string rawTimeStr: hasTime ? root.epgTitle.substring(1, closeBracketIndex).trim() : ""
-                    readonly property string formattedTime: scrollContentLayout.rawTimeStr ? scrollContentLayout.rawTimeStr.replace(/\s*-\s*/, " ➔ ") : ""
-
-                    RowLayout {
-                        visible: scrollContentLayout.hasTime
-                        spacing: 12
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.fillWidth: true
-
-                        Rectangle {
-                            id: drawerTimeBadge
-                            color: appTheme.bgItemActive
-                            radius: appTheme.px ? appTheme.px(5) : 5
-                            Layout.preferredHeight: appTheme.px ? appTheme.px(24) : 24
-                            Layout.preferredWidth: drawerTimeLayout.implicitWidth + (appTheme.px ? appTheme.px(16) : 16)
-                            Layout.alignment: Qt.AlignVCenter
-
-                            RowLayout {
-                                id: drawerTimeLayout
-                                anchors.centerIn: parent
-                                spacing: 0
-
-                                Text {
-                                    text: scrollContentLayout.formattedTime
-                                    color: appTheme.getW3cContrast(drawerTimeBadge.color)
-                                    font.bold: true
-                                    font.pointSize: root.isFullScreen ? 11 : 10
-                                    font.family: "Monospace"
-                                    renderType: Text.NativeRendering
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            id: drawerProgressBarContainer
-                            visible: root.stopTimestamp > root.startTimestamp && width > 24
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            Layout.preferredHeight: appTheme.px ? appTheme.px(4) : 4
-                            Layout.alignment: Qt.AlignVCenter
-                            color: "#334155"
-                            radius: 2
-
-                            readonly property real progressFactor: Math.max(0.0, Math.min(1.0, (root.currentTimestamp - root.startTimestamp) / (root.stopTimestamp - root.startTimestamp)))
-
-                            Rectangle {
-                                width: parent.width * parent.progressFactor
-                                height: parent.height
-                                radius: 2
-                                color: appTheme.borderActive
-                            }
-                        }
+                    EpgProgressRow {
+                        isFullScreen: root.isFullScreen
+                        epgTitle: root.epgTitle
+                        startTimestamp: root.startTimestamp
+                        stopTimestamp: root.stopTimestamp
+                        currentTimestamp: root.currentTimestamp
                     }
 
                     Text {

@@ -164,6 +164,14 @@ FocusScope {
                     Layout.minimumWidth: 0
                 }
 
+                ClockWidget {
+                    themeItem: root.appThemeItem
+                    fontPt: root.appThemeItem ? root.appThemeItem.pt(10.5) : 10.5
+                    pillHeight: root.appThemeItem ? root.appThemeItem.px(32) : 32
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+
             }
 
             Rectangle {
