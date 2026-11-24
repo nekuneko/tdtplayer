@@ -3,11 +3,13 @@ import QtQuick
 
 Item {
     id: root
-    
+
     required property var controller
     required property var window
     required property var windowController
     required property var channelNumPopup
+
+    readonly property bool isSidebarBrowsing: Boolean(root.controller.sidebar && root.controller.sidebar.visible && root.controller.sidebar.sidebarForceOpen)
 
     Keys.onPressed: (event) => {
         if (root.channelNumPopup.opened) {
@@ -25,34 +27,48 @@ Item {
 
         switch (event.key) {
             case Qt.Key_Up:
-                root.controller.playChannel(root.controller.currentChannelIndex - 1);
+                if (root.isSidebarBrowsing) {
+                    root.controller.previewChannel(root.controller.currentChannelIndex - 1);
+                } else {
+                    root.controller.playChannel(root.controller.currentChannelIndex - 1);
+                }
                 event.accepted = true;
                 break;
-                
+
             case Qt.Key_Down:
-                root.controller.playChannel(root.controller.currentChannelIndex + 1);
+                if (root.isSidebarBrowsing) {
+                    root.controller.previewChannel(root.controller.currentChannelIndex + 1);
+                } else {
+                    root.controller.playChannel(root.controller.currentChannelIndex + 1);
+                }
                 event.accepted = true;
+                break;
+
+            case Qt.Key_Return:
+            case Qt.Key_Enter:
+                if (root.isSidebarBrowsing) {
+                    root.controller.playChannel(root.controller.currentChannelIndex, true);
+                    event.accepted = true;
+                }
                 break;
 
             case Qt.Key_Left:
                 root.controller.changeVolume(-5);
                 event.accepted = true;
                 break;
-                
+
             case Qt.Key_Right:
                 root.controller.changeVolume(5);
                 event.accepted = true;
                 break;
 
-            case Qt.Key_M:
-                root.controller.toggleMute();
+            case Qt.Key_Space:
+                root.controller.togglePlayback();
                 event.accepted = true;
                 break;
 
-            case Qt.Key_P:
-                if (root.windowController) {
-                    root.windowController.togglePipMode();
-                }
+            case Qt.Key_M:
+                root.controller.toggleMute();
                 event.accepted = true;
                 break;
 
@@ -63,8 +79,10 @@ Item {
                 event.accepted = true;
                 break;
 
-            case Qt.Key_Space:
-                root.controller.togglePlayback();
+            case Qt.Key_P:
+                if (root.windowController) {
+                    root.windowController.togglePipMode();
+                }
                 event.accepted = true;
                 break;
 
@@ -84,11 +102,7 @@ Item {
                 break;
 
             case Qt.Key_Escape:
-                if (root.windowController && root.windowController.isPipMode) {
-                    root.windowController.togglePipMode();
-                    event.accepted = true;
-                    break;
-                }
+                root.controller.cancelPendingZapping();
                 if (root.controller.sidebar && root.controller.sidebar.sidebarForceOpen) {
                     root.controller.sidebar.sidebarForceOpen = false;
                 }

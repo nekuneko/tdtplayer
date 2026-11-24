@@ -32,13 +32,15 @@ MouseArea {
     x: (root.visible && root.sidebarForceOpen) ? (parent.width - width) : parent.width
 
     onSidebarForceOpenChanged: {
-        if (sidebarForceOpen) {
-            root.forceCenterScrollSync();
-            if (root.model && root.model.refresh_sidebar_epg) {
-                root.model.refresh_sidebar_epg();
-            }
-        }
-    }
+         if (sidebarForceOpen) {
+             root.forceCenterScrollSync();
+             if (root.model && root.model.refresh_sidebar_epg) {
+                 root.model.refresh_sidebar_epg();
+             }
+         } else if (typeof ctrl !== "undefined") {
+             ctrl.cancelPendingZapping();
+         }
+     }
 
     Timer {
         id: sidebarEpgRefreshTimer
@@ -145,7 +147,7 @@ MouseArea {
         Connections {
             target: ctrl
             function onCurrentChannelIndexChanged() {
-                if (sidebarXAnimation.running || !root.model || root.containsMouse)
+                if (sidebarXAnimation.running || !root.model)
                     return;
                 var count = root.model.rowCount();
                 if (count === 0)
@@ -155,6 +157,7 @@ MouseArea {
                 }
             }
         }
+
 
         delegate: ChannelDelegate {
             sidebarModel: root.model

@@ -6,7 +6,9 @@ QtObject {
     id: root
 
     property var model: null; property var mediaPlayer: null; property var sidebar: null; property var epgDrawer: null
-    property int currentChannelIndex: 0; property bool isFullScreen: false; property bool isVoluntarilyStopped: false
+    property int currentChannelIndex: 0
+    property int tunedChannelIndex: 0
+    property bool isFullScreen: false; property bool isVoluntarilyStopped: false
     property string osdChannelName: ""; property string osdChannelLogo: ""; property string osdChannelNo: ""; property string osdHoveredChannelName: ""
     property string epgTitle: "Sintonizando..."; property string epgDescription: "Buscando..."
     property int currentVolumePercent: 100; property bool showVolumeOsd: false; property real osdPanelOpacity: 0.0; property bool keyboardActiveOsd: false
@@ -21,77 +23,135 @@ QtObject {
     property Timer osdTimer: Timer { interval: 3000; onTriggered: root.osdPanelOpacity = 0.0 }
     property Timer volumeOsdTimer: Timer { interval: 2000; onTriggered: root.showVolumeOsd = false }
     property Timer epgPoller: Timer { interval: 300; running: false }
-    
-    property Timer zappingTimer: Timer {
-        interval: 250; running: false; repeat: false
+
+    property Timer epgAutoHideTimer: Timer {
+        interval: 3000
+        repeat: false
         onTriggered: {
-            if (root.mediaPlayer && root.model && !root.isVoluntarilyStopped) { 
-                root.mediaPlayer.source = root.model.get_url_at(root.currentChannelIndex)
-                root.mediaPlayer.play() 
+            if (!root.epgDrawer) return;
+            var mouseOnEpg = Boolean(root.epgDrawer.containsMouse);
+            var mouseOnSidebar = Boolean(root.sidebar && root.sidebar.visible && root.sidebar.containsMouse);
+            if (!mouseOnEpg && !mouseOnSidebar) {
+                root.epgDrawer.epgForceOpen = false;
             }
         }
     }
 
-    function playChannel(index) {
-        if (!root.model || root.model.rowCount() === 0) return
-        var count = root.model.rowCount()
-        index = index < 0 ? count - 1 : (index >= count ? 0 : index)
-        
-        root.currentChannelIndex = index
-        root.zappingTimer.stop()
-        root.osdHoveredChannelName = ""
-        
-        if (typeof appSettings !== "undefined") {
-            appSettings.lastChannelIndex = index
+    property Timer zappingTimer: Timer {
+        interval: 750; running: false; repeat: false
+        onTriggered: {
+            root.tunedChannelIndex = root.currentChannelIndex
+            if (root.mediaPlayer && root.model && !root.isVoluntarilyStopped) {
+                var nextUrl = root.model.get_url_at(root.currentChannelIndex)
+                if (root.mediaPlayer.source.toString() !== nextUrl) {
+                    root.mediaPlayer.stop()
+                    root.mediaPlayer.source = nextUrl
+                }
+                root.mediaPlayer.play()
+            }
         }
-        
+    }
+
+    function syncChannelMetadata(index) {
+        if (!root.model || index < 0 || index >= root.model.rowCount()) return
         var idx = root.model.index(index, 0)
         root.osdChannelName = root.model.data(idx, Qt.UserRole + 1) || ""
         root.osdChannelNo = root.model.data(idx, Qt.UserRole + 4) || ""
-        
+
         if (root.osdChannelName !== "") {
             var cleanName = root.osdChannelName.toString().trim().replace(/[\r\n]/g, "");
             root.osdChannelLogo = window.localLogoCache[cleanName] || ""
         } else {
             root.osdChannelLogo = ""
         }
-        
+
         var epg = root.model.fetch_current_epg(root.osdChannelName)
         root.epgTitle = epg ? epg.title : "Emisión en directo"
         root.epgDescription = epg ? (epg.description || "Sin descripción disponible.") : "..."
-        
-        if (root.mediaPlayer) { 
-            root.mediaPlayer.stop()
-            root.mediaPlayer.source = ""
-            if (!root.isVoluntarilyStopped) {
-                root.zappingTimer.start() 
-            }
-        }
-        
+    }
+
+    function previewChannel(index) {
+        if (!root.model || root.model.rowCount() === 0) return
+        var count = root.model.rowCount()
+        index = index < 0 ? count - 1 : (index >= count ? 0 : index)
+        root.currentChannelIndex = index
+        root.osdHoveredChannelName = ""
+        root.syncChannelMetadata(index)
         if (root.sidebar) root.sidebar.forceKeyboardScrollSync()
-        
+        root.channelZappedByKeyboard()
+    }
+
+    function cancelPendingZapping() {
+        var wasZapping = root.zappingTimer.running
+        root.zappingTimer.stop()
+        if (root.currentChannelIndex !== root.tunedChannelIndex) {
+            root.currentChannelIndex = root.tunedChannelIndex
+            root.osdHoveredChannelName = ""
+            root.syncChannelMetadata(root.tunedChannelIndex)
+            if (root.sidebar) root.sidebar.forceCenterScrollSync()
+        }
+        return wasZapping
+    }
+
+    function playChannel(index, immediate) {
+        if (!root.model || root.model.rowCount() === 0) return
+        var count = root.model.rowCount()
+        index = index < 0 ? count - 1 : (index >= count ? 0 : index)
+
+        root.currentChannelIndex = index
+        root.osdHoveredChannelName = ""
+
+        if (typeof appSettings !== "undefined") {
+            appSettings.lastChannelIndex = index
+        }
+
+        root.syncChannelMetadata(index)
+
+        if (root.mediaPlayer) {
+            if (root.isVoluntarilyStopped) {
+                root.zappingTimer.stop()
+                root.tunedChannelIndex = index
+                root.mediaPlayer.stop()
+                root.mediaPlayer.source = ""
+            } else if (immediate) {
+                root.zappingTimer.stop()
+                root.tunedChannelIndex = index
+                var directUrl = root.model.get_url_at(index)
+                if (root.mediaPlayer.source.toString() !== directUrl) {
+                    root.mediaPlayer.stop()
+                    root.mediaPlayer.source = directUrl
+                }
+                root.mediaPlayer.play()
+            } else {
+                root.zappingTimer.restart()
+            }
+        } else {
+            root.tunedChannelIndex = index
+        }
+
+        if (root.sidebar) root.sidebar.forceKeyboardScrollSync()
+
         root.osdPanelOpacity = 1.0
         root.osdTimer.restart()
+        root.epgAutoHideTimer.restart()
         root.channelZappedByKeyboard()
     }
 
     function playChannelByNumber(numStr) {
         if (!root.model) return
         var count = root.model.rowCount()
-        for (var i = 0; i < count; i++) { if (root.model.data(root.model.index(i, 0), Qt.UserRole + 4) === numStr) return playChannel(i) }
+        for (var i = 0; i < count; i++) { if (root.model.data(root.model.index(i, 0), Qt.UserRole + 4) === numStr) return playChannel(i, true) }
         var target = parseInt(numStr) - 1
-        if (!isNaN(target) && target >= 0 && target < count) playChannel(target)
+        if (!isNaN(target) && target >= 0 && target < count) playChannel(target, true)
     }
 
     // 🚀 CONTROL DE AUDIO EN HARDWARE CORREGIDO:
     function changeVolume(delta) {
-        // Si el usuario sube o baja volumen teniendo el mute puesto, quitamos el silencio de forma intuitiva
         if (root.isMuted && delta !== 0) {
             root.isMuted = false
         }
         root.currentVolumePercent = Math.max(0, Math.min(100, root.currentVolumePercent + delta))
         if (root.mediaPlayer && root.mediaPlayer.audioOutput) {
-            // Evaluamos de forma estricta el estado del mute antes de inyectar el float a Qt
             root.mediaPlayer.audioOutput.volume = root.isMuted ? 0.0 : (root.currentVolumePercent / 100.0)
         }
         root.volumeOsdTimer.restart(); root.showVolumeOsd = true
@@ -101,7 +161,6 @@ QtObject {
     function toggleMute() {
         root.isMuted = !root.isMuted
         if (root.mediaPlayer && root.mediaPlayer.audioOutput) {
-            // Corta o restituye los decibelios en el mismo milisegundo en la tarjeta de sonido
             root.mediaPlayer.audioOutput.volume = root.isMuted ? 0.0 : (root.currentVolumePercent / 100.0)
         }
         root.volumeOsdTimer.restart(); root.showVolumeOsd = true
@@ -111,7 +170,7 @@ QtObject {
         if (!root.mediaPlayer || !root.model) return
         root.isVoluntarilyStopped = (root.mediaPlayer.playbackState === MediaPlayer.PlayingState)
         if (root.isVoluntarilyStopped) {
-            root.mediaPlayer.pause() 
+            root.mediaPlayer.pause()
         } else {
             root.mediaPlayer.play()
         }

@@ -49,7 +49,7 @@ ApplicationWindow {
         }
     }
 
-    PipWindowController  {
+    PipWindowController {
         id: windowController
         window: window
         appSettings: appSettings
@@ -73,10 +73,20 @@ ApplicationWindow {
         focus: true
     }
 
+    SidebarHoverSync {
+        id: sidebarHoverSync
+        sidebar: sidebar
+        epgDrawer: epgDrawer
+        ctrl: ctrl
+        model: channelModel
+        window: window
+        keyboardHandler: globalKeyboardHandler
+    }
 
     FocusScope {
         id: mainFocusScope
         anchors.fill: parent
+
         VideoPlayerView {
             id: playerView
             window: window
@@ -100,7 +110,7 @@ ApplicationWindow {
             isFullScreen: ctrl.isFullScreen
             sidebarItem: sidebar
             z: 1
-            width: sidebar.visible ? (parent.width - sidebar.width - appTheme.px(36)) : (parent.width - appTheme.px(24))
+            width: sidebar.visible ? (parent.width - sidebar.width - appTheme.px(24)) : (parent.width - appTheme.px(24))
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
         }
 
@@ -125,89 +135,11 @@ ApplicationWindow {
             appThemeItem: appTheme
 
             onChannelSelected: realIndex => {
-                ctrl.playChannel(realIndex);
+                ctrl.playChannel(realIndex, true);
                 globalKeyboardHandler.forceActiveFocus();
             }
-
-            // 🚀 SISTEMA DE AMORTIGUACIÓN (DEBOUNCE): Almacenamiento intermedio de memoria
-            property string pendingHoverName: ""
-
-            Timer {
-                id: debounceHoverTimer
-                interval: 150 // Milisegundos de espera para confirmar que el usuario quiere ver el EPG
-                repeat: false
-                onTriggered: {
-                    if (sidebar.pendingHoverName === "")
-                        return;
-                    ctrl.osdHoveredChannelName = sidebar.pendingHoverName;
-                    var count = channelModel.rowCount(), foundLogo = "", foundChNo = "";
-
-                    // Ejecución bajo demanda: El bucle pesado solo corre si el ratón se queda quieto
-                    for (var i = 0; i < count; i++) {
-                        var idx = channelModel.index(i, 0);
-                        var modelName = channelModel.data(idx, Qt.UserRole + 1);
-                        if (modelName && modelName.toString().trim().replace(/[\r\n]/g, "") === sidebar.pendingHoverName) {
-                            foundLogo = window.localLogoCache[sidebar.pendingHoverName] || "";
-                            foundChNo = channelModel.data(idx, Qt.UserRole + 4) || i.toString();
-                            break;
-                        }
-                    }
-
-                    ctrl.osdChannelNo = foundChNo;
-                    ctrl.osdChannelLogo = foundLogo;
-
-                    var epgData = channelModel.fetch_current_epg(sidebar.pendingHoverName);
-                    if (epgData && epgData.title) {
-                        ctrl.epgTitle = epgData.title;
-                        ctrl.epgDescription = epgData.description || "Sin descripción disponible.";
-                    } else {
-                        ctrl.epgTitle = "Sin información EPG";
-                        ctrl.epgDescription = "No hay guía de programación disponible para " + sidebar.pendingHoverName + ".";
-                    }
-                    epgDrawer.epgForceOpen = true;
-
-                }
-            }
-
-            // 🚀 MANEJADOR ULTRA LIGERO: Al deslizar el ratón rápido, solo guardamos el nombre y posponemos la carga pesada
-            onChannelHovered: name => {
-                if (ctrl.zappingTimer.running || !name)
-                    return;
-                var cleanHoverName = name.toString().trim().replace(/[\r\n]/g, "");
-
-                // Si el ratón está en movimiento constante, reiniciamos el temporizador sin saturar la CPU
-                sidebar.pendingHoverName = cleanHoverName;
-                debounceHoverTimer.restart();
-            }
-
-            onExited: {
-                // En Windows, Qt dispara onExited en el MouseArea padre cuando un ItemDelegate hijo captura el hover
-                if (sidebar.containsMouse)
-                    return;
-                    
-                // Cancelamos cualquier petición pendiente de inmediato al sacar el ratón de la barra
-                debounceHoverTimer.stop();
-                sidebar.pendingHoverName = "";
-
-                sidebar.sidebarForceOpen = false;
-                epgDrawer.epgForceOpen = false;
-                sidebar.forceCenterScrollSync();
-                ctrl.osdHoveredChannelName = "";
-
-                var currentIdx = channelModel.index(ctrl.currentChannelIndex, 0);
-                var currentName = channelModel.data(currentIdx, Qt.UserRole + 1) || "";
-                if (currentName !== "") {
-                    var cleanCurrentName = currentName.toString().trim().replace(/[\r\n]/g, "");
-                    ctrl.osdChannelLogo = window.localLogoCache[cleanCurrentName] || "";
-                    ctrl.osdChannelNo = channelModel.data(currentIdx, Qt.UserRole + 4) || ctrl.currentChannelIndex.toString();
-                }
-                var currentEpg = channelModel.fetch_current_epg(ctrl.osdChannelName);
-                if (currentEpg && currentEpg.title !== undefined) {
-                    ctrl.epgTitle = currentEpg.title;
-                    ctrl.epgDescription = currentEpg.description;
-                }
-                globalKeyboardHandler.forceActiveFocus();
-            }
+            onChannelHovered: name => sidebarHoverSync.handleHover(name)
+            onExited: sidebarHoverSync.handleExit()
         }
 
         ConfigSidebar {
@@ -227,7 +159,6 @@ ApplicationWindow {
         ScreenshotToast {
             z: 20
         }
-
     }
 
     Loader {
@@ -258,7 +189,7 @@ ApplicationWindow {
 
         function onChannelSelected(realIndex) {
             epgGridOverlayLoader.item.visible = false;
-            ctrl.playChannel(realIndex);
+            ctrl.playChannel(realIndex, true);
             globalKeyboardHandler.forceActiveFocus();
         }
 

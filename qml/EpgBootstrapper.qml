@@ -15,6 +15,7 @@ Item {
 
         function onPlaybackStateChanged() {
             if (root.playerView.mediaPlayer.playbackState === MediaPlayer.PlayingState) {
+                root.ctrl.tunedChannelIndex = root.ctrl.currentChannelIndex;
                 // Solo activamos la cuenta atrás si el menú lateral NO está forzado a abrirse
                 if (root.ctrl.sidebar && !root.ctrl.sidebar.sidebarForceOpen) {
                     keyboardEpgTimer.restart();
@@ -29,7 +30,7 @@ Item {
         repeat: false
         // 🚀 BLOQUEO DE EXPIRACIÓN: Si la barra lateral o el ratón están interactuando, el timer se detiene
         onTriggered: {
-            if (root.ctrl.sidebar && root.ctrl.sidebar.sidebarForceOpen) {
+            if ((root.ctrl.sidebar && root.ctrl.sidebar.sidebarForceOpen) || root.epgDrawer.containsMouse) {
                 return;
             }
             root.epgDrawer.epgForceOpen = false;
