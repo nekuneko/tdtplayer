@@ -1,4 +1,4 @@
-// qml/WindowController.qml
+// qml/PipWindowController.qml
 import QtQuick
 import QtCore
 
@@ -10,6 +10,9 @@ Item {
     required property var ctrl
 
     property bool isPipMode: false
+    property bool isAdjustingAspect: false
+    readonly property real pipAspectRatio: 16.0 / 9.0
+
     property int savedX: 100
     property int savedY: 100
     property int savedWidth: 1024
@@ -48,8 +51,10 @@ Item {
             // 4. Tamaño compacto 16:9 en la esquina inferior derecha
             var pipW = 420;
             var pipH = 236;
+            root.isAdjustingAspect = true;
             root.window.width = pipW;
             root.window.height = pipH;
+            root.isAdjustingAspect = false;
             root.window.x = Math.max(0, Screen.desktopAvailableWidth - pipW - 24);
             root.window.y = Math.max(0, Screen.desktopAvailableHeight - pipH - 24);
         } else {
@@ -84,13 +89,31 @@ Item {
         }
 
         function onWidthChanged() {
-            if (!root.isPipMode && root.window.visibility === Window.Windowed && !root.window.isBooting) {
+            if (root.isPipMode) {
+                if (root.isAdjustingAspect)
+                    return;
+                root.isAdjustingAspect = true;
+                var minW = 240;
+                if (root.window.width < minW)
+                    root.window.width = minW;
+                root.window.height = Math.round(root.window.width / root.pipAspectRatio);
+                root.isAdjustingAspect = false;
+            } else if (root.window.visibility === Window.Windowed && !root.window.isBooting) {
                 root.appSettings.windowWidth = root.window.width;
             }
         }
 
         function onHeightChanged() {
-            if (!root.isPipMode && root.window.visibility === Window.Windowed && !root.window.isBooting) {
+            if (root.isPipMode) {
+                if (root.isAdjustingAspect)
+                    return;
+                root.isAdjustingAspect = true;
+                var minH = 135;
+                if (root.window.height < minH)
+                    root.window.height = minH;
+                root.window.width = Math.round(root.window.height * root.pipAspectRatio);
+                root.isAdjustingAspect = false;
+            } else if (root.window.visibility === Window.Windowed && !root.window.isBooting) {
                 root.appSettings.windowHeight = root.window.height;
             }
         }

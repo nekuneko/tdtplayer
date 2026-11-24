@@ -49,8 +49,7 @@ ApplicationWindow {
         }
     }
 
-    // 🚀 INTEGRACIÓN MODULAR: Controladores de ventana y de arranque de flujos
-    WindowController {
+    PipWindowController  {
         id: windowController
         window: window
         appSettings: appSettings
