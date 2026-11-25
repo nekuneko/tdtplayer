@@ -1,4 +1,4 @@
-// qml/ChannelDelegate.qml
+// qml/ChannelSidebarDelegate.qml
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -11,24 +11,21 @@ ItemDelegate {
     height: appThemeItem ? appThemeItem.px(64) : 64
     hoverEnabled: true
 
+    required property int index
+    required property string name
+    required property string logo
+    required property string chNo
+    required property string epgTitle
+
     property var sidebarModel
-    property int modelRow: 0
     property int currentChannelIndex: 0
     property var appThemeItem: null
 
     signal clickedReal(int realIndex)
     signal hoveredReal(string channelName)
 
-    readonly property int virtualIndex: delegateRoot.modelRow
     readonly property int realChannelCount: delegateRoot.sidebarModel ? delegateRoot.sidebarModel.rowCount() : 0
-    readonly property int finalRealIndex: delegateRoot.realChannelCount > 0 ? (delegateRoot.virtualIndex % delegateRoot.realChannelCount) : 0
-
-    readonly property var indexObj: delegateRoot.sidebarModel ? delegateRoot.sidebarModel.index(delegateRoot.finalRealIndex, 0) : null
-    readonly property string channelName: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 1) || "") : ""
-    readonly property string channelLogo: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 3) || "") : ""
-    readonly property string channelChNo: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 4) || "") : ""
-    readonly property string currentProgramTitle: delegateRoot.sidebarModel ? (delegateRoot.sidebarModel.data(delegateRoot.indexObj, Qt.UserRole + 5) || "") : ""
-
+    readonly property int finalRealIndex: delegateRoot.realChannelCount > 0 ? (delegateRoot.index % delegateRoot.realChannelCount) : 0
     readonly property bool isCurrentlyPlaying: delegateRoot.currentChannelIndex === delegateRoot.finalRealIndex
 
     background: Rectangle {
@@ -47,8 +44,8 @@ ItemDelegate {
     }
 
     onHoveredChanged: {
-        if (delegateRoot.hovered && delegateRoot.channelName !== "") {
-            delegateRoot.hoveredReal(delegateRoot.channelName);
+        if (delegateRoot.hovered && delegateRoot.name !== "") {
+            delegateRoot.hoveredReal(delegateRoot.name);
         }
     }
 
@@ -69,11 +66,10 @@ ItemDelegate {
             radius: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(8) : 8
             Layout.alignment: Qt.AlignVCenter
 
-            // 🚀 DETECTOR REACTIVO LIGERO: Muestra un marcador de texto elegante si el PNG falla
             Text {
                 anchors.centerIn: parent
-                visible: channelLogoImage.status === Image.Error || delegateRoot.channelLogo === ""
-                text: delegateRoot.channelName !== "" ? delegateRoot.channelName.substring(0, 1).toUpperCase() : "📺"
+                visible: channelLogoImage.status === Image.Error || delegateRoot.logo === ""
+                text: delegateRoot.name !== "" ? delegateRoot.name.substring(0, 1).toUpperCase() : "📺"
                 color: delegateRoot.appThemeItem
                        ? (delegateRoot.isCurrentlyPlaying ? delegateRoot.appThemeItem.textTitleActive : delegateRoot.appThemeItem.textTitle)
                        : "#FFFFFF"
@@ -86,13 +82,11 @@ ItemDelegate {
                 id: channelLogoImage
                 anchors.fill: parent
                 anchors.margins: 2
-                source: delegateRoot.channelLogo
+                source: delegateRoot.logo
                 fillMode: Image.PreserveAspectFit
                 sourceSize.width: 72
                 sourceSize.height: 72
-
-                // 🚀 PURGA DE CUALIFICADORES: Quitamos el onStatusChanged con los fallbacks de texto rotos
-                visible: status === Image.Ready && delegateRoot.channelLogo !== ""
+                visible: status === Image.Ready && delegateRoot.logo !== ""
                 cache: true
                 asynchronous: true
                 smooth: false
@@ -106,7 +100,7 @@ ItemDelegate {
             spacing: delegateRoot.appThemeItem ? delegateRoot.appThemeItem.px(2) : 2
 
             Text {
-                text: delegateRoot.channelName
+                text: delegateRoot.name
                 color: delegateRoot.appThemeItem
                        ? (delegateRoot.isCurrentlyPlaying ? delegateRoot.appThemeItem.textTitleActive : delegateRoot.appThemeItem.textTitle)
                        : "#FFFFFF"
@@ -118,8 +112,8 @@ ItemDelegate {
             }
 
             Text {
-                visible: delegateRoot.currentProgramTitle !== ""
-                text: delegateRoot.currentProgramTitle
+                visible: delegateRoot.epgTitle !== ""
+                text: delegateRoot.epgTitle
                 color: delegateRoot.appThemeItem
                        ? (delegateRoot.isCurrentlyPlaying ? delegateRoot.appThemeItem.textDescActive : delegateRoot.appThemeItem.textDesc)
                        : "#CBD5E1"
@@ -143,7 +137,7 @@ ItemDelegate {
 
             Text {
                 anchors.centerIn: parent
-                text: delegateRoot.channelChNo ? delegateRoot.channelChNo.toString().padStart(2, '0') : delegateRoot.finalRealIndex.toString().padStart(2, '0')
+                text: delegateRoot.chNo ? delegateRoot.chNo.toString().padStart(2, '0') : delegateRoot.finalRealIndex.toString().padStart(2, '0')
                 color: delegateRoot.appThemeItem
                        ? delegateRoot.appThemeItem.getW3cContrast(channelNumberBadge.color)
                        : "#FFFFFF"

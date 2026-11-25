@@ -31,21 +31,27 @@ MouseArea {
 
     x: (root.visible && root.sidebarForceOpen) ? (parent.width - width) : parent.width
 
+    onVisibleChanged: {
+        if (visible && root.model && root.model.refresh_sidebar_epg) {
+            root.model.refresh_sidebar_epg();
+        }
+    }
+
     onSidebarForceOpenChanged: {
-         if (sidebarForceOpen) {
-             root.forceCenterScrollSync();
-             if (root.model && root.model.refresh_sidebar_epg) {
-                 root.model.refresh_sidebar_epg();
-             }
-         } else if (typeof ctrl !== "undefined") {
-             ctrl.cancelPendingZapping();
-         }
-     }
+        if (sidebarForceOpen) {
+            root.forceCenterScrollSync();
+            if (root.model && root.model.refresh_sidebar_epg) {
+                root.model.refresh_sidebar_epg();
+            }
+        } else if (typeof ctrl !== "undefined") {
+            ctrl.cancelPendingZapping();
+        }
+    }
 
     Timer {
         id: sidebarEpgRefreshTimer
-        interval: 60000
-        running: root.visible && root.sidebarForceOpen
+        interval: 15000
+        running: root.visible
         repeat: true
         onTriggered: {
             if (root.model && root.model.refresh_sidebar_epg) {
@@ -129,8 +135,6 @@ MouseArea {
         clip: true
         model: root.model
 
-        // 🚀 LIBERACIÓN TOTAL DE VRAM: Activamos el reciclaje veloz y bajamos el buffer a cero
-        // Esto destruye los elementos invisibles al instante liberando la GPU para el vídeo de Tvheadend
         reuseItems: true
         cacheBuffer: 0
         maximumFlickVelocity: 2000
@@ -158,11 +162,8 @@ MouseArea {
             }
         }
 
-
-        delegate: ChannelDelegate {
+        delegate: ChannelSidebarDelegate {
             sidebarModel: root.model
-            required property int index
-            modelRow: index
             currentChannelIndex: root.currentChannelIndex
             onClickedReal: function (realIndex) {
                 root.channelSelected(realIndex);

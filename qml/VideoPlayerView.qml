@@ -50,6 +50,15 @@ FocusScope {
         }
     }
 
+    MediaDevices {
+        id: mediaDevices
+        onAudioOutputsChanged: {
+            if (mediaPlayer.audioOutput) {
+                mediaPlayer.audioOutput.device = mediaDevices.defaultAudioOutput;
+            }
+        }
+    }
+
     MediaPlayer {
         id: mediaPlayer
         audioOutput: AudioOutput {}
