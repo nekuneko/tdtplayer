@@ -24,27 +24,38 @@ Item {
         }
     }
 
-    TapHandler {
-        id: videoGestureOrchestrator
+    Timer {
+        id: singleClickTimer
+        interval: 220
+        repeat: false
+        onTriggered: {
+            if (!root.epgDrawerItem.visible && !root.sidebarItem.visible && !root.configSidebarItem.visible) {
+                root.controller.togglePlayback();
+            }
+        }
+    }
+
+    MouseArea {
+        id: videoClickArea
+        anchors.fill: parent
         acceptedButtons: Qt.LeftButton
-        gesturePolicy: TapHandler.WithinBounds
+        propagateComposedEvents: true
 
-        onTapped: root.controller.togglePlayback()
+        onClicked: singleClickTimer.restart()
 
-        onDoubleTapped: {
-            Qt.callLater(function () {
-                if (root.isPip) {
-                    root.windowController.togglePipMode();
-                    return;
-                }
-                if (root.window.visibility === Window.FullScreen) {
-                    root.window.visibility = Window.Windowed;
-                    root.controller.isFullScreen = false;
-                } else {
-                    root.window.visibility = Window.FullScreen;
-                    root.controller.isFullScreen = true;
-                }
-            });
+        onDoubleClicked: {
+            singleClickTimer.stop();
+            if (root.isPip) {
+                root.windowController.togglePipMode();
+                return;
+            }
+            if (root.window.visibility === Window.FullScreen) {
+                root.window.visibility = Window.Windowed;
+                root.controller.isFullScreen = false;
+            } else {
+                root.window.visibility = Window.FullScreen;
+                root.controller.isFullScreen = true;
+            }
         }
     }
 

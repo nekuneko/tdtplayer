@@ -29,10 +29,38 @@ FocusScope {
         mouseInactivityTimer.restart();
     }
 
+    Timer {
+        id: streamReconnectTimer
+        interval: 800
+        repeat: false
+        onTriggered: {
+            if (!controller.isVoluntarilyStopped && !controller.zappingTimer.running && controller.model && controller.model.rowCount() > 0) {
+                var currentUrl = controller.model.get_url_at(controller.tunedChannelIndex);
+                mediaPlayer.stop();
+                mediaPlayer.source = "";
+                mediaPlayer.source = currentUrl;
+                mediaPlayer.play();
+            }
+        }
+    }
+
     MediaPlayer {
         id: mediaPlayer
         audioOutput: AudioOutput {}
         videoOutput: videoOutput
+
+        onMediaStatusChanged: {
+            if ((mediaStatus === MediaPlayer.EndOfMedia || mediaStatus === MediaPlayer.InvalidMedia)
+                    && !controller.isVoluntarilyStopped && !controller.zappingTimer.running) {
+                streamReconnectTimer.restart();
+            }
+        }
+
+        onErrorOccurred: (error, errorString) => {
+            if (!controller.isVoluntarilyStopped && !controller.zappingTimer.running) {
+                streamReconnectTimer.restart();
+            }
+        }
     }
 
     Rectangle {

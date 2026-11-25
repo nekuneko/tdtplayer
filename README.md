@@ -50,6 +50,7 @@ Reproductor nativo de TDT e IPTV para escritorio basado en **Python**, **PySide6
 | **`E`** | Abrir / cerrar la **parrilla EPG** completa |
 | **`Tab`** | Alternar entre *Emitiéndose Ahora* y *A Continuación* (dentro de la parrilla EPG) |
 | **`M`** | Silenciar / activar audio (*Mute*) |
+| **`F` / `F11`** | Alternar **pantalla completa** |
 | **`Esc`** | Salir de PiP o cerrar paneles abiertos |
 
 ### Ratón y gestos

@@ -6,6 +6,7 @@ Rectangle {
 
     required property string iconType // "restore" | "mute" | "play"
     property bool isActiveState: false
+    property bool isAlert: false
 
     signal clicked
 
@@ -14,16 +15,25 @@ Rectangle {
     radius: 10
 
     readonly property bool isHovered: btnArea.containsMouse
-    readonly property color fgTint: isHovered
-                                    ? (typeof appTheme !== "undefined" && appTheme ? appTheme.textTitleActive : "#FFFFFF")
-                                    : (typeof appTheme !== "undefined" && appTheme ? appTheme.textTitle : "#FFFFFF")
+    readonly property color alertBg: appTheme.liveBg
+    readonly property color alertFg: appTheme.liveText
 
-    color: isHovered
-           ? (typeof appTheme !== "undefined" && appTheme ? appTheme.bgItemActive : "#1D4ED8")
-           : (typeof appTheme !== "undefined" && appTheme ? appTheme.bgAbsolute : "#CC0B0F17")
-    border.color: isHovered
-                  ? (typeof appTheme !== "undefined" && appTheme ? appTheme.borderActive : "#60A5FA")
-                  : (typeof appTheme !== "undefined" && appTheme ? appTheme.borderDefault : "#1E293B")
+    readonly property color fgTint: root.isAlert
+                                    ? alertFg
+                                    : (isHovered
+                                       ? (typeof appTheme !== "undefined" && appTheme ? appTheme.textTitleActive : "#FFFFFF")
+                                       : (typeof appTheme !== "undefined" && appTheme ? appTheme.textTitle : "#FFFFFF"))
+
+    color: root.isAlert
+           ? alertBg
+           : (isHovered
+              ? (typeof appTheme !== "undefined" && appTheme ? appTheme.bgItemActive : "#1D4ED8")
+              : (typeof appTheme !== "undefined" && appTheme ? appTheme.bgAbsolute : "#CC0B0F17"))
+    border.color: root.isAlert
+                  ? alertBg
+                  : (isHovered
+                     ? (typeof appTheme !== "undefined" && appTheme ? appTheme.borderActive : "#60A5FA")
+                     : (typeof appTheme !== "undefined" && appTheme ? appTheme.borderDefault : "#1E293B"))
     border.width: 1
 
     // Icono Restaurar Ventana

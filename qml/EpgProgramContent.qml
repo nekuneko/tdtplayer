@@ -73,19 +73,30 @@ Item {
             }
         }
 
-        Item {
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.minimumWidth: 0
             Layout.fillHeight: true
+            spacing: 8
+
+            EpgProgressRow {
+                isFullScreen: root.isFullScreen
+                epgTitle: root.epgTitle
+                startTimestamp: root.startTimestamp
+                stopTimestamp: root.stopTimestamp
+                currentTimestamp: root.currentTimestamp
+            }
 
             Flickable {
                 id: descFlickable
-                anchors.fill: parent
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 contentWidth: width
-                contentHeight: scrollContentLayout.implicitHeight
-                anchors.rightMargin: descFlickable.contentHeight > descFlickable.height ? 16 : 0
+                contentHeight: descriptionText.implicitHeight
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
+
+                readonly property bool hasScrollbar: descFlickable.contentHeight > descFlickable.height
 
                 WheelHandler {
                     id: contentScrollShield
@@ -100,32 +111,18 @@ Item {
                     }
                 }
 
-                ColumnLayout {
-                    id: scrollContentLayout
-                    width: descFlickable.width
-                    spacing: 8
-
-                    EpgProgressRow {
-                        isFullScreen: root.isFullScreen
-                        epgTitle: root.epgTitle
-                        startTimestamp: root.startTimestamp
-                        stopTimestamp: root.stopTimestamp
-                        currentTimestamp: root.currentTimestamp
-                    }
-
-                    Text {
-                        id: descriptionText
-                        Layout.fillWidth: true
-                        text: root.epgDescription
-                        color: "#CBD5E1"
-                        font.pointSize: root.isFullScreen ? 11 : 10
-                        renderType: Text.NativeRendering
-                        wrapMode: Text.WordWrap
-                    }
+                Text {
+                    id: descriptionText
+                    width: Math.max(0, descFlickable.width - 14)
+                    text: root.epgDescription
+                    color: "#CBD5E1"
+                    font.pointSize: root.isFullScreen ? 11 : 10
+                    renderType: Text.NativeRendering
+                    wrapMode: Text.WordWrap
                 }
 
                 ScrollBar.vertical: ScrollBar {
-                    policy: descFlickable.contentHeight > descFlickable.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                    policy: descFlickable.hasScrollbar ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
                     contentItem: Rectangle {
                         implicitWidth: 4
                         radius: 2

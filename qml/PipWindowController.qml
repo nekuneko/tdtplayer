@@ -26,7 +26,6 @@ Item {
 
     function togglePipMode() {
         if (!isPipMode) {
-            // 1. Guardamos el estado actual antes de entrar en PiP
             savedFullScreen = (root.window.visibility === Window.FullScreen);
             if (savedFullScreen) {
                 root.window.visibility = Window.Windowed;
@@ -37,53 +36,54 @@ Item {
             savedWidth = root.window.width;
             savedHeight = root.window.height;
 
-            // 2. Cerramos paneles laterales/EPG si estuvieran abiertos
             if (root.ctrl.sidebar)
                 root.ctrl.sidebar.sidebarForceOpen = false;
             if (root.ctrl.epgDrawer)
                 root.ctrl.epgDrawer.epgForceOpen = false;
 
+            root.isAdjustingAspect = true;
             isPipMode = true;
-
-            // 3. Activamos ventana flotante sin bordes y siempre encima (Windows + Linux X11)
             root.window.flags = defaultFlags | Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint;
 
-            // 4. Tamaño compacto 16:9 en la esquina inferior derecha
             var pipW = 420;
             var pipH = 236;
-            root.isAdjustingAspect = true;
             root.window.width = pipW;
             root.window.height = pipH;
-            root.isAdjustingAspect = false;
             root.window.x = Math.max(0, Screen.desktopAvailableWidth - pipW - 24);
             root.window.y = Math.max(0, Screen.desktopAvailableHeight - pipH - 24);
+            Qt.callLater(function () {
+                root.isAdjustingAspect = false;
+            });
         } else {
-            // Restauramos ventana normal
+            root.isAdjustingAspect = true;
             isPipMode = false;
             root.window.flags = defaultFlags;
-            root.window.x = savedX;
-            root.window.y = savedY;
-            root.window.width = savedWidth;
-            root.window.height = savedHeight;
 
-            if (savedFullScreen) {
-                root.window.visibility = Window.FullScreen;
-                root.ctrl.isFullScreen = true;
-            }
+            Qt.callLater(function () {
+                root.window.x = savedX;
+                root.window.y = savedY;
+                root.window.width = savedWidth;
+                root.window.height = savedHeight;
+                root.isAdjustingAspect = false;
+
+                if (savedFullScreen) {
+                    root.window.visibility = Window.FullScreen;
+                    root.ctrl.isFullScreen = true;
+                }
+            });
         }
     }
 
-    // Enlaces de sincronización bidireccionales nativos con el motor de persistencia Settings
     Connections {
         target: root.window
         function onXChanged() {
-            if (!root.isPipMode && root.window.visibility === Window.Windowed && !root.window.isBooting) {
+            if (!root.isPipMode && !root.isAdjustingAspect && root.window.visibility === Window.Windowed && !root.window.isBooting) {
                 root.appSettings.windowX = root.window.x;
             }
         }
 
         function onYChanged() {
-            if (!root.isPipMode && root.window.visibility === Window.Windowed && !root.window.isBooting) {
+            if (!root.isPipMode && !root.isAdjustingAspect && root.window.visibility === Window.Windowed && !root.window.isBooting) {
                 root.appSettings.windowY = root.window.y;
             }
         }
@@ -98,7 +98,7 @@ Item {
                     root.window.width = minW;
                 root.window.height = Math.round(root.window.width / root.pipAspectRatio);
                 root.isAdjustingAspect = false;
-            } else if (root.window.visibility === Window.Windowed && !root.window.isBooting) {
+            } else if (!root.isAdjustingAspect && root.window.visibility === Window.Windowed && !root.window.isBooting) {
                 root.appSettings.windowWidth = root.window.width;
             }
         }
@@ -113,7 +113,7 @@ Item {
                     root.window.height = minH;
                 root.window.width = Math.round(root.window.height * root.pipAspectRatio);
                 root.isAdjustingAspect = false;
-            } else if (root.window.visibility === Window.Windowed && !root.window.isBooting) {
+            } else if (!root.isAdjustingAspect && root.window.visibility === Window.Windowed && !root.window.isBooting) {
                 root.appSettings.windowHeight = root.window.height;
             }
         }

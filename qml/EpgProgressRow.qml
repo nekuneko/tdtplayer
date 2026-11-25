@@ -29,24 +29,23 @@ RowLayout {
         Layout.alignment: Qt.AlignVCenter
     }
 
-    // Píldora vectorial de estado PAUSADO (coherente con el icono de pausa del PiP)
+    // Píldora vectorial de estado PAUSADO
     Rectangle {
         id: pausedBadge
         visible: root.isPaused
-        color: appTheme ? appTheme.liveBg : "#EF4444"
+        color: appTheme.liveBg
         radius: appTheme && appTheme.px ? appTheme.px(5) : 5
         Layout.preferredHeight: appTheme && appTheme.px ? appTheme.px(24) : 24
         Layout.preferredWidth: pausedContent.implicitWidth + (appTheme && appTheme.px ? appTheme.px(16) : 16)
         Layout.alignment: Qt.AlignVCenter
 
-        readonly property color fgColor: appTheme ? appTheme.liveText : "#FFFFFF"
+        readonly property color fgColor: appTheme.liveText
 
         Row {
             id: pausedContent
             anchors.centerIn: parent
             spacing: 6
 
-            // Icono vectorial de pausa (dos barras idénticas a PipIconButton)
             Row {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 2.5
@@ -91,13 +90,13 @@ RowLayout {
     // Barra de progreso en directo
     Rectangle {
         id: drawerProgressBarContainer
-        visible: root.hasTime && root.stopTimestamp > root.startTimestamp && width > 24
+        visible: root.hasTime && root.stopTimestamp > root.startTimestamp
         Layout.fillWidth: true
-        Layout.minimumWidth: 0
-        Layout.preferredHeight: appTheme && appTheme.px ? appTheme.px(4) : 4
+        Layout.minimumWidth: 32
+        Layout.preferredHeight: appTheme && appTheme.px ? appTheme.px(5) : 5
         Layout.alignment: Qt.AlignVCenter
         color: "#334155"
-        radius: 2
+        radius: 2.5
 
         readonly property real progressFactor: (root.stopTimestamp > root.startTimestamp)
             ? Math.max(0.0, Math.min(1.0, (root.currentTimestamp - root.startTimestamp) / (root.stopTimestamp - root.startTimestamp)))
@@ -106,7 +105,7 @@ RowLayout {
         Rectangle {
             width: parent.width * parent.progressFactor
             height: parent.height
-            radius: 2
+            radius: 2.5
             color: appTheme.borderActive
         }
     }

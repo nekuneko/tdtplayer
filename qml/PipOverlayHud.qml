@@ -11,12 +11,16 @@ Item {
     required property var mediaPlayer
     required property bool isHovered
 
+    readonly property bool isMutedNow: root.controller.isMuted || (root.mediaPlayer.audioOutput && root.mediaPlayer.audioOutput.muted)
+    readonly property bool isPausedNow: root.controller.isVoluntarilyStopped || root.mediaPlayer.playbackState !== MediaPlayer.PlayingState
+
     Item {
         anchors.fill: parent
-        opacity: root.isHovered ? 1.0 : 0.0
+        opacity: (root.isHovered || root.isMutedNow || root.isPausedNow) ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
         PipIconButton {
+            visible: root.isHovered
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.margins: 12
@@ -31,14 +35,18 @@ Item {
             spacing: 10
 
             PipIconButton {
+                visible: root.isHovered || root.isMutedNow
                 iconType: "mute"
-                isActiveState: root.controller.isMuted || (root.mediaPlayer.audioOutput && root.mediaPlayer.audioOutput.muted)
+                isActiveState: root.isMutedNow
+                isAlert: root.isMutedNow
                 onClicked: root.controller.toggleMute()
             }
 
             PipIconButton {
+                visible: root.isHovered || root.isPausedNow
                 iconType: "play"
-                isActiveState: root.mediaPlayer.playbackState === MediaPlayer.PlayingState
+                isActiveState: !root.isPausedNow
+                isAlert: root.isPausedNow
                 onClicked: root.controller.togglePlayback()
             }
         }

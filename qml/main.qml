@@ -45,9 +45,7 @@ ApplicationWindow {
         sidebar: sidebar
         epgDrawer: epgDrawer
         onChannelZappedByKeyboard: {
-            if (!windowController.isPipMode) {
-                epgDrawer.epgForceOpen = true;
-            }
+            epgDrawer.epgForceOpen = true;
         }
     }
 
@@ -110,7 +108,6 @@ ApplicationWindow {
             epgTitle: ctrl.epgTitle
             epgDescription: ctrl.epgDescription
             isFullScreen: ctrl.isFullScreen
-            sidebarItem: sidebar
             z: 1
             width: sidebar.visible ? (parent.width - sidebar.width - appTheme.px(24)) : (parent.width - appTheme.px(24))
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen

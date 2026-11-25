@@ -101,6 +101,22 @@ Item {
                 event.accepted = true;
                 break;
 
+            case Qt.Key_F:
+            case Qt.Key_F11:
+                if (root.windowController && root.windowController.isPipMode) {
+                    root.windowController.togglePipMode();
+                }
+                if (root.window.visibility === Window.FullScreen) {
+                    root.window.visibility = Window.Windowed;
+                    root.controller.isFullScreen = false;
+                } else {
+                    root.window.visibility = Window.FullScreen;
+                    root.controller.isFullScreen = true;
+                }
+                event.accepted = true;
+                break;
+
+
             case Qt.Key_Escape:
                 root.controller.cancelPendingZapping();
                 if (root.controller.sidebar && root.controller.sidebar.sidebarForceOpen) {

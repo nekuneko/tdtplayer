@@ -7,30 +7,91 @@ RowLayout {
     id: root
     spacing: 8
     Layout.alignment: Qt.AlignVCenter
-    
+
     required property bool isFullScreen
 
-    // 🚀 NUEVO: Botón interactivo de Mute con icono dinámico
-    Button {
-        id: muteButton
-        Layout.preferredWidth: 26
-        Layout.preferredHeight: 26
-        Layout.alignment: Qt.AlignVCenter
-        hoverEnabled: true
-        
-        onClicked: ctrl.toggleMute()
+    readonly property bool isMutedVisual: typeof ctrl !== "undefined" && (ctrl.isMuted || ctrl.currentVolumePercent === 0)
+    readonly property color alertBg: appTheme.liveBg
+    readonly property color alertFg: appTheme.liveText
 
-        // Fondo transparente con indicación de hover moderna
-        background: Rectangle {
-            color: muteButton.hovered ? "#1E293B" : "transparent"
-            radius: 4
+    // Botón vectorial de Mute coherente con el resto de controles de la interfaz
+    Rectangle {
+        id: muteBtn
+        width: 32
+        height: 32
+        radius: (typeof appTheme !== "undefined" && appTheme) ? appTheme.px(8) : 8
+        Layout.alignment: Qt.AlignVCenter
+
+        color: root.isMutedVisual
+               ? root.alertBg
+               : (muteArea.containsMouse
+                  ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.bgItemActive : "#1D4ED8")
+                  : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.bgItemDefault : "#1E293B"))
+        border.color: root.isMutedVisual
+                      ? root.alertBg
+                      : (muteArea.containsMouse
+                         ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderActive : "#60A5FA")
+                         : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderDefault : "#334155"))
+        border.width: 1
+
+        Canvas {
+            anchors.centerIn: parent
+            width: 16
+            height: 16
+
+            property color tint: root.isMutedVisual
+                                 ? root.alertFg
+                                 : (muteArea.containsMouse
+                                    ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.textTitleActive : "#FFFFFF")
+                                    : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.textTitle : "#FFFFFF"))
+            property bool flag: root.isMutedVisual
+            onTintChanged: requestPaint()
+            onFlagChanged: requestPaint()
+
+            onPaint: {
+                var ctx = getContext("2d");
+                ctx.reset();
+                ctx.fillStyle = tint;
+                ctx.strokeStyle = tint;
+                ctx.lineWidth = 1.6;
+                ctx.lineCap = "round";
+
+                ctx.beginPath();
+                ctx.moveTo(2, 6);
+                ctx.lineTo(5, 6);
+                ctx.lineTo(9, 2.5);
+                ctx.lineTo(9, 13.5);
+                ctx.lineTo(5, 10);
+                ctx.lineTo(2, 10);
+                ctx.closePath();
+                ctx.fill();
+
+                if (flag) {
+                    ctx.beginPath();
+                    ctx.moveTo(11.5, 5.5);
+                    ctx.lineTo(15, 10.5);
+                    ctx.moveTo(15, 5.5);
+                    ctx.lineTo(11.5, 10.5);
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(9.5, 8, 3.2, -Math.PI * 0.35, Math.PI * 0.35);
+                    ctx.stroke();
+                }
+            }
         }
 
-        contentItem: Text {
-            text: (ctrl.isMuted || ctrl.currentVolumePercent === 0) ? "🔇" : "🔊"
-            font.pointSize: root.isFullScreen ? 11 : 10
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+        MouseArea {
+            id: muteArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onPressed: mouse => mouse.accepted = true
+            onClicked: {
+                if (typeof ctrl !== "undefined") {
+                    ctrl.toggleMute();
+                }
+            }
         }
     }
 
@@ -38,15 +99,14 @@ RowLayout {
         id: volumeSlider
         from: 0
         to: 100
-        // Si está en mute, forzamos visualmente la barra a cero de forma reactiva
-        value: ctrl.isMuted ? 0 : ctrl.currentVolumePercent
+        value: root.isMutedVisual ? 0 : ctrl.currentVolumePercent
         Layout.preferredWidth: 100
         Layout.preferredHeight: 20
         Layout.alignment: Qt.AlignVCenter
 
         onMoved: {
-            var diff = Math.round(value) - ctrl.currentVolumePercent
-            ctrl.changeVolume(diff)
+            var diff = Math.round(value) - ctrl.currentVolumePercent;
+            ctrl.changeVolume(diff);
         }
 
         background: Rectangle {
@@ -57,12 +117,14 @@ RowLayout {
             width: volumeSlider.availableWidth
             height: implicitHeight
             radius: 2
-            color: "#334155"
+            color: (typeof appTheme !== "undefined" && appTheme) ? appTheme.borderDefault : "#334155"
 
             Rectangle {
                 width: volumeSlider.visualPosition * parent.width
                 height: parent.height
-                color: ctrl.isMuted ? "#64748B" : "#3B82F6" // Color grisáceo si está silenciado
+                color: root.isMutedVisual
+                       ? "#64748B"
+                       : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderActive : "#3B82F6")
                 radius: 2
             }
         }
@@ -73,19 +135,24 @@ RowLayout {
             implicitWidth: 12
             implicitHeight: 12
             radius: 6
-            color: ctrl.isMuted ? "#475569" : (volumeSlider.pressed ? "#60A5FA" : "#3B82F6")
+            color: root.isMutedVisual
+                   ? "#475569"
+                   : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderActive : "#3B82F6")
             border.color: "#FFFFFF"
             border.width: 1
         }
     }
 
     Text {
-        text: (ctrl.isMuted ? "0" : ctrl.currentVolumePercent) + "%"
-        color: ctrl.isMuted ? "#64748B" : "#94A3B8"
+        text: (root.isMutedVisual ? "0" : ctrl.currentVolumePercent) + "%"
+        color: root.isMutedVisual
+               ? root.alertBg
+               : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.textDesc : "#94A3B8")
         font.bold: true
         font.pointSize: root.isFullScreen ? 10 : 9
         font.family: "Monospace"
         Layout.preferredWidth: 32
         Layout.alignment: Qt.AlignVCenter
+        renderType: Text.NativeRendering
     }
 }

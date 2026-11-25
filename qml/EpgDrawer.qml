@@ -15,7 +15,7 @@ Rectangle {
     property var sidebarItem: null
     property bool epgForceOpen: false
 
-    readonly property bool containsMouse: epgMouseTracker.containsMouse
+    readonly property bool containsMouse: epgHoverHandler.hovered
     readonly property real outerMargin: appTheme ? appTheme.px(12) : 12
 
     height: root.isFullScreen ? (appTheme ? appTheme.px(180) : 180) : (appTheme ? appTheme.px(160) : 160)
@@ -40,24 +40,41 @@ Rectangle {
 
     Timer {
         id: safetyExitTimer
-        interval: 200
+        interval: 350
         running: false
         repeat: false
-        onTriggered: root.epgForceOpen = false
+        onTriggered: {
+            if (!epgHoverHandler.hovered) {
+                root.epgForceOpen = false;
+            }
+        }
+    }
+
+    HoverHandler {
+        id: epgHoverHandler
+        margin: root.outerMargin
+        onHoveredChanged: {
+            if (hovered) {
+                safetyExitTimer.stop();
+                if (typeof playerView !== "undefined") {
+                    playerView.resetMouseCursor();
+                }
+            } else {
+                safetyExitTimer.restart();
+            }
+        }
+        onPointChanged: {
+            if (typeof playerView !== "undefined") {
+                playerView.resetMouseCursor();
+            }
+        }
     }
 
     MouseArea {
-        id: epgMouseTracker
         anchors.fill: parent
-        anchors.bottomMargin: -root.outerMargin
-        anchors.leftMargin: -root.outerMargin
-        hoverEnabled: true
         z: -1
         cursorShape: Qt.ArrowCursor
-        onEntered: safetyExitTimer.stop()
-        onExited: safetyExitTimer.start()
-        onPositionChanged: if (typeof playerView !== "undefined")
-            playerView.resetMouseCursor()
+        onPressed: mouse => mouse.accepted = true
     }
 
     ColumnLayout {
@@ -72,7 +89,6 @@ Rectangle {
             channelName: root.channelName
             hoveredChannelName: root.hoveredChannelName
 
-            // 🚀 ASIGNACIÓN DINÁMICA DE ENLACE REEL:
             Component.onCompleted: {
                 innerHeaderRow.epgTitle = Qt.binding(function () {
                     return root.epgTitle;
@@ -80,7 +96,6 @@ Rectangle {
             }
         }
 
-        // 🚀 CORRECCIÓN DE LAYOUT: Cambiado 'height: 1' por 'Layout.preferredHeight: 1' para evitar el comportamiento indefinido
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
