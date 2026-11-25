@@ -42,13 +42,30 @@ def configure_environment() -> None:
 
 configure_environment()
 
-from PySide6.QtCore import QUrl  # noqa: E402
+from PySide6.QtCore import QObject, Qt, QUrl, Slot  # noqa: E402
 from PySide6.QtGui import QGuiApplication, QIcon  # noqa: E402
 from PySide6.QtMultimedia import QMediaPlayer, QVideoSink  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
 
 from channel_model import ChannelModel  # noqa: E402
 from screenshot_helper import ScreenshotHelper  # noqa: E402
+
+
+class CursorHelper(QObject):
+    """Controla la ocultación real del cursor a nivel de aplicación (Windows/Linux)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._hidden = False
+
+    @Slot(bool)
+    def set_hidden(self, hide: bool) -> None:
+        if hide and not self._hidden:
+            QGuiApplication.setOverrideCursor(Qt.BlankCursor)
+            self._hidden = True
+        elif not hide and self._hidden:
+            QGuiApplication.restoreOverrideCursor()
+            self._hidden = False
 
 
 def main():
@@ -85,10 +102,12 @@ def main():
 
     channel_model = ChannelModel()
     screenshot_helper = ScreenshotHelper(parent=app)
+    cursor_helper = CursorHelper(parent=app)
 
     context = engine.rootContext()
     context.setContextProperty("channelModel", channel_model)
     context.setContextProperty("screenshotHelper", screenshot_helper)
+    context.setContextProperty("cursorHelper", cursor_helper)
 
     qml_file = os.path.join(qml_dir, "main.qml")
     engine.load(QUrl.fromLocalFile(qml_file))

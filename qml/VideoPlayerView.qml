@@ -24,9 +24,15 @@ FocusScope {
     readonly property bool isCardMode: !scope.isPip && (scope.isSidebarOpen || scope.isConfigOpen || scope.isEpgOpen)
     readonly property real cardMargin: (typeof appTheme !== "undefined" && appTheme) ? appTheme.px(12) : 12
 
+    property point lastMousePos: Qt.point(-1, -1)
+
     function resetMouseCursor() {
-        videoMouseTracker.cursorShape = scope.isPip ? Qt.OpenHandCursor : Qt.ArrowCursor;
-        mouseInactivityTimer.restart();
+        if (typeof cursorHelper !== "undefined") {
+            cursorHelper.set_hidden(false);
+        }
+        if (!scope.isPip) {
+            mouseInactivityTimer.restart();
+        }
     }
 
     Timer {
@@ -72,12 +78,58 @@ FocusScope {
 
         Timer {
             id: mouseInactivityTimer
-            interval: scope.isPip ? 1500 : 500
-            running: !controller.isVoluntarilyStopped && (controller.epgDrawer ? !controller.epgDrawer.epgForceOpen : true)
+            interval: 5000
+            running: !scope.isPip
             repeat: false
             onTriggered: {
-                if (!scope.isPip) {
-                    videoMouseTracker.cursorShape = Qt.BlankCursor;
+                if (!scope.isPip && !scope.isSidebarOpen && !scope.isConfigOpen && !scope.isEpgOpen) {
+                    if (typeof cursorHelper !== "undefined") {
+                        cursorHelper.set_hidden(true);
+                    }
+                }
+            }
+        }
+
+        HoverHandler {
+            id: globalCursorTracker
+            onPointChanged: {
+                var dx = Math.abs(point.position.x - scope.lastMousePos.x);
+                var dy = Math.abs(point.position.y - scope.lastMousePos.y);
+                if (dx < 1 && dy < 1)
+                    return;
+                scope.lastMousePos = Qt.point(point.position.x, point.position.y);
+
+                scope.resetMouseCursor();
+                if (scope.isPip || window.visibility === Window.Minimized)
+                    return;
+
+                // Borde izquierdo (50 px): ConfigSidebar
+                if (!epgDrawerItem.epgForceOpen && !sidebarItem.visible && !configSidebarItem.visible && point.position.x <= 50) {
+                    controller.openConfigAndCollapseOthers();
+                    configSidebarItem.sidebarForceOpen = true;
+                    return;
+                }
+
+                // Borde derecho (50 px): ChannelSidebar
+                if (!epgDrawerItem.epgForceOpen && !configSidebarItem.visible && !sidebarItem.visible && point.position.x >= (rootBackdrop.width - 50)) {
+                    sidebarItem.sidebarForceOpen = true;
+                    return;
+                }
+
+                if (sidebarItem.visible || configSidebarItem.visible)
+                    return;
+
+                // Borde inferior: EpgDrawer
+                var epgTopBoundary = rootBackdrop.height - controller.epgDrawer.height - scope.cardMargin;
+                if (point.position.y >= epgTopBoundary) {
+                    controller.epgDrawer.epgForceOpen = true;
+                } else if (point.position.y < (epgTopBoundary - 10)) {
+                    controller.epgDrawer.epgForceOpen = false;
+                }
+            }
+            onHoveredChanged: {
+                if (!hovered) {
+                    scope.resetMouseCursor();
                 }
             }
         }
@@ -85,26 +137,6 @@ FocusScope {
         Connections {
             target: controller.epgDrawer
             function onEpgForceOpenChanged() { scope.resetMouseCursor(); }
-        }
-
-        MouseArea {
-            id: videoMouseTracker
-            anchors.fill: parent
-            hoverEnabled: true
-            z: 0
-
-            onPositionChanged: {
-                scope.resetMouseCursor();
-                if (scope.isPip || window.visibility === Window.Minimized || sidebarItem.visible || configSidebarItem.visible)
-                    return;
-
-                var epgTopBoundary = rootBackdrop.height - controller.epgDrawer.height - scope.cardMargin;
-                if (videoMouseTracker.mouseY >= epgTopBoundary) {
-                    controller.epgDrawer.epgForceOpen = true;
-                } else if (videoMouseTracker.mouseY < (epgTopBoundary - 10)) {
-                    controller.epgDrawer.epgForceOpen = false;
-                }
-            }
         }
 
         Rectangle {
