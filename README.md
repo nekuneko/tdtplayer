@@ -2,12 +2,23 @@
   <img src="docs/icon.png" alt="TDTPlayer Logo" width="128">
 </p>
 
-<h1 align="center">TDTPlayer (Tvheadend Native Player)</h1>
+<h1 align="center">TDTPlayer</h1>
 
-Reproductor nativo de TDT / IPTV basado en **Python**, **PySide6 (Qt 6 / QML)** y **FFmpeg**, diseñado para flujos MPEG-TS en bruto (`?profile=pass`) con baja latencia, EPG local en SQLite y compatibilidad total con **Linux** y **Windows**.
+Reproductor nativo de TDT e IPTV para escritorio basado en **Python**, **PySide6 (Qt 6 / QML)** y **FFmpeg**. Compatible con **cualquier lista M3U / M3U8** (local o por URL) y optimizado especialmente para servidores **Tvheadend** (`?profile=pass`), con baja latencia, guía EPG local en SQLite, desentrelazado por hardware y soporte nativo para **Linux** y **Windows**.
+
 
 > [!WARNING]
 > **🚧 Proyecto en construcción (Work in Progress):** Este repositorio se encuentra en desarrollo activo y **no representa una versión definitiva**. La interfaz, la arquitectura interna, los controles y las funcionalidades están en constante evolución y pueden cambiar o estar sujetos a modificaciones sin previo aviso.
+
+---
+
+## Capturas de pantalla
+
+| Vista principal | Menú de configuración |
+| :---: | :---: |
+| ![Interfaz principal, lista de canales y guía EPG](docs/interface.png) | ![Panel de configuración y temas visuales](docs/settings.png) |
+| *Lista de canales lateral, cajón EPG inferior, reloj y captura rápida* | *Selector de 7 temas visuales, captura e importación M3U* |
+
 
 ---
 
@@ -64,72 +75,58 @@ Reproductor nativo de TDT / IPTV basado en **Python**, **PySide6 (Qt 6 / QML)** 
 
 ## Instalación y ejecución en desarrollo
 
-1. **Crear y activar el entorno virtual:**
-   * **Windows:**
-     ```bash
-     python -m venv venv
-     venv\Scripts\activate
-     ```
-   * **Linux:**
-     ```bash
-     python3 -m venv venv
-     source venv/bin/activate
-     ```
+### Windows (CMD)
+```bat
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
 
-2. **Instalar dependencias:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Ejecutar la aplicación:**
-   ```bash
-   python main.py
-   ```
+### Linux (Bash)
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
 
 ---
 
-## Compilar ejecutable (Windows y Linux)
+## Compilar ejecutable
 
-1. **Activar el entorno virtual e instalar PyInstaller:**
-   * **Windows:** `venv\Scripts\activate`
-   * **Linux:** `source venv/bin/activate`
+### Windows (CMD)
+```bat
+venv\Scripts\activate
+pip install pyinstaller
+pyinstaller --noconfirm --onedir --windowed --name "TDTPlayer" ^
+  --icon="docs/icon.ico" ^
+  --add-data "qml;qml" ^
+  --add-data "docs/icon.png;docs" ^
+  --hidden-import "deinterlace_filter" ^
+  --hidden-import "screenshot_helper" ^
+  --exclude-module "PySide6.QtWebEngineCore" ^
+  --exclude-module "PySide6.QtWebEngineQuick" ^
+  --exclude-module "PySide6.QtPdf" ^
+  main.py
+```
+Ejecutar: `dist\TDTPlayer\TDTPlayer.exe`
 
-   ```bash
-   pip install pyinstaller
-   ```
-
-2. **Generar la aplicación empaquetada:**
-
-   * **Windows (CMD):**
-     ```bash
-     pyinstaller --noconfirm --onedir --windowed --name "TDTPlayer" ^
-       --icon="docs/icon.ico" ^
-       --add-data "qml;qml" ^
-       --add-data "docs/icon.png;docs" ^
-       --hidden-import "deinterlace_filter" ^
-       --hidden-import "screenshot_helper" ^
-       --exclude-module "PySide6.QtWebEngineCore" ^
-       --exclude-module "PySide6.QtWebEngineQuick" ^
-       --exclude-module "PySide6.QtPdf" ^
-       main.py
-     ```
-
-   * **Linux:**
-     ```bash
-     pyinstaller --noconfirm --onedir --windowed --name "TDTPlayer" \
-       --icon="docs/icon.png" \
-       --add-data "qml:qml" \
-       --add-data "docs/icon.png:docs" \
-       --hidden-import "screenshot_helper" \
-       --exclude-module "PySide6.QtWebEngineCore" \
-       --exclude-module "PySide6.QtWebEngineQuick" \
-       --exclude-module "PySide6.QtPdf" \
-       main.py
-     ```
-
-3. **Ejecutar el binario generado:**
-   * **Windows:** `dist\TDTPlayer\TDTPlayer.exe`
-   * **Linux:** `./dist/TDTPlayer/TDTPlayer`
+### Linux (Bash)
+```bash
+source venv/bin/activate
+pip install pyinstaller
+pyinstaller --noconfirm --onedir --windowed --name "TDTPlayer" \
+  --icon="docs/icon.png" \
+  --add-data "qml:qml" \
+  --add-data "docs/icon.png:docs" \
+  --hidden-import "screenshot_helper" \
+  --exclude-module "PySide6.QtWebEngineCore" \
+  --exclude-module "PySide6.QtWebEngineQuick" \
+  --exclude-module "PySide6.QtPdf" \
+  main.py
+```
+Ejecutar: `./dist/TDTPlayer/TDTPlayer`
 
 ---
 
@@ -142,6 +139,12 @@ python -m pip install pipreqs
 python -m pipreqs.pipreqs . --force --ignore venv
 ```
 
+
+---
+
+## Licencia
+
+Este proyecto se distribuye bajo la licencia **GNU General Public License v3.0 (GPL-3.0)**. Consulta el archivo [LICENSE](LICENSE) para más detalles.
 
 ---
 
