@@ -69,11 +69,7 @@ MouseArea {
     }
 
     onExited: {
-        if (sidebarXAnimation.running)
-            return;
-        if (root.isFullScreen) {
-            sidebarForceOpen = false;
-        }
+        sidebarForceOpen = false;
         root.forceCenterScrollSync();
     }
 
