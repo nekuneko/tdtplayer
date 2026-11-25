@@ -7,6 +7,7 @@ from epg_repository import EpgRepository
 from epg_worker import EpgPreloaderWorker
 from logo_downloader import LogoDownloaderWorker
 from m3u_parser import M3uParser
+from hls_proxy import LocalHlsProxy
 
 
 class ChannelModel(QAbstractListModel):
@@ -32,6 +33,7 @@ class ChannelModel(QAbstractListModel):
 
         self._parser = M3uParser(self.cache_dir)
         self._repository = EpgRepository(self.db_path)
+        self._hls_proxy = LocalHlsProxy()
 
     def roleNames(self):
         return {
@@ -68,7 +70,7 @@ class ChannelModel(QAbstractListModel):
         if role == self.NameRole:
             return ch.name
         if role == self.UrlRole:
-            return ch.url
+            return self._hls_proxy.wrap_url(ch.url)
         if role == self.LogoRole:
             if not ch.logo:
                 return ""
@@ -164,7 +166,9 @@ class ChannelModel(QAbstractListModel):
 
     @Slot(int, result=str)
     def get_url_at(self, row: int) -> str:
-        return self._channels[row].url if 0 <= row < len(self._channels) else ""
+        if 0 <= row < len(self._channels):
+            return self._hls_proxy.wrap_url(self._channels[row].url)
+        return ""
 
     @Slot(str, result="QVariant")
     def fetch_current_epg(self, channel_name: str) -> dict:
@@ -178,3 +182,6 @@ class ChannelModel(QAbstractListModel):
         self._stop_active_workers()
         if hasattr(self, "_repository"):
             self._repository.close()
+        if hasattr(self, "_hls_proxy"):
+            self._hls_proxy.stop()
+

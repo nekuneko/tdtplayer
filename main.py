@@ -11,7 +11,9 @@ def configure_environment() -> None:
     # Ampliamos el análisis de cabeceras para que Qt Multimedia asimile el flujo de BeMad HD
     # junto con todas sus pistas síncronas (EPG, audios alternos y teletexto) de una sola pasada.
     os.environ["QT_MULTIMEDIA_FFMPEG_OPTIONS"] = (
-        "probesize=10000000;analyzeduration=5000000;fflags=discardcorrupt;rw_timeout=5000000"
+        "probesize=10000000;analyzeduration=5000000;fflags=discardcorrupt;rw_timeout=5000000;"
+        "allowed_segment_extensions=ALL;"
+        "user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     )
 
     # Permitir explícitamente que los objetos XMLHttpRequest de QML lean archivos locales

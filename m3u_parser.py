@@ -50,6 +50,7 @@ class M3uParser:
                 current_ch_no = chno_m.group(1) if chno_m else None
 
             elif line.startswith(("http://", "https://")) and current_name:
+                stream_url = line.split("|", 1)[0].strip() if "|" in line else line
                 clean_name = current_name.strip().replace("\r", "")
                 local_logo_url = self._resolve_logo(
                     len(channels), clean_name, current_logo, download_queue
@@ -66,7 +67,7 @@ class M3uParser:
                 channels.append(
                     M3uChannel(
                         name=clean_name,
-                        url=line,
+                        url=stream_url,
                         logo=local_logo_url,
                         ch_no=str(assigned_chno),
                     )
@@ -76,11 +77,12 @@ class M3uParser:
                     existing_logos[clean_name] = local_logo_url
 
                 if not base_url:
-                    parsed = urllib.parse.urlparse(line)
+                    parsed = urllib.parse.urlparse(stream_url)
                     if parsed.netloc:
                         base_url = f"{parsed.scheme}://{parsed.netloc}"
 
                 current_name, current_logo, current_ch_no = "", None, None
+
 
         return channels, download_queue, existing_logos, base_url
 
