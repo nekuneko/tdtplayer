@@ -51,6 +51,7 @@ Item {
     WheelHandler {
         id: mouseWheelZapper
         orientation: Qt.Vertical
+        enabled: !root.isPip
         onWheel: event => {
             if (event.angleDelta.y > 0) {
                 root.controller.playChannel(root.controller.currentChannelIndex - 1);

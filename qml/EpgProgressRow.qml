@@ -15,6 +15,7 @@ RowLayout {
     readonly property bool hasTime: root.epgTitle.startsWith("[") && closeBracketIndex !== -1
     readonly property string rawTimeStr: hasTime ? root.epgTitle.substring(1, closeBracketIndex).trim() : ""
     readonly property string formattedTime: rawTimeStr ? rawTimeStr.replace(/\s*-\s*/, " ➔ ") : ""
+    readonly property bool isPaused: typeof ctrl !== "undefined" && Boolean(ctrl.isVoluntarilyStopped)
 
     spacing: 8
     Layout.alignment: Qt.AlignVCenter
@@ -26,6 +27,43 @@ RowLayout {
         fontPt: root.isFullScreen ? 11 : 10
         pillHeight: appTheme && appTheme.px ? appTheme.px(24) : 24
         Layout.alignment: Qt.AlignVCenter
+    }
+
+    // Píldora vectorial de estado PAUSADO (coherente con el icono de pausa del PiP)
+    Rectangle {
+        id: pausedBadge
+        visible: root.isPaused
+        color: appTheme ? appTheme.liveBg : "#EF4444"
+        radius: appTheme && appTheme.px ? appTheme.px(5) : 5
+        Layout.preferredHeight: appTheme && appTheme.px ? appTheme.px(24) : 24
+        Layout.preferredWidth: pausedContent.implicitWidth + (appTheme && appTheme.px ? appTheme.px(16) : 16)
+        Layout.alignment: Qt.AlignVCenter
+
+        readonly property color fgColor: appTheme ? appTheme.liveText : "#FFFFFF"
+
+        Row {
+            id: pausedContent
+            anchors.centerIn: parent
+            spacing: 6
+
+            // Icono vectorial de pausa (dos barras idénticas a PipIconButton)
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 2.5
+                Rectangle { width: 2.5; height: 9; radius: 1; color: pausedBadge.fgColor }
+                Rectangle { width: 2.5; height: 9; radius: 1; color: pausedBadge.fgColor }
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "PAUSADO"
+                color: pausedBadge.fgColor
+                font.bold: true
+                font.letterSpacing: 0.6
+                font.pointSize: root.isFullScreen ? 10 : 9
+                renderType: Text.NativeRendering
+            }
+        }
     }
 
     // Píldora de inicio/fin del programa

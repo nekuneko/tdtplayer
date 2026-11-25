@@ -45,7 +45,9 @@ ApplicationWindow {
         sidebar: sidebar
         epgDrawer: epgDrawer
         onChannelZappedByKeyboard: {
-            epgDrawer.epgForceOpen = true;
+            if (!windowController.isPipMode) {
+                epgDrawer.epgForceOpen = true;
+            }
         }
     }
 

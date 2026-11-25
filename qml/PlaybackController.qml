@@ -171,8 +171,13 @@ QtObject {
         root.isVoluntarilyStopped = (root.mediaPlayer.playbackState === MediaPlayer.PlayingState)
         if (root.isVoluntarilyStopped) {
             root.mediaPlayer.pause()
+            if (root.epgDrawer && (typeof windowController === "undefined" || !windowController.isPipMode)) {
+                root.epgAutoHideTimer.stop()
+                root.epgDrawer.epgForceOpen = true
+            }
         } else {
             root.mediaPlayer.play()
+            root.epgAutoHideTimer.restart()
         }
     }
 
