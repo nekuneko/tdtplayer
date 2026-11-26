@@ -1,7 +1,16 @@
 # channel_model.py
 import os
 
-from PySide6.QtCore import Property, QAbstractListModel, QModelIndex, Qt, QUrl, Signal, Slot
+from PySide6.QtCore import (
+    Property,
+    QAbstractListModel,
+    QCoreApplication,
+    QModelIndex,
+    Qt,
+    QUrl,
+    Signal,
+    Slot,
+)
 
 from epg_repository import EpgRepository
 from epg_worker import EpgPreloaderWorker
@@ -34,6 +43,10 @@ class ChannelModel(QAbstractListModel):
         self._parser = M3uParser(self.cache_dir)
         self._repository = EpgRepository(self.db_path)
         self._hls_proxy = LocalHlsProxy()
+
+        app = QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.cleanup)
 
     def roleNames(self):
         return {
@@ -176,9 +189,10 @@ class ChannelModel(QAbstractListModel):
     def fetch_next_epg(self, channel_name: str) -> dict:
         return self._repository.fetch_next_program(channel_name)
 
-    def __del__(self) -> None:
+    @Slot()
+    def cleanup(self) -> None:
         self._stop_active_workers()
-        if hasattr(self, "_repository"):
+        if getattr(self, "_repository", None) is not None:
             self._repository.close()
-        if hasattr(self, "_hls_proxy"):
+        if getattr(self, "_hls_proxy", None) is not None:
             self._hls_proxy.stop()

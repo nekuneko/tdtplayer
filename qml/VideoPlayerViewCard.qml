@@ -15,6 +15,8 @@ Item {
     required property real sidebarWidth
     required property real epgHeight
     required property real cardMargin
+    property bool isHdrStream: false
+    property bool is50TbrStream: false
 
     property alias videoOutputItem: videoOutput
 
@@ -22,7 +24,7 @@ Item {
 
     readonly property real cardRadius: isCardMode ? px(16) : 0
     readonly property color outerBg: (typeof appTheme !== "undefined" && appTheme) ? appTheme.bgCanvas : "#1E293B"
-    
+
     anchors.fill: parent
     anchors.leftMargin: isCardMode ? (isConfigOpen ? configWidth : cardMargin) : 0
     anchors.rightMargin: isCardMode ? (isSidebarOpen ? sidebarWidth : cardMargin) : 0
@@ -44,6 +46,13 @@ Item {
         anchors.fill: parent
         anchors.margins: borderOverlay.border.width
         fillMode: VideoOutput.PreserveAspectFit
+        visible: true
+    }
+
+    VideoShaderPipeline {
+        videoOutput: videoOutput
+        isHdrStream: videoContainer.isHdrStream
+        is50TbrStream: videoContainer.is50TbrStream
     }
 
     // Capa de recorte y borde con layer.enabled: true para forzar composición RHI encima del VideoOutput

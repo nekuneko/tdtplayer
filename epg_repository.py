@@ -90,7 +90,14 @@ class EpgRepository:
 
     def close(self) -> None:
         try:
-            if self._conn:
+            if self._cursor is not None:
+                self._cursor.close()
+                self._cursor = None
+            if self._conn is not None:
                 self._conn.close()
+                self._conn = None
         except sqlite3.Error as sql_err:
             print(f"[EpgRepository] Error al cerrar la conexión: {sql_err}")
+
+    def __del__(self) -> None:
+        self.close()

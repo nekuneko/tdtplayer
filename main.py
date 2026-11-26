@@ -1,4 +1,5 @@
 # main.py
+import gc
 import os
 import sys
 
@@ -46,8 +47,9 @@ configure_environment()
 
 from PySide6.QtCore import QObject, Qt, QUrl, Slot  # noqa: E402
 from PySide6.QtGui import QGuiApplication, QIcon  # noqa: E402
-from PySide6.QtMultimedia import QMediaPlayer, QVideoSink  # noqa: E402
+from PySide6.QtMultimedia import QMediaPlayer, QVideoFrameFormat, QVideoSink  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+from PySide6.QtQuick import QQuickItem  # noqa: E402
 
 from channel_model import ChannelModel  # noqa: E402
 from screenshot_helper import ScreenshotHelper  # noqa: E402
@@ -125,19 +127,90 @@ def main():
     if os.path.exists(icon_path):
         root_obj.setIcon(QIcon(icon_path))
 
-    player = root_obj.findChild(QMediaPlayer)
     # En QML VideoOutput expone la propiedad 'videoSink' (QVideoSink)
     video_out = root_obj.findChild(QVideoSink)
     if video_out:
         screenshot_helper.set_video_sink(video_out)
 
-    if sys.platform == "win32":
-        from deinterlace_filter import WindowsDeinterlacer
+    # Vincula la ventana raíz y el ShaderEffect de GPU al capturador de pantalla (Windows y Linux)
+    gpu_shader_item = root_obj.findChild(QQuickItem, "gpuVideoPipeline")
+    screenshot_helper.set_qml_capture_target(root_obj, gpu_shader_item)
 
-        if player and video_out:
-            app._win_deinterlacer = WindowsDeinterlacer(player, video_out)
+    # Detector multiplataforma de espacio de color HDR/HLG y cadencia 50 tbr vs 25 tbr
+    root_obj.setProperty("isHdrStream", False)
+    root_obj.setProperty("is50TbrStream", False)
+    _last_frame_start = 0
 
-    sys.exit(app.exec())
+    def _reset_stream_state(_source=None):
+        nonlocal _last_frame_start
+        _last_frame_start = 0
+        if root_obj.property("isHdrStream"):
+            root_obj.setProperty("isHdrStream", False)
+        if root_obj.property("is50TbrStream"):
+            root_obj.setProperty("is50TbrStream", False)
+
+    media_player = root_obj.findChild(QMediaPlayer)
+    if media_player:
+        media_player.sourceChanged.connect(_reset_stream_state)
+
+    def _check_video_stream_props(frame):
+        nonlocal _last_frame_start
+        if not frame.isValid():
+            return
+
+        sf = frame.surfaceFormat()
+        cs = sf.colorSpace()
+        ct = sf.colorTransfer()
+
+        is_hdr = (
+            cs == QVideoFrameFormat.ColorSpace.ColorSpace_BT2020
+            or ct == QVideoFrameFormat.ColorTransfer.ColorTransfer_STD_B67
+            or ct == QVideoFrameFormat.ColorTransfer.ColorTransfer_ST2084
+        )
+        if root_obj.property("isHdrStream") != is_hdr:
+            root_obj.setProperty("isHdrStream", is_hdr)
+
+        # Diferencia flujos 50 tbr (~20 ms/frame, como tdp HD) frente a 25 tbr (~40 ms/frame, como Cuatro HD)
+        start_us = frame.startTime()
+        if _last_frame_start > 0:
+            delta_us = start_us - _last_frame_start
+            if 5000 < delta_us < 100000:
+                is_50tbr = delta_us < 28000
+                if root_obj.property("is50TbrStream") != is_50tbr:
+                    root_obj.setProperty("is50TbrStream", is_50tbr)
+        _last_frame_start = start_us
+
+    if video_out:
+        video_out.videoFrameChanged.connect(_check_video_stream_props)
+
+    exit_code = app.exec()
+
+    # Limpieza ordenada antes de finalizar Python para evitar avisos de GC en Shiboken/PySide6
+    if media_player:
+        try:
+            media_player.sourceChanged.disconnect(_reset_stream_state)
+        except RuntimeError:
+            pass
+    if video_out:
+        try:
+            video_out.videoFrameChanged.disconnect(_check_video_stream_props)
+        except RuntimeError:
+            pass
+
+    del media_player
+    del gpu_shader_item
+    del video_out
+    del root_obj
+    del engine
+    del channel_model
+    del screenshot_helper
+    del cursor_helper
+    gc.collect()
+    del app
+
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(exit_code)
 
 
 if __name__ == "__main__":

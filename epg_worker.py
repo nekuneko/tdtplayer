@@ -3,6 +3,7 @@ import json
 import sqlite3
 import urllib.error
 import urllib.request
+from contextlib import closing
 from datetime import datetime, timezone
 
 from PySide6.QtCore import QThread, Signal
@@ -58,19 +59,19 @@ class EpgPreloaderWorker(QThread):
             if self.isInterruptionRequested():
                 return
 
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("PRAGMA journal_mode=WAL")
-                cursor.execute("PRAGMA synchronous=NORMAL")
-                cursor.execute("DELETE FROM epg_store WHERE stop_ts < ?", (current_timestamp,))
-                cursor.executemany(
-                    """
-                    INSERT OR REPLACE INTO epg_store (
-                        channel_name, start_ts, stop_ts, title, description
-                    ) VALUES (?, ?, ?, ?, ?)
-                    """,
-                    insert_data,
-                )
+            with closing(sqlite3.connect(self.db_path)) as conn:
+                with closing(conn.cursor()) as cursor:
+                    cursor.execute("PRAGMA journal_mode=WAL")
+                    cursor.execute("PRAGMA synchronous=NORMAL")
+                    cursor.execute("DELETE FROM epg_store WHERE stop_ts < ?", (current_timestamp,))
+                    cursor.executemany(
+                        """
+                        INSERT OR REPLACE INTO epg_store (
+                            channel_name, start_ts, stop_ts, title, description
+                        ) VALUES (?, ?, ?, ?, ?)
+                        """,
+                        insert_data,
+                    )
                 conn.commit()
 
             self.epg_cache_ready.emit(True)

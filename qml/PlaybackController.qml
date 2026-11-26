@@ -28,6 +28,7 @@ QtObject {
     property bool backupEpgVisible: false
 
     signal channelZappedByKeyboard()
+    signal channelTuned()
 
     property Timer epgAutoHideTimer: Timer {
         interval: 3000
@@ -43,21 +44,24 @@ QtObject {
         }
     }
 
+    function _executeTune(index) {
+        root.tunedChannelIndex = index;
+        root.channelTuned();
+        if (root.mediaPlayer && root.model && !root.isVoluntarilyStopped) {
+            var nextUrl = root.model.get_url_at(index);
+            if (root.mediaPlayer.source.toString() !== nextUrl) {
+                root.mediaPlayer.stop();
+                root.mediaPlayer.source = nextUrl;
+            }
+            root.mediaPlayer.play();
+        }
+    }
+
     property Timer zappingTimer: Timer {
         interval: 750
         running: false
         repeat: false
-        onTriggered: {
-            root.tunedChannelIndex = root.currentChannelIndex;
-            if (root.mediaPlayer && root.model && !root.isVoluntarilyStopped) {
-                var nextUrl = root.model.get_url_at(root.currentChannelIndex);
-                if (root.mediaPlayer.source.toString() !== nextUrl) {
-                    root.mediaPlayer.stop();
-                    root.mediaPlayer.source = nextUrl;
-                }
-                root.mediaPlayer.play();
-            }
-        }
+        onTriggered: root._executeTune(root.currentChannelIndex)
     }
 
     function syncChannelMetadata(index) {
@@ -111,6 +115,8 @@ QtObject {
         var count = root.model.rowCount();
         index = index < 0 ? count - 1 : (index >= count ? 0 : index);
 
+        // Al cambiar de canal se cancela cualquier pausa previa para reanudar en directo
+        root.isVoluntarilyStopped = false;
         root.currentChannelIndex = index;
         root.osdHoveredChannelName = "";
 
@@ -121,25 +127,15 @@ QtObject {
         root.syncChannelMetadata(index);
 
         if (root.mediaPlayer) {
-            if (root.isVoluntarilyStopped) {
+            if (immediate) {
                 root.zappingTimer.stop();
-                root.tunedChannelIndex = index;
-                root.mediaPlayer.stop();
-                root.mediaPlayer.source = "";
-            } else if (immediate) {
-                root.zappingTimer.stop();
-                root.tunedChannelIndex = index;
-                var directUrl = root.model.get_url_at(index);
-                if (root.mediaPlayer.source.toString() !== directUrl) {
-                    root.mediaPlayer.stop();
-                    root.mediaPlayer.source = directUrl;
-                }
-                root.mediaPlayer.play();
+                root._executeTune(index);
             } else {
                 root.zappingTimer.restart();
             }
         } else {
             root.tunedChannelIndex = index;
+            root.channelTuned();
         }
 
         if (root.sidebar)
@@ -188,6 +184,12 @@ QtObject {
         if (root.isVoluntarilyStopped) {
             root.mediaPlayer.pause();
         } else {
+            // Si estaba detenido o sin source, recargamos el canal actual en directo
+            root.channelTuned();
+            var currentUrl = root.model.get_url_at(root.currentChannelIndex);
+            if (root.mediaPlayer.source.toString() !== currentUrl) {
+                root.mediaPlayer.source = currentUrl;
+            }
             root.mediaPlayer.play();
         }
     }

@@ -8,6 +8,8 @@ Item {
     required property var controller
     required property var videoOutput
 
+    signal channelTuneStarted()
+
     readonly property alias activePlayer: qtPlayer
     readonly property bool canAutoReconnect: !root.controller.isVoluntarilyStopped
                                             && !root.controller.zappingTimer.running
@@ -20,6 +22,7 @@ Item {
         function onTunedChannelIndexChanged() {
             root.reconnectAttempts = 0;
             streamReconnectTimer.stop();
+            root.channelTuneStarted();
         }
     }
 
@@ -30,6 +33,7 @@ Item {
         onTriggered: {
             if (root.canAutoReconnect && root.reconnectAttempts < 3) {
                 root.reconnectAttempts += 1;
+                root.channelTuneStarted();
                 var currentUrl = root.controller.model.get_url_at(root.controller.tunedChannelIndex);
                 qtPlayer.stop();
                 qtPlayer.source = "";
