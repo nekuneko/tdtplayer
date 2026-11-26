@@ -5,7 +5,6 @@ MouseArea {
     id: root
     property var model
     property int currentChannelIndex: 0
-    property bool isFullScreen: false
     property bool sidebarForceOpen: false
     property var appThemeItem: null
 

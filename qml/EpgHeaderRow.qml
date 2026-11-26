@@ -7,16 +7,15 @@ RowLayout {
     Layout.fillWidth: true
     spacing: 12
 
-    required property bool isFullScreen
     required property string channelNo
     required property string channelName
     required property string hoveredChannelName
-
-    // 🚀 SOLUCCIÓN DEFINITIVA: Cambiado de 'required property' a propiedad estándar con buffer vacío
-    // Esto permite que el Component.onCompleted de tu EpgDrawer le inyecte el Binding dinámico sin errores de arranque
     property string epgTitle: ""
 
     readonly property bool isCompact: root.width < (appTheme ? appTheme.px(360) : 360)
+    readonly property int _closeBracketIndex: root.epgTitle.indexOf("]")
+    readonly property bool _hasTime: root.epgTitle.startsWith("[") && root._closeBracketIndex !== -1
+    readonly property string cleanTitleText: root._hasTime ? root.epgTitle.substring(root._closeBracketIndex + 1).trim() : root.epgTitle
 
     // Bloque Izquierdo: [Número] Nombre del Canal — Programa Activo
     RowLayout {
@@ -28,7 +27,7 @@ RowLayout {
         Rectangle {
             visible: root.channelNo !== ""
             color: appTheme.bgItemActive
-            radius: appTheme.px ? appTheme.px(6) : 6
+            radius: appTheme ? appTheme.px(6) : 6
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
             Layout.alignment: Qt.AlignVCenter
@@ -47,7 +46,7 @@ RowLayout {
             text: root.hoveredChannelName !== "" ? root.hoveredChannelName : root.channelName
             color: appTheme.textTitle
             font.bold: true
-            font.pointSize: root.isFullScreen ? 14 : 12
+            font.pointSize: 12
             renderType: Text.NativeRendering
             elide: Text.ElideRight
             Layout.minimumWidth: 0
@@ -59,7 +58,7 @@ RowLayout {
             visible: root.cleanTitleText !== ""
             text: "—"
             color: appTheme.textDesc
-            font.pointSize: root.isFullScreen ? 14 : 12
+            font.pointSize: 12
             Layout.alignment: Qt.AlignVCenter
         }
 
@@ -67,21 +66,13 @@ RowLayout {
             text: root.cleanTitleText
             color: "#FFFFFF"
             font.bold: true
-            font.pointSize: root.isFullScreen ? 14 : 12
+            font.pointSize: 12
             renderType: Text.NativeRendering
             elide: Text.ElideRight
             Layout.fillWidth: true
             Layout.minimumWidth: 0
             Layout.alignment: Qt.AlignVCenter
         }
-    }
-
-    readonly property int _closeBracketIndex: root.epgTitle.indexOf("]")
-    readonly property bool _hasTime: root.epgTitle.startsWith("[") && root._closeBracketIndex !== -1
-    readonly property string cleanTitleText: root._hasTime ? root.epgTitle.substring(root._closeBracketIndex + 1).trim() : root.epgTitle
-
-    Item {
-        Layout.fillWidth: false
     }
 
     RowLayout {
@@ -140,9 +131,6 @@ RowLayout {
             }
         }
 
-        EpgVolumeSlider {
-            isFullScreen: root.isFullScreen
-        }
+        EpgVolumeSlider {}
     }
-
 }

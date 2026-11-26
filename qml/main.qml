@@ -1,4 +1,4 @@
-// main.qml
+// qml/main.qml
 import QtQuick
 import QtQuick.Controls
 import QtCore
@@ -21,7 +21,6 @@ ApplicationWindow {
     property var localLogoCache: ({})
     property var globalChannelModel: channelModel
 
-    // Configuración elástica de arranque de coordenadas
     x: appSettings.windowX !== -1 ? appSettings.windowX : (Screen.width - width) / 2
     y: appSettings.windowY !== -1 ? appSettings.windowY : (Screen.height - height) / 2
     visibility: appSettings.lastIsFullScreen ? Window.FullScreen : Window.Windowed
@@ -44,9 +43,7 @@ ApplicationWindow {
         mediaPlayer: playerView.mediaPlayer
         sidebar: sidebar
         epgDrawer: epgDrawer
-        onChannelZappedByKeyboard: {
-            epgDrawer.epgForceOpen = true;
-        }
+        onChannelZappedByKeyboard: epgDrawer.epgForceOpen = true
     }
 
     PipWindowController {
@@ -107,20 +104,17 @@ ApplicationWindow {
             hoveredChannelName: ctrl.osdHoveredChannelName
             epgTitle: ctrl.epgTitle
             epgDescription: ctrl.epgDescription
-            isFullScreen: ctrl.isFullScreen
             sidebarItem: sidebar
             z: 1
-            width: sidebar.visible ? (parent.width - sidebar.width - appTheme.px(24)) : (parent.width - appTheme.px(24))
+            width: sidebar.visible ? (parent.width - sidebar.width - appTheme.px(12)) : (parent.width - appTheme.px(24))
             visible: !ctrl.isConfigMenuOpen && epgDrawer.epgForceOpen
         }
-
 
         Connections {
             target: epgDrawer
             function onEpgForceOpenChanged() {
                 if (epgDrawer.epgForceOpen && typeof playerView !== "undefined") {
                     playerView.resetMouseCursor();
-                    // Fuerza la reevaluación estática y detiene el reloj si la barra está abierta
                     epgBootstrapper.resetTimer();
                 }
             }
@@ -130,7 +124,6 @@ ApplicationWindow {
             id: sidebar
             model: channelModel
             currentChannelIndex: ctrl.currentChannelIndex
-            isFullScreen: ctrl.isFullScreen
             z: 1
             visible: !ctrl.isConfigMenuOpen && sidebar.sidebarForceOpen
             appThemeItem: appTheme
@@ -145,15 +138,12 @@ ApplicationWindow {
 
         ConfigSidebar {
             id: configSidebar
-            isFullScreen: ctrl.isFullScreen
             z: 2
             visible: configSidebar.sidebarForceOpen
             appSettingsItem: appSettings
             appThemeItem: appTheme
 
-            // 🚀 DISPARO DE SEÑAL: Emitimos la señal hacia el cargador de datos
             onImportRequested: dataLoader.fileSelectorOpenRequested()
-
             onMouseExitedSidebar: ctrl.restorePanelsAfterConfig()
         }
 
@@ -168,7 +158,6 @@ ApplicationWindow {
         z: 10
         asynchronous: true
 
-        // 🚀 INYECCIÓN MAESTRA EN TIEMPO DE COMPILACIÓN: Pasamos las variables obligatorias al instanciar el archivo
         Component.onCompleted: {
             epgGridOverlayLoader.setSource("EpgGridOverlay.qml", {
                 "channelModel": channelModel,
@@ -179,9 +168,7 @@ ApplicationWindow {
             });
         }
 
-        onLoaded: {
-            item.visible = false;
-        }
+        onLoaded: item.visible = false
     }
 
     Connections {
@@ -210,10 +197,6 @@ ApplicationWindow {
         function onLogoCacheChanged() {
             window.localLogoCache = channelModel.logoCache;
         }
-    }
-
-    Component.onCompleted: {
-        ctrl.isFullScreen = appSettings.lastIsFullScreen;
     }
 
     EpgDataLoader {

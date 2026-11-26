@@ -35,14 +35,12 @@ class M3uParser:
         current_name, current_logo, current_ch_no = "", None, None
         next_virtual_chno = 0
 
-        for raw_line in content.split("\n"):
+        for raw_line in content.splitlines():
             line = raw_line.strip()
             if line.startswith("#EXTINF:"):
                 comma_idx = line.rfind(",")
                 current_name = (
-                    line[comma_idx + 1 :].strip().replace("\r", "")
-                    if comma_idx != -1
-                    else "Canal Desconocido"
+                    line[comma_idx + 1 :].strip() if comma_idx != -1 else "Canal Desconocido"
                 )
                 logo_m = self.LOGO_REGEX.search(line)
                 current_logo = logo_m.group(1) if logo_m else None
@@ -50,10 +48,9 @@ class M3uParser:
                 current_ch_no = chno_m.group(1) if chno_m else None
 
             elif line.startswith(("http://", "https://")) and current_name:
-                stream_url = line.split("|", 1)[0].strip() if "|" in line else line
-                clean_name = current_name.strip().replace("\r", "")
+                stream_url = line.split("|", 1)[0].strip()
                 local_logo_url = self._resolve_logo(
-                    len(channels), clean_name, current_logo, download_queue
+                    len(channels), current_name, current_logo, download_queue
                 )
 
                 try:
@@ -66,7 +63,7 @@ class M3uParser:
 
                 channels.append(
                     M3uChannel(
-                        name=clean_name,
+                        name=current_name,
                         url=stream_url,
                         logo=local_logo_url,
                         ch_no=str(assigned_chno),
@@ -74,7 +71,7 @@ class M3uParser:
                 )
 
                 if local_logo_url and os.path.exists(QUrl(local_logo_url).toLocalFile()):
-                    existing_logos[clean_name] = local_logo_url
+                    existing_logos[current_name] = local_logo_url
 
                 if not base_url:
                     parsed = urllib.parse.urlparse(stream_url)
@@ -82,7 +79,6 @@ class M3uParser:
                         base_url = f"{parsed.scheme}://{parsed.netloc}"
 
                 current_name, current_logo, current_ch_no = "", None, None
-
 
         return channels, download_queue, existing_logos, base_url
 

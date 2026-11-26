@@ -55,7 +55,6 @@ Item {
             }
             var toFullScreen = root.window.visibility !== Window.FullScreen;
             root.window.visibility = toFullScreen ? Window.FullScreen : Window.Windowed;
-            root.controller.isFullScreen = toFullScreen;
         }
     }
 

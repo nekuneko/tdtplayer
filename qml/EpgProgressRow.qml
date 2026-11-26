@@ -5,11 +5,12 @@ import QtQuick.Layouts
 RowLayout {
     id: root
 
-    required property bool isFullScreen
     required property string epgTitle
     required property int startTimestamp
     required property int stopTimestamp
     required property int currentTimestamp
+
+    function px(v) { return (typeof appTheme !== "undefined" && appTheme) ? appTheme.px(v) : v; }
 
     readonly property int closeBracketIndex: root.epgTitle.indexOf("]")
     readonly property bool hasTime: root.epgTitle.startsWith("[") && closeBracketIndex !== -1
@@ -21,22 +22,20 @@ RowLayout {
     Layout.alignment: Qt.AlignVCenter
     Layout.fillWidth: true
 
-    // Píldora del reloj actual a la izquierda
     ClockWidget {
         themeItem: typeof appTheme !== "undefined" ? appTheme : null
-        fontPt: root.isFullScreen ? 11 : 10
-        pillHeight: appTheme && appTheme.px ? appTheme.px(24) : 24
+        fontPt: 10
+        pillHeight: root.px(24)
         Layout.alignment: Qt.AlignVCenter
     }
 
-    // Píldora vectorial de estado PAUSADO
     Rectangle {
         id: pausedBadge
         visible: root.isPaused
         color: appTheme.liveBg
-        radius: appTheme && appTheme.px ? appTheme.px(5) : 5
-        Layout.preferredHeight: appTheme && appTheme.px ? appTheme.px(24) : 24
-        Layout.preferredWidth: pausedContent.implicitWidth + (appTheme && appTheme.px ? appTheme.px(16) : 16)
+        radius: root.px(5)
+        Layout.preferredHeight: root.px(24)
+        Layout.preferredWidth: pausedContent.implicitWidth + root.px(16)
         Layout.alignment: Qt.AlignVCenter
 
         readonly property color fgColor: appTheme.liveText
@@ -59,20 +58,19 @@ RowLayout {
                 color: pausedBadge.fgColor
                 font.bold: true
                 font.letterSpacing: 0.6
-                font.pointSize: root.isFullScreen ? 10 : 9
+                font.pointSize: 9
                 renderType: Text.NativeRendering
             }
         }
     }
 
-    // Píldora de inicio/fin del programa
     Rectangle {
         id: drawerTimeBadge
         visible: root.hasTime
         color: appTheme.bgItemActive
-        radius: appTheme && appTheme.px ? appTheme.px(5) : 5
-        Layout.preferredHeight: appTheme && appTheme.px ? appTheme.px(24) : 24
-        Layout.preferredWidth: timeText.implicitWidth + (appTheme && appTheme.px ? appTheme.px(16) : 16)
+        radius: root.px(5)
+        Layout.preferredHeight: root.px(24)
+        Layout.preferredWidth: timeText.implicitWidth + root.px(16)
         Layout.alignment: Qt.AlignVCenter
 
         Text {
@@ -81,19 +79,18 @@ RowLayout {
             text: root.formattedTime
             color: appTheme.getW3cContrast(drawerTimeBadge.color)
             font.bold: true
-            font.pointSize: root.isFullScreen ? 11 : 10
+            font.pointSize: 10
             font.family: "Monospace"
             renderType: Text.NativeRendering
         }
     }
 
-    // Barra de progreso en directo
     Rectangle {
         id: drawerProgressBarContainer
         visible: root.hasTime && root.stopTimestamp > root.startTimestamp
         Layout.fillWidth: true
         Layout.minimumWidth: 32
-        Layout.preferredHeight: appTheme && appTheme.px ? appTheme.px(5) : 5
+        Layout.preferredHeight: root.px(5)
         Layout.alignment: Qt.AlignVCenter
         color: "#334155"
         radius: 2.5

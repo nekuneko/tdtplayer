@@ -34,12 +34,10 @@ Item {
         }
     }
 
-    Keys.onPressed: (event) => {
-        if (root.channelNumPopup.opened) {
+    Keys.onPressed: event => {
+        if (root.channelNumPopup.opened)
             return;
-        }
 
-        // Si la parrilla está activa, permitimos el cierre desde aquí si el foco se desvía
         if (window.epgGridOverlayItem && window.epgGridOverlayItem.visible) {
             if (event.key === Qt.Key_Escape || event.key === Qt.Key_E) {
                 window.epgGridOverlayItem.visible = false;
@@ -111,16 +109,12 @@ Item {
                 event.accepted = true;
                 break;
 
-            // 🚀 SOLUCCIÓN DEFINITIVA DE 0 MS: Conmutación de visibilidad sobre el buffer de la GPU
             case Qt.Key_E:
-                if (!root.windowController || !root.windowController.isPipMode) {
-                    if (window.epgGridOverlayItem) {
-                        if (window.epgGridOverlayItem.visible) {
-                            window.epgGridOverlayItem.visible = false;
-                        } else {
-                            window.epgGridOverlayItem.visible = true;
-                            window.epgGridOverlayItem.forceActiveFocus();
-                        }
+                if ((!root.windowController || !root.windowController.isPipMode) && window.epgGridOverlayItem) {
+                    var nextVisible = !window.epgGridOverlayItem.visible;
+                    window.epgGridOverlayItem.visible = nextVisible;
+                    if (nextVisible) {
+                        window.epgGridOverlayItem.forceActiveFocus();
                     }
                 }
                 event.accepted = true;
@@ -129,17 +123,14 @@ Item {
             case Qt.Key_F:
             case Qt.Key_F11:
                 if (root.windowController && root.windowController.isPipMode) {
-                    root.windowController.togglePipMode();
-                }
-                if (root.window.visibility === Window.FullScreen) {
-                    root.window.visibility = Window.Windowed;
-                    root.controller.isFullScreen = false;
+                    root.windowController.togglePipMode(true);
                 } else {
-                    root.window.visibility = Window.FullScreen;
-                    root.controller.isFullScreen = true;
+                    var toFullScreen = root.window.visibility !== Window.FullScreen;
+                    root.window.visibility = toFullScreen ? Window.FullScreen : Window.Windowed;
                 }
                 event.accepted = true;
                 break;
+
 
             case Qt.Key_Escape:
                 root.controller.cancelPendingZapping();
@@ -153,11 +144,9 @@ Item {
                 break;
 
             default:
-                if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9) {
-                    if (!root.channelNumPopup.opened) {
-                        root.channelNumPopup.openWithText(event.text);
-                        event.accepted = true;
-                    }
+                if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9 && !root.channelNumPopup.opened) {
+                    root.channelNumPopup.openWithText(event.text);
+                    event.accepted = true;
                 }
                 break;
         }

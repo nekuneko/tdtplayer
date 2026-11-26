@@ -36,19 +36,7 @@ Item {
         root.epgDrawer.epgForceOpen = false;
         root.sidebar.forceCenterScrollSync();
         root.ctrl.osdHoveredChannelName = "";
-
-        var currentIdx = root.model.index(root.ctrl.currentChannelIndex, 0);
-        var currentName = root.model.data(currentIdx, Qt.UserRole + 1) || "";
-        if (currentName !== "") {
-            var cleanCurrentName = currentName.toString().trim().replace(/[\r\n]/g, "");
-            root.ctrl.osdChannelLogo = root.window.localLogoCache[cleanCurrentName] || "";
-            root.ctrl.osdChannelNo = root.model.data(currentIdx, Qt.UserRole + 4) || root.ctrl.currentChannelIndex.toString();
-        }
-        var currentEpg = root.model.fetch_current_epg(root.ctrl.osdChannelName);
-        if (currentEpg && currentEpg.title !== undefined) {
-            root.ctrl.epgTitle = currentEpg.title;
-            root.ctrl.epgDescription = currentEpg.description;
-        }
+        root.ctrl.syncChannelMetadata(root.ctrl.currentChannelIndex);
         root.keyboardHandler.forceActiveFocus();
     }
 
@@ -71,7 +59,9 @@ Item {
             if (root.pendingHoverName === "")
                 return;
             root.ctrl.osdHoveredChannelName = root.pendingHoverName;
-            var count = root.model.rowCount(), foundLogo = "", foundChNo = "";
+            var count = root.model.rowCount();
+            var foundLogo = "";
+            var foundChNo = "";
 
             for (var i = 0; i < count; i++) {
                 var idx = root.model.index(i, 0);

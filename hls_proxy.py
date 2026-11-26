@@ -48,6 +48,10 @@ class LocalHlsProxy:
         self._lock = threading.Lock()
         self._m3u8_cache: dict[str, tuple[float, bytes]] = {}
 
+    def _local_url(self, endpoint: str, target_url: str) -> str:
+        encoded = urllib.parse.quote(target_url, safe="")
+        return f"http://127.0.0.1:{self._port}/{endpoint}?u={encoded}"
+
     def ensure_started(self) -> int:
         with self._lock:
             if self._server is not None:
@@ -125,9 +129,8 @@ class LocalHlsProxy:
             return url
         if url.startswith("http://127.0.0.1:"):
             return url
-        port = self.ensure_started()
-        encoded = urllib.parse.quote(url, safe="")
-        return f"http://127.0.0.1:{port}/playlist.m3u8?u={encoded}"
+        self.ensure_started()
+        return self._local_url("playlist.m3u8", url)
 
     def _get_cached_or_fetch_m3u8(self, url: str) -> bytes:
         now = time.monotonic()
@@ -149,13 +152,10 @@ class LocalHlsProxy:
             raise
 
     def _rewrite_uri_attr(self, line: str, base_url: str, default_ext: str) -> str:
-        port = self._port
-
         def _repl(match):
             abs_u = urllib.parse.urljoin(base_url, match.group(1))
-            enc = urllib.parse.quote(abs_u, safe="")
             ext = ".m3u8" if ".m3u8" in abs_u.lower() else default_ext
-            return f'URI="http://127.0.0.1:{port}/sub{ext}?u={enc}"'
+            return f'URI="{self._local_url(f"sub{ext}", abs_u)}"'
 
         return re.sub(r'URI="([^"]+)"', _repl, line)
 
@@ -174,7 +174,6 @@ class LocalHlsProxy:
                 _, best_url = best_pair
                 return self._fetch_and_rewrite_m3u8(best_url, depth + 1)
 
-        port = self._port
         out_lines: list[str] = []
 
         if is_master and has_separate_audio:
@@ -194,9 +193,8 @@ class LocalHlsProxy:
             best_pair = _pick_best_variant_pair(raw_text, final_url)
             if best_pair:
                 inf_line, best_url = best_pair
-                encoded = urllib.parse.quote(best_url, safe="")
                 out_lines.append(inf_line)
-                out_lines.append(f"http://127.0.0.1:{port}/playlist.m3u8?u={encoded}")
+                out_lines.append(self._local_url("playlist.m3u8", best_url))
             return ("\n".join(out_lines) + "\n").encode("utf-8")
 
         for raw_line in raw_text.splitlines():
@@ -211,11 +209,8 @@ class LocalHlsProxy:
                 out_lines.append(line)
             else:
                 abs_url = urllib.parse.urljoin(final_url, line)
-                encoded = urllib.parse.quote(abs_url, safe="")
-                if is_master or ".m3u8" in abs_url.lower():
-                    out_lines.append(f"http://127.0.0.1:{port}/playlist.m3u8?u={encoded}")
-                else:
-                    out_lines.append(f"http://127.0.0.1:{port}/seg.ts?u={encoded}")
+                endpoint = "playlist.m3u8" if (is_master or ".m3u8" in abs_url.lower()) else "seg.ts"
+                out_lines.append(self._local_url(endpoint, abs_url))
 
         return ("\n".join(out_lines) + "\n").encode("utf-8")
 

@@ -33,28 +33,29 @@ class EpgRepository:
         except sqlite3.Error as sql_err:
             print(f"[EpgRepository] Error inicializando SQLite WAL: {sql_err}")
 
-    def fetch_current_program(self, channel_name: str) -> dict:
+    def _fetch_program(
+        self,
+        channel_name: str,
+        offset: int,
+        empty_cursor_title: str,
+        fallback_title: str,
+        fallback_desc: str,
+    ) -> dict:
+        if not self._cursor:
+            return {"title": empty_cursor_title, "description": "", "start_ts": 0, "stop_ts": 0}
+
         search_name = str(channel_name).strip()
         current_time = int(datetime.now(timezone.utc).timestamp())
         try:
-            if not self._cursor:
-                return {
-                    "title": "Emisión en directo",
-                    "description": "",
-                    "start_ts": 0,
-                    "stop_ts": 0,
-                }
-
             self._cursor.execute(
                 """
-                SELECT start_ts, stop_ts, title, description FROM epg_store 
-                WHERE channel_name = ? AND stop_ts > ? ORDER BY start_ts ASC LIMIT 1
-            """,
-                (search_name, current_time),
+                SELECT start_ts, stop_ts, title, description FROM epg_store
+                WHERE channel_name = ? AND stop_ts > ? ORDER BY start_ts ASC LIMIT 1 OFFSET ?
+                """,
+                (search_name, current_time, offset),
             )
             row = self._cursor.fetchone()
             if row:
-                # 🚀 SINCRO LOCAL: Convertimos el timestamp consciente a la zona horaria local de tu sistema (.astimezone())
                 s_dt = datetime.fromtimestamp(row[0], tz=timezone.utc).astimezone()
                 e_dt = datetime.fromtimestamp(row[1], tz=timezone.utc).astimezone()
                 time_str = f"[{s_dt.strftime('%H:%M')} - {e_dt.strftime('%H:%M')}]"
@@ -65,53 +66,27 @@ class EpgRepository:
                     "stop_ts": int(row[1]),
                 }
         except sqlite3.Error as sql_err:
-            print(f"[EpgRepository] Error SQLite now en consulta principal: {sql_err}")
-        return {
-            "title": "Emisión en directo",
-            "description": "Sin descripción detallada disponible.",
-            "start_ts": 0,
-            "stop_ts": 0,
-        }
+            print(f"[EpgRepository] Error SQLite (offset={offset}): {sql_err}")
+
+        return {"title": fallback_title, "description": fallback_desc, "start_ts": 0, "stop_ts": 0}
+
+    def fetch_current_program(self, channel_name: str) -> dict:
+        return self._fetch_program(
+            channel_name,
+            offset=0,
+            empty_cursor_title="Emisión en directo",
+            fallback_title="Emisión en directo",
+            fallback_desc="Sin descripción detallada disponible.",
+        )
 
     def fetch_next_program(self, channel_name: str) -> dict:
-        search_name = str(channel_name).strip()
-        current_time = int(datetime.now(timezone.utc).timestamp())
-        try:
-            if not self._cursor:
-                return {
-                    "title": "[--:-- - --:--] Sin datos",
-                    "description": "",
-                    "start_ts": 0,
-                    "stop_ts": 0,
-                }
-
-            self._cursor.execute(
-                """
-                SELECT start_ts, stop_ts, title, description FROM epg_store 
-                WHERE channel_name = ? AND stop_ts > ? ORDER BY start_ts ASC LIMIT 1 OFFSET 1
-            """,
-                (search_name, current_time),
-            )
-            row = self._cursor.fetchone()
-            if row:
-                # 🚀 SINCRO LOCAL: Convertimos el timestamp consciente a la zona horaria local de tu sistema (.astimezone())
-                s_dt = datetime.fromtimestamp(row[0], tz=timezone.utc).astimezone()
-                e_dt = datetime.fromtimestamp(row[1], tz=timezone.utc).astimezone()
-                time_str = f"[{s_dt.strftime('%H:%M')} - {e_dt.strftime('%H:%M')}]"
-                return {
-                    "title": f"{time_str} {row[2]}",
-                    "description": row[3],
-                    "start_ts": int(row[0]),
-                    "stop_ts": int(row[1]),
-                }
-        except sqlite3.Error as sql_err:
-            print(f"[EpgRepository] Error SQLite next en consulta principal: {sql_err}")
-        return {
-            "title": "[--:-- - --:--] Sin datos de programación futura",
-            "description": "No se encontraron más eventos planificados en la base de datos local.",
-            "start_ts": 0,
-            "stop_ts": 0,
-        }
+        return self._fetch_program(
+            channel_name,
+            offset=1,
+            empty_cursor_title="[--:-- - --:--] Sin datos",
+            fallback_title="[--:-- - --:--] Sin datos de programación futura",
+            fallback_desc="No se encontraron más eventos planificados en la base de datos local.",
+        )
 
     def close(self) -> None:
         try:

@@ -42,6 +42,8 @@ Reproductor nativo de TDT e IPTV para escritorio basado en **Python**, **PySide6
 | Tecla | Acción |
 | :--- | :--- |
 | **`↑` / `↓`** | Canal anterior / siguiente |
+| **`Re Pág` / `Av Pág`** | Saltar una página en la lista de canales |
+| **`Enter`** | Sintonizar el canal previsualizado en la barra lateral |
 | **`←` / `→`** | Subir / bajar volumen (`±5%`) |
 | **`0` – `9`** | Marcación directa por número de canal |
 | **`Espacio`** | Pausar / reanudar reproducción |
@@ -51,7 +53,8 @@ Reproductor nativo de TDT e IPTV para escritorio basado en **Python**, **PySide6
 | **`Tab`** | Alternar entre *Emitiéndose Ahora* y *A Continuación* (dentro de la parrilla EPG) |
 | **`M`** | Silenciar / activar audio (*Mute*) |
 | **`F` / `F11`** | Alternar **pantalla completa** |
-| **`Esc`** | Salir de PiP o cerrar paneles abiertos |
+| **`Esc`** | Cancelar zapping pendiente o cerrar paneles abiertos |
+
 
 ### Ratón y gestos
 

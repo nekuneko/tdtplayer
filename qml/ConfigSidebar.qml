@@ -4,7 +4,6 @@ import QtQuick.Layouts
 
 MouseArea {
     id: root
-    property bool isFullScreen: false
     property bool sidebarForceOpen: false
 
     property var appSettingsItem: null

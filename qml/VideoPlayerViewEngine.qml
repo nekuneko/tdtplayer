@@ -5,11 +5,14 @@ import QtMultimedia
 Item {
     id: root
 
-    required property bool useMpv
     required property var controller
     required property var videoOutput
 
-    readonly property var activePlayer: root.useMpv ? mpvPlayerBridge : fallbackQtPlayer
+    readonly property alias activePlayer: qtPlayer
+    readonly property bool canAutoReconnect: !root.controller.isVoluntarilyStopped
+                                            && !root.controller.zappingTimer.running
+                                            && Boolean(root.controller.model && root.controller.model.rowCount() > 0)
+
     property int reconnectAttempts: 0
 
     Connections {
@@ -25,15 +28,13 @@ Item {
         interval: 1200
         repeat: false
         onTriggered: {
-            if (!root.useMpv && !root.controller.isVoluntarilyStopped && !root.controller.zappingTimer.running
-                    && root.controller.model && root.controller.model.rowCount() > 0
-                    && root.reconnectAttempts < 3) {
+            if (root.canAutoReconnect && root.reconnectAttempts < 3) {
                 root.reconnectAttempts += 1;
                 var currentUrl = root.controller.model.get_url_at(root.controller.tunedChannelIndex);
-                fallbackQtPlayer.stop();
-                fallbackQtPlayer.source = "";
-                fallbackQtPlayer.source = currentUrl;
-                fallbackQtPlayer.play();
+                qtPlayer.stop();
+                qtPlayer.source = "";
+                qtPlayer.source = currentUrl;
+                qtPlayer.play();
             }
         }
     }
@@ -41,32 +42,31 @@ Item {
     MediaDevices {
         id: mediaDevices
         onAudioOutputsChanged: {
-            if (!root.useMpv && fallbackQtPlayer.audioOutput) {
-                fallbackQtPlayer.audioOutput.device = mediaDevices.defaultAudioOutput;
+            if (qtPlayer.audioOutput) {
+                qtPlayer.audioOutput.device = mediaDevices.defaultAudioOutput;
             }
         }
     }
 
     MediaPlayer {
-        id: fallbackQtPlayer
+        id: qtPlayer
         audioOutput: AudioOutput {}
-        videoOutput: root.useMpv ? null : root.videoOutput
+        videoOutput: root.videoOutput
 
         onAudioTracksChanged: {
-            if (!root.useMpv && audioTracks.length > 0 && activeAudioTrack < 0) {
+            if (audioTracks.length > 0 && activeAudioTrack < 0) {
                 activeAudioTrack = 0;
             }
         }
 
         onMediaStatusChanged: {
-            if (!root.useMpv && (mediaStatus === MediaPlayer.EndOfMedia || mediaStatus === MediaPlayer.InvalidMedia)
-                    && !root.controller.isVoluntarilyStopped && !root.controller.zappingTimer.running) {
+            if (root.canAutoReconnect && (mediaStatus === MediaPlayer.EndOfMedia || mediaStatus === MediaPlayer.InvalidMedia)) {
                 streamReconnectTimer.restart();
             }
         }
 
         onErrorOccurred: (error, errorString) => {
-            if (!root.useMpv && !root.controller.isVoluntarilyStopped && !root.controller.zappingTimer.running) {
+            if (root.canAutoReconnect) {
                 streamReconnectTimer.restart();
             }
         }

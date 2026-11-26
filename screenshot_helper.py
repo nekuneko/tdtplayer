@@ -43,17 +43,16 @@ class ScreenshotHelper(QObject):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_path = os.path.join(save_dir, f"{safe_channel}_{timestamp}.png")
 
-        # Feedback visual instantáneo en 0 ms al capturar el fotograma en memoria
         self.screenshotSaved.emit(file_path)
 
-        def _save_worker(img, path):
+        def _save_worker(img, out_dir, path):
             try:
-                os.makedirs(os.path.dirname(path), exist_ok=True)
+                os.makedirs(out_dir, exist_ok=True)
                 if not img.save(path, "PNG"):
                     self.screenshotFailed.emit("Error al escribir el archivo PNG")
             except Exception as exc:
                 self.screenshotFailed.emit(str(exc))
 
         threading.Thread(
-            target=_save_worker, args=(image, file_path), daemon=True
+            target=_save_worker, args=(image, save_dir, file_path), daemon=True
         ).start()

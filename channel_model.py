@@ -5,9 +5,9 @@ from PySide6.QtCore import Property, QAbstractListModel, QModelIndex, Qt, QUrl, 
 
 from epg_repository import EpgRepository
 from epg_worker import EpgPreloaderWorker
+from hls_proxy import LocalHlsProxy
 from logo_downloader import LogoDownloaderWorker
 from m3u_parser import M3uParser
-from hls_proxy import LocalHlsProxy
 
 
 class ChannelModel(QAbstractListModel):
@@ -116,7 +116,6 @@ class ChannelModel(QAbstractListModel):
                 self.index(0, 0), self.index(len(self._channels) - 1, 0), [self.EpgTitleRole]
             )
 
-    @Slot(str)
     @Slot(str, bool)
     def parse_m3u_content(self, content: str, clear_cache: bool = False) -> None:
         if clear_cache:
@@ -145,7 +144,7 @@ class ChannelModel(QAbstractListModel):
         if success and self._channels:
             self._epg_title_cache.clear()
             self.dataChanged.emit(
-                self.index(0, 0), self.index(len(self._channels) - 1, 0), []
+                self.index(0, 0), self.index(len(self._channels) - 1, 0), [self.EpgTitleRole]
             )
 
     def _on_single_logo_downloaded(self, row: int) -> None:
@@ -153,7 +152,6 @@ class ChannelModel(QAbstractListModel):
             ch = self._channels[row]
             if ch.logo:
                 self._logo_cache[ch.name] = ch.logo
-                self.logoCacheChanged.emit()
             idx = self.index(row, 0)
             self.dataChanged.emit(idx, idx, [self.LogoRole])
 
@@ -184,4 +182,3 @@ class ChannelModel(QAbstractListModel):
             self._repository.close()
         if hasattr(self, "_hls_proxy"):
             self._hls_proxy.stop()
-

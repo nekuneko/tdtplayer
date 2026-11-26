@@ -12,11 +12,9 @@ FocusScope {
     required property var configSidebarItem
     required property var globalKeyboardHandlerItem
 
-    readonly property bool useMpv: typeof mpvPlayerBridge !== "undefined" && mpvPlayerBridge !== null
     property alias mediaPlayer: engineAdapter.activePlayer
 
     readonly property bool isPip: Boolean(windowController && windowController.isPipMode)
-    readonly property bool isUhdHdr: videoCard.sourceVideoHeight > 1080
     readonly property bool isSidebarOpen: Boolean(sidebarItem && sidebarItem.visible && sidebarItem.sidebarForceOpen)
     readonly property bool isConfigOpen: Boolean(configSidebarItem && configSidebarItem.visible && configSidebarItem.sidebarForceOpen)
     readonly property bool isEpgOpen: Boolean(epgDrawerItem && epgDrawerItem.visible)
@@ -29,7 +27,6 @@ FocusScope {
 
     VideoPlayerViewEngine {
         id: engineAdapter
-        useMpv: scope.useMpv
         controller: scope.controller
         videoOutput: videoCard.videoOutputItem
     }
@@ -37,7 +34,7 @@ FocusScope {
     Rectangle {
         id: rootBackdrop
         anchors.fill: parent
-        color: scope.isCardMode && typeof appTheme !== "undefined" && appTheme ? appTheme.bgAbsolute : "black"
+        color: scope.isCardMode && typeof appTheme !== "undefined" && appTheme ? appTheme.bgCanvas : "black"
 
         VideoPlayerViewCursorTracker {
             id: cursorController

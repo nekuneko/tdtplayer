@@ -8,14 +8,19 @@ Item {
     Layout.fillWidth: true
     Layout.fillHeight: true
 
-    required property bool isFullScreen
     required property string channelLogo
     required property string epgTitle
     required property string epgDescription
 
+    function px(v) { return (typeof appTheme !== "undefined" && appTheme) ? appTheme.px(v) : v; }
+
     property var activeChannelModel: typeof channelModel !== "undefined" ? channelModel : null
     property string activeChannelName: typeof ctrl !== "undefined" ? (ctrl.osdHoveredChannelName !== "" ? ctrl.osdHoveredChannelName : ctrl.osdChannelName) : ""
     property int currentTimestamp: Math.floor(Date.now() / 1000)
+
+    readonly property var extractedEpgObj: root.activeChannelModel && root.activeChannelName !== "" ? root.activeChannelModel.fetch_current_epg(root.activeChannelName) : null
+    readonly property int startTimestamp: extractedEpgObj ? (extractedEpgObj.start_ts || 0) : 0
+    readonly property int stopTimestamp: extractedEpgObj ? (extractedEpgObj.stop_ts || 0) : 0
 
     Timer {
         id: currentProgramExpiryMonitor
@@ -34,16 +39,12 @@ Item {
         }
     }
 
-    readonly property var extractedEpgObj: root.activeChannelModel && root.activeChannelName !== "" ? root.activeChannelModel.fetch_current_epg(root.activeChannelName) : null
-    readonly property int startTimestamp: extractedEpgObj ? (extractedEpgObj.start_ts || 0) : 0
-    readonly property int stopTimestamp: extractedEpgObj ? (extractedEpgObj.stop_ts || 0) : 0
-
     RowLayout {
         anchors.fill: parent
-        spacing: root.width < (typeof appTheme !== "undefined" && appTheme ? appTheme.px(260) : 260) ? 10 : 20
+        spacing: root.width < root.px(260) ? 10 : 20
 
         Rectangle {
-            visible: root.width >= (typeof appTheme !== "undefined" && appTheme ? appTheme.px(230) : 230)
+            visible: root.width >= root.px(230)
             Layout.preferredWidth: 60
             Layout.preferredHeight: 60
             color: typeof appTheme !== "undefined" ? appTheme.logoBg : "transparent"
@@ -56,7 +57,7 @@ Item {
                 text: root.activeChannelName !== "" ? root.activeChannelName.substring(0, 1).toUpperCase() : "📺"
                 color: "#FFFFFF"
                 font.bold: true
-                font.pointSize: appTheme ? appTheme.pt(16) : 16
+                font.pointSize: (typeof appTheme !== "undefined" && appTheme) ? appTheme.pt(16) : 16
                 renderType: Text.QtRendering
             }
 
@@ -80,7 +81,6 @@ Item {
             spacing: 8
 
             EpgProgressRow {
-                isFullScreen: root.isFullScreen
                 epgTitle: root.epgTitle
                 startTimestamp: root.startTimestamp
                 stopTimestamp: root.stopTimestamp
@@ -116,7 +116,7 @@ Item {
                     width: Math.max(0, descFlickable.width - 14)
                     text: root.epgDescription
                     color: "#CBD5E1"
-                    font.pointSize: root.isFullScreen ? 11 : 10
+                    font.pointSize: 10
                     renderType: Text.NativeRendering
                     wrapMode: Text.WordWrap
                 }

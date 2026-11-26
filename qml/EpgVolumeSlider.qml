@@ -8,30 +8,23 @@ RowLayout {
     spacing: 8
     Layout.alignment: Qt.AlignVCenter
 
-    required property bool isFullScreen
-
     readonly property bool isMutedVisual: typeof ctrl !== "undefined" && (ctrl.isMuted || ctrl.currentVolumePercent === 0)
     readonly property color alertBg: appTheme.liveBg
     readonly property color alertFg: appTheme.liveText
 
-    // Botón vectorial de Mute coherente con el resto de controles de la interfaz
     Rectangle {
         id: muteBtn
         width: 32
         height: 32
-        radius: (typeof appTheme !== "undefined" && appTheme) ? appTheme.px(8) : 8
+        radius: appTheme.px(8)
         Layout.alignment: Qt.AlignVCenter
 
         color: root.isMutedVisual
                ? root.alertBg
-               : (muteArea.containsMouse
-                  ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.bgItemActive : "#1D4ED8")
-                  : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.bgItemDefault : "#1E293B"))
+               : (muteArea.containsMouse ? appTheme.bgItemActive : appTheme.bgItemDefault)
         border.color: root.isMutedVisual
                       ? root.alertBg
-                      : (muteArea.containsMouse
-                         ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderActive : "#60A5FA")
-                         : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderDefault : "#334155"))
+                      : (muteArea.containsMouse ? appTheme.borderActive : appTheme.borderDefault)
         border.width: 1
 
         Canvas {
@@ -41,9 +34,7 @@ RowLayout {
 
             property color tint: root.isMutedVisual
                                  ? root.alertFg
-                                 : (muteArea.containsMouse
-                                    ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.textTitleActive : "#FFFFFF")
-                                    : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.textTitle : "#FFFFFF"))
+                                 : (muteArea.containsMouse ? appTheme.textTitleActive : appTheme.textTitle)
             property bool flag: root.isMutedVisual
             onTintChanged: requestPaint()
             onFlagChanged: requestPaint()
@@ -117,14 +108,12 @@ RowLayout {
             width: volumeSlider.availableWidth
             height: implicitHeight
             radius: 2
-            color: (typeof appTheme !== "undefined" && appTheme) ? appTheme.borderDefault : "#334155"
+            color: appTheme.borderDefault
 
             Rectangle {
                 width: volumeSlider.visualPosition * parent.width
                 height: parent.height
-                color: root.isMutedVisual
-                       ? "#64748B"
-                       : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderActive : "#3B82F6")
+                color: root.isMutedVisual ? "#64748B" : appTheme.borderActive
                 radius: 2
             }
         }
@@ -135,9 +124,7 @@ RowLayout {
             implicitWidth: 12
             implicitHeight: 12
             radius: 6
-            color: root.isMutedVisual
-                   ? "#475569"
-                   : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderActive : "#3B82F6")
+            color: root.isMutedVisual ? "#475569" : appTheme.borderActive
             border.color: "#FFFFFF"
             border.width: 1
         }
@@ -145,11 +132,9 @@ RowLayout {
 
     Text {
         text: (root.isMutedVisual ? "0" : ctrl.currentVolumePercent) + "%"
-        color: root.isMutedVisual
-               ? root.alertBg
-               : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.textDesc : "#94A3B8")
+        color: root.isMutedVisual ? root.alertBg : appTheme.textDesc
         font.bold: true
-        font.pointSize: root.isFullScreen ? 10 : 9
+        font.pointSize: 9
         font.family: "Monospace"
         Layout.preferredWidth: 32
         Layout.alignment: Qt.AlignVCenter

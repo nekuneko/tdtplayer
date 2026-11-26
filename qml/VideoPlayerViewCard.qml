@@ -1,10 +1,10 @@
 // qml/VideoPlayerViewCard.qml
 import QtQuick
 import QtMultimedia
+import QtQuick.Shapes
 
-Rectangle {
+Item {
     id: videoContainer
-    color: "black"
 
     required property bool isPip
     required property bool isCardMode
@@ -17,34 +17,95 @@ Rectangle {
     required property real cardMargin
 
     property alias videoOutputItem: videoOutput
-    readonly property real sourceVideoHeight: videoOutput.sourceRect.height
 
-    readonly property real leftInset: isCardMode ? (isConfigOpen ? configWidth : cardMargin) : 0
-    readonly property real rightInset: isCardMode ? (isSidebarOpen ? sidebarWidth : cardMargin) : 0
-    readonly property real bottomInset: isCardMode ? (cardMargin + (isEpgOpen ? (epgHeight + cardMargin) : 0)) : 0
+    function px(v) { return (typeof appTheme !== "undefined" && appTheme) ? appTheme.px(v) : v; }
 
-    x: leftInset
-    y: isCardMode ? cardMargin : 0
-    width: Math.max(100, parent ? (parent.width - leftInset - rightInset) : 100)
-    height: Math.max(80, parent ? (parent.height - y - bottomInset) : 80)
+    readonly property real cardRadius: isCardMode ? px(16) : 0
+    readonly property color outerBg: (typeof appTheme !== "undefined" && appTheme) ? appTheme.bgCanvas : "#1E293B"
+    
+    anchors.fill: parent
+    anchors.leftMargin: isCardMode ? (isConfigOpen ? configWidth : cardMargin) : 0
+    anchors.rightMargin: isCardMode ? (isSidebarOpen ? sidebarWidth : cardMargin) : 0
+    anchors.topMargin: isCardMode ? cardMargin : 0
+    anchors.bottomMargin: isCardMode ? (cardMargin + (isEpgOpen ? (epgHeight + cardMargin) : 0)) : 0
 
-    radius: isCardMode ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.px(16) : 16) : 0
-    border.color: isPip
-                  ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderHover : "#334155")
-                  : (isCardMode && typeof appTheme !== "undefined" && appTheme ? appTheme.borderDefault : "transparent")
-    border.width: (isPip || isCardMode) ? 1 : 0
-    clip: true
+    Behavior on anchors.leftMargin { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+    Behavior on anchors.rightMargin { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+    Behavior on anchors.topMargin { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+    Behavior on anchors.bottomMargin { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
-    Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-    Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-    Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-    Behavior on height { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-    Behavior on radius { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+    Rectangle {
+        anchors.fill: parent
+        color: "black"
+    }
 
     VideoOutput {
         id: videoOutput
         anchors.fill: parent
-        anchors.margins: videoContainer.border.width
+        anchors.margins: borderOverlay.border.width
         fillMode: VideoOutput.PreserveAspectFit
+    }
+
+    // Capa de recorte y borde con layer.enabled: true para forzar composición RHI encima del VideoOutput
+    Item {
+        anchors.fill: parent
+        z: 10
+        visible: videoContainer.isPip || videoContainer.isCardMode
+        layer.enabled: true
+        layer.smooth: true
+
+        Shape {
+            id: cornerShape
+            anchors.fill: parent
+            visible: videoContainer.isCardMode && videoContainer.cardRadius > 0
+
+            readonly property real r: Math.min(videoContainer.cardRadius, width * 0.5, height * 0.5)
+            readonly property real w: width
+            readonly property real h: height
+
+            ShapePath {
+                strokeWidth: 0
+                fillColor: videoContainer.outerBg
+                startX: 0; startY: cornerShape.r
+                PathArc { x: cornerShape.r; y: 0; radiusX: cornerShape.r; radiusY: cornerShape.r; direction: PathArc.Clockwise }
+                PathLine { x: 0; y: 0 }
+                PathLine { x: 0; y: cornerShape.r }
+            }
+            ShapePath {
+                strokeWidth: 0
+                fillColor: videoContainer.outerBg
+                startX: cornerShape.w - cornerShape.r; startY: 0
+                PathArc { x: cornerShape.w; y: cornerShape.r; radiusX: cornerShape.r; radiusY: cornerShape.r; direction: PathArc.Clockwise }
+                PathLine { x: cornerShape.w; y: 0 }
+                PathLine { x: cornerShape.w - cornerShape.r; y: 0 }
+            }
+            ShapePath {
+                strokeWidth: 0
+                fillColor: videoContainer.outerBg
+                startX: cornerShape.w; startY: cornerShape.h - cornerShape.r
+                PathArc { x: cornerShape.w - cornerShape.r; y: cornerShape.h; radiusX: cornerShape.r; radiusY: cornerShape.r; direction: PathArc.Clockwise }
+                PathLine { x: cornerShape.w; y: cornerShape.h }
+                PathLine { x: cornerShape.w; y: cornerShape.h - cornerShape.r }
+            }
+            ShapePath {
+                strokeWidth: 0
+                fillColor: videoContainer.outerBg
+                startX: cornerShape.r; startY: cornerShape.h
+                PathArc { x: 0; y: cornerShape.h - cornerShape.r; radiusX: cornerShape.r; radiusY: cornerShape.r; direction: PathArc.Clockwise }
+                PathLine { x: 0; y: cornerShape.h }
+                PathLine { x: cornerShape.r; y: cornerShape.h }
+            }
+        }
+
+        Rectangle {
+            id: borderOverlay
+            anchors.fill: parent
+            color: "transparent"
+            radius: videoContainer.cardRadius
+            border.color: videoContainer.isPip
+                          ? ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderHover : "#334155")
+                          : ((typeof appTheme !== "undefined" && appTheme) ? appTheme.borderDefault : "#1E293B")
+            border.width: 1
+        }
     }
 }

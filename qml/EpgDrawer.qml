@@ -11,7 +11,6 @@ Rectangle {
     property string channelLogo: ""
     property string epgTitle: ""
     property string epgDescription: ""
-    property bool isFullScreen: false
     property var sidebarItem: null
     property bool epgForceOpen: false
 
@@ -92,7 +91,6 @@ Rectangle {
 
         EpgHeaderRow {
             id: innerHeaderRow
-            isFullScreen: false
             channelNo: root.channelNo
             channelName: root.channelName
             hoveredChannelName: root.hoveredChannelName
@@ -106,7 +104,6 @@ Rectangle {
         }
 
         EpgProgramContent {
-            isFullScreen: false
             channelLogo: root.channelLogo
             epgTitle: root.epgTitle
             epgDescription: root.epgDescription
