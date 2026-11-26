@@ -15,6 +15,11 @@ Item {
     required property bool isBlockedOpen
     required property real cardMargin
 
+    readonly property bool isPointerInside: rootHoverHandler.hovered
+    readonly property real edgeTriggerX: tracker.backdropItem ? Math.max(64, tracker.backdropItem.width * 0.085) : 80
+    readonly property real edgeTriggerY: tracker.backdropItem ? Math.max(80, tracker.backdropItem.height * 0.13) : 100
+
+
     property point lastMousePos: Qt.point(-1, -1)
     property string pendingPanel: ""
 
@@ -41,26 +46,24 @@ Item {
 
     Timer {
         id: hoverIntentTimer
-        interval: 350
+        interval: 120
         repeat: false
         onTriggered: {
             if (tracker.isPip || tracker.window.visibility === Window.Minimized)
                 return;
 
-            if (tracker.pendingPanel === "config"
-                    && !tracker.epgDrawerItem.epgForceOpen
-                    && !tracker.sidebarItem.visible
-                    && !tracker.configSidebarItem.visible) {
+            var allClosed = !tracker.epgDrawerItem.epgForceOpen
+                            && !tracker.sidebarItem.visible
+                            && !tracker.configSidebarItem.visible;
+
+            if (tracker.pendingPanel === "config" && allClosed) {
                 tracker.controller.openConfigAndCollapseOthers();
                 tracker.configSidebarItem.sidebarForceOpen = true;
-            } else if (tracker.pendingPanel === "channels"
-                    && !tracker.epgDrawerItem.epgForceOpen
-                    && !tracker.configSidebarItem.visible
-                    && !tracker.sidebarItem.visible) {
+            } else if (tracker.pendingPanel === "channels" && allClosed) {
                 tracker.sidebarItem.sidebarForceOpen = true;
             } else if (tracker.pendingPanel === "epg"
-                    && !tracker.sidebarItem.visible
-                    && !tracker.configSidebarItem.visible) {
+                       && !tracker.sidebarItem.visible
+                       && !tracker.configSidebarItem.visible) {
                 tracker.controller.epgDrawer.epgForceOpen = true;
             }
             tracker.pendingPanel = "";
@@ -82,6 +85,7 @@ Item {
     }
 
     HoverHandler {
+        id: rootHoverHandler
         onPointChanged: {
             var dx = Math.abs(point.position.x - tracker.lastMousePos.x);
             var dy = Math.abs(point.position.y - tracker.lastMousePos.y);
@@ -95,12 +99,16 @@ Item {
                 return;
             }
 
-            if (!tracker.epgDrawerItem.epgForceOpen && !tracker.sidebarItem.visible && !tracker.configSidebarItem.visible && point.position.x <= 26) {
+            var allClosed = !tracker.epgDrawerItem.epgForceOpen
+                            && !tracker.sidebarItem.visible
+                            && !tracker.configSidebarItem.visible;
+
+            if (allClosed && point.position.x <= tracker.edgeTriggerX) {
                 tracker.scheduleOpen("config");
                 return;
             }
 
-            if (!tracker.epgDrawerItem.epgForceOpen && !tracker.configSidebarItem.visible && !tracker.sidebarItem.visible && point.position.x >= (tracker.backdropItem.width - 26)) {
+            if (allClosed && point.position.x >= (tracker.backdropItem.width - tracker.edgeTriggerX)) {
                 tracker.scheduleOpen("channels");
                 return;
             }
@@ -111,19 +119,17 @@ Item {
             }
 
             var epgOpenBoundary = tracker.backdropItem.height - tracker.controller.epgDrawer.height - tracker.cardMargin;
-            var epgTriggerBoundary = tracker.backdropItem.height - 44;
+            var epgTriggerBoundary = tracker.backdropItem.height - tracker.edgeTriggerY;
 
             if (tracker.controller.epgDrawer.epgForceOpen) {
-                if (point.position.y < (epgOpenBoundary - 10)) {
+                if (point.position.y < (epgOpenBoundary - tracker.cardMargin)) {
                     tracker.controller.epgDrawer.epgForceOpen = false;
                 }
                 tracker.cancelPendingOpen();
+            } else if (point.position.y >= epgTriggerBoundary) {
+                tracker.scheduleOpen("epg");
             } else {
-                if (point.position.y >= epgTriggerBoundary) {
-                    tracker.scheduleOpen("epg");
-                } else {
-                    tracker.cancelPendingOpen();
-                }
+                tracker.cancelPendingOpen();
             }
         }
         onHoveredChanged: {

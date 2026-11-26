@@ -1,7 +1,5 @@
 // qml/VideoPlayerView.qml
 import QtQuick
-import QtQuick.Controls
-import QtMultimedia
 
 FocusScope {
     id: scope
@@ -40,8 +38,6 @@ FocusScope {
         id: rootBackdrop
         anchors.fill: parent
         color: scope.isCardMode && typeof appTheme !== "undefined" && appTheme ? appTheme.bgAbsolute : "black"
-
-        HoverHandler { id: containerHover }
 
         VideoPlayerViewCursorTracker {
             id: cursorController
@@ -90,7 +86,7 @@ FocusScope {
             windowController: scope.windowController
             controller: scope.controller
             mediaPlayer: scope.mediaPlayer
-            isHovered: containerHover.hovered
+            isHovered: cursorController.isPointerInside
         }
     }
 }

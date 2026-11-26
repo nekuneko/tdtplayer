@@ -16,9 +16,17 @@ Rectangle {
     property bool epgForceOpen: false
 
     readonly property bool containsMouse: epgHoverHandler.hovered
-    readonly property real outerMargin: appTheme ? appTheme.px(12) : 12
+    readonly property real outerMargin: px(12)
 
-    height: appTheme ? appTheme.px(160) : 160
+    function px(v) { return (typeof appTheme !== "undefined" && appTheme) ? appTheme.px(v) : v; }
+
+    function notifyCursorActivity() {
+        if (typeof playerView !== "undefined" && playerView) {
+            playerView.resetMouseCursor();
+        }
+    }
+
+    height: px(160)
 
     anchors.bottom: parent ? parent.bottom : undefined
     anchors.left: parent ? parent.left : undefined
@@ -27,7 +35,7 @@ Rectangle {
 
     color: appTheme.bgAbsolute
     opacity: 0.98
-    radius: appTheme ? appTheme.px(16) : 16
+    radius: px(16)
     border.color: appTheme.borderDefault
     border.width: 1
 
@@ -62,18 +70,12 @@ Rectangle {
         onHoveredChanged: {
             if (hovered) {
                 safetyExitTimer.stop();
-                if (typeof playerView !== "undefined") {
-                    playerView.resetMouseCursor();
-                }
+                root.notifyCursorActivity();
             } else {
                 safetyExitTimer.restart();
             }
         }
-        onPointChanged: {
-            if (typeof playerView !== "undefined") {
-                playerView.resetMouseCursor();
-            }
-        }
+        onPointChanged: root.notifyCursorActivity()
     }
 
     MouseArea {
@@ -85,8 +87,8 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: appTheme ? appTheme.px(16) : 16
-        spacing: appTheme ? appTheme.px(10) : 10
+        anchors.margins: root.px(16)
+        spacing: root.px(10)
 
         EpgHeaderRow {
             id: innerHeaderRow
@@ -94,12 +96,7 @@ Rectangle {
             channelNo: root.channelNo
             channelName: root.channelName
             hoveredChannelName: root.hoveredChannelName
-
-            Component.onCompleted: {
-                innerHeaderRow.epgTitle = Qt.binding(function () {
-                    return root.epgTitle;
-                });
-            }
+            epgTitle: root.epgTitle
         }
 
         Rectangle {
@@ -120,10 +117,8 @@ Rectangle {
         id: drawerVolumeWheel
         orientation: Qt.Vertical
         onWheel: event => {
-            if (event.angleDelta.y > 0)
-                ctrl.changeVolume(5);
-            else if (event.angleDelta.y < 0)
-                ctrl.changeVolume(-5);
+            var step = event.angleDelta.y > 0 ? 5 : -5;
+            ctrl.changeVolume(step);
         }
     }
 }

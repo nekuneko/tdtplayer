@@ -12,6 +12,10 @@ Item {
     required property var configSidebarItem
     required property bool isPip
 
+    readonly property bool isSidebarOpen: !root.isPip && root.sidebarItem.sidebarForceOpen
+    readonly property bool isConfigOpen: !root.isPip && root.configSidebarItem.visible
+    readonly property real epgMarginOffset: (typeof appTheme !== "undefined" && appTheme) ? appTheme.px(24) : 24
+
     // Arrastre nativo de ventana cuando estamos en modo PiP
     DragHandler {
         id: pipWindowDragger
@@ -49,13 +53,9 @@ Item {
                 root.windowController.togglePipMode();
                 return;
             }
-            if (root.window.visibility === Window.FullScreen) {
-                root.window.visibility = Window.Windowed;
-                root.controller.isFullScreen = false;
-            } else {
-                root.window.visibility = Window.FullScreen;
-                root.controller.isFullScreen = true;
-            }
+            var toFullScreen = root.window.visibility !== Window.FullScreen;
+            root.window.visibility = toFullScreen ? Window.FullScreen : Window.Windowed;
+            root.controller.isFullScreen = toFullScreen;
         }
     }
 
@@ -64,51 +64,28 @@ Item {
         orientation: Qt.Vertical
         enabled: !root.isPip
         onWheel: event => {
-            if (event.angleDelta.y > 0) {
-                root.controller.playChannel(root.controller.currentChannelIndex - 1);
-            } else if (event.angleDelta.y < 0) {
-                root.controller.playChannel(root.controller.currentChannelIndex + 1);
-            }
+            var delta = event.angleDelta.y > 0 ? -1 : 1;
+            root.controller.playChannel(root.controller.currentChannelIndex + delta);
         }
     }
 
+    // Único handler unificado para cerrar cualquier sidebar al hacer clic fuera
     MouseArea {
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: 50
-        hoverEnabled: true
-        enabled: !root.isPip && !root.epgDrawerItem.epgForceOpen && !root.sidebarItem.visible
-        onEntered: {
-            root.controller.openConfigAndCollapseOthers();
-            root.configSidebarItem.sidebarForceOpen = true;
-        }
-    }
-
-    MouseArea {
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: 50
-        hoverEnabled: true
-        enabled: !root.isPip && !root.epgDrawerItem.epgForceOpen && !root.configSidebarItem.visible
-        onEntered: root.sidebarItem.sidebarForceOpen = true
-    }
-
-    MouseArea {
+        id: backdropDismissArea
         anchors.fill: parent
-        anchors.rightMargin: root.sidebarItem.width
-        visible: !root.isPip && root.sidebarItem.sidebarForceOpen
-        onClicked: root.sidebarItem.sidebarForceOpen = false
-    }
+        anchors.leftMargin: root.isConfigOpen ? root.configSidebarItem.width : 0
+        anchors.rightMargin: root.isSidebarOpen ? root.sidebarItem.width : 0
+        anchors.bottomMargin: root.epgDrawerItem.visible ? (root.epgDrawerItem.height + root.epgMarginOffset) : 0
+        visible: root.isSidebarOpen || root.isConfigOpen
 
-    MouseArea {
-        anchors.fill: parent
-        anchors.leftMargin: root.configSidebarItem.width
-        visible: !root.isPip && root.configSidebarItem.visible
         onClicked: {
-            root.configSidebarItem.sidebarForceOpen = false;
-            root.controller.restorePanelsAfterConfig();
+            if (root.isSidebarOpen) {
+                root.sidebarItem.sidebarForceOpen = false;
+            }
+            if (root.isConfigOpen) {
+                root.configSidebarItem.sidebarForceOpen = false;
+                root.controller.restorePanelsAfterConfig();
+            }
         }
     }
 }

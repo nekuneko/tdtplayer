@@ -19,10 +19,18 @@ FocusScope {
     signal channelSelected(int realIndex)
     signal closeRequested
 
-    readonly property real outerMargin: root.appThemeItem ? root.appThemeItem.px(12) : 12
+    function px(v) { return root.appThemeItem ? root.appThemeItem.px(v) : v; }
+
+    function notifyCursorActivity() {
+        if (typeof playerView !== "undefined" && playerView) {
+            playerView.resetMouseCursor();
+        }
+    }
+
+    readonly property real outerMargin: px(12)
     readonly property real effectiveWidth: parent ? parent.width : width
     readonly property real uiScale: Math.max(0.84, Math.min(1.18, effectiveWidth / 1280))
-    readonly property bool isCompactHeader: effectiveWidth < (root.appThemeItem ? root.appThemeItem.px(920) : 920)
+    readonly property bool isCompactHeader: effectiveWidth < px(920)
 
     Behavior on opacity {
         NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
@@ -38,9 +46,7 @@ FocusScope {
 
     onVisibleChanged: {
         if (visible) {
-            if (typeof playerView !== "undefined" && playerView) {
-                playerView.resetMouseCursor();
-            }
+            root.notifyCursorActivity();
             root.sharedNowTimestamp = Math.floor(Date.now() / 1000);
             root.opacity = 0.98;
             root.currentViewMode = "NOW";
@@ -66,7 +72,8 @@ FocusScope {
         } else if (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown) {
             var count = root.channelModel ? root.channelModel.rowCount() : 0;
             if (count > 0) {
-                var page = Math.max(4, Math.floor(overlayListView.height / 90));
+                var rowStride = root.px(90 * root.uiScale);
+                var page = Math.max(4, Math.floor(overlayListView.height / Math.max(1, rowStride)));
                 var delta = event.key === Qt.Key_PageUp ? -page : page;
                 var nextIdx = ((overlayListView.currentIndex + delta) % count + count) % count;
                 overlayListView.currentIndex = nextIdx;
@@ -85,11 +92,7 @@ FocusScope {
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true
-        onPositionChanged: {
-            if (typeof playerView !== "undefined" && playerView) {
-                playerView.resetMouseCursor();
-            }
-        }
+        onPositionChanged: root.notifyCursorActivity()
         onWheel: event => event.accepted = true
     }
 
@@ -98,14 +101,14 @@ FocusScope {
         anchors.fill: parent
         anchors.margins: root.outerMargin
         color: root.appThemeItem.bgAbsolute
-        radius: root.appThemeItem ? root.appThemeItem.px(16) : 16
+        radius: root.px(16)
         border.color: root.appThemeItem.borderDefault
         border.width: 1
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: root.isCompactHeader ? root.appThemeItem.px(16) : root.appThemeItem.px(22)
-            spacing: root.appThemeItem.px(14)
+            anchors.margins: root.isCompactHeader ? root.px(16) : root.px(22)
+            spacing: root.px(14)
 
             EpgGridHeader {
                 appThemeItem: root.appThemeItem
@@ -128,11 +131,11 @@ FocusScope {
                 Layout.fillHeight: true
                 model: root.channelModel
                 clip: true
-                spacing: root.appThemeItem.px(8)
+                spacing: root.px(8)
                 boundsBehavior: Flickable.StopAtBounds
                 reuseItems: true
                 focus: true
-                rightMargin: root.appThemeItem.px(10)
+                rightMargin: root.px(10)
 
                 delegate: EpgGridDelegate {
                     width: overlayListView.width - overlayListView.rightMargin
