@@ -9,6 +9,7 @@ ApplicationWindow {
     height: 768
     visible: true
     title: "Tvheadend Native Player"
+    color: appTheme.bgCanvas
 
     Theme {
         id: appTheme
@@ -18,6 +19,7 @@ ApplicationWindow {
     readonly property var epgGridOverlayItem: epgGridOverlayLoader.item
     property alias epgGridOverlayLoaderItemActive: epgGridOverlayLoader.active
     property bool isBooting: true
+    property bool isHdrStream: false
     property var localLogoCache: ({})
     property var globalChannelModel: channelModel
 

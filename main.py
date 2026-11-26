@@ -46,8 +46,9 @@ configure_environment()
 
 from PySide6.QtCore import QObject, Qt, QUrl, Slot  # noqa: E402
 from PySide6.QtGui import QGuiApplication, QIcon  # noqa: E402
-from PySide6.QtMultimedia import QMediaPlayer, QVideoSink  # noqa: E402
+from PySide6.QtMultimedia import QVideoFrameFormat, QVideoSink  # noqa: E402
 from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+from PySide6.QtQuick import QQuickItem  # noqa: E402
 
 from channel_model import ChannelModel  # noqa: E402
 from screenshot_helper import ScreenshotHelper  # noqa: E402
@@ -125,17 +126,35 @@ def main():
     if os.path.exists(icon_path):
         root_obj.setIcon(QIcon(icon_path))
 
-    player = root_obj.findChild(QMediaPlayer)
     # En QML VideoOutput expone la propiedad 'videoSink' (QVideoSink)
     video_out = root_obj.findChild(QVideoSink)
     if video_out:
         screenshot_helper.set_video_sink(video_out)
 
-    if sys.platform == "win32":
-        from deinterlace_filter import WindowsDeinterlacer
+    # Vincula la ventana raíz y el ShaderEffect de GPU al capturador de pantalla (Windows y Linux)
+    gpu_shader_item = root_obj.findChild(QQuickItem, "gpuVideoPipeline")
+    screenshot_helper.set_qml_capture_target(root_obj, gpu_shader_item)
 
-        if player and video_out:
-            app._win_deinterlacer = WindowsDeinterlacer(player, video_out)
+    # Detector multiplataforma de espacio de color HDR/HLG (BT.2020 / STD_B67) para tone mapping en GPU
+    root_obj.setProperty("isHdrStream", False)
+
+    def _check_hdr_colorspace(frame):
+        if not frame.isValid():
+            return
+        sf = frame.surfaceFormat()
+        cs = sf.colorSpace()
+        ct = sf.colorTransfer()
+
+        is_hdr = (
+            cs == QVideoFrameFormat.ColorSpace.ColorSpace_BT2020
+            or ct == QVideoFrameFormat.ColorTransfer.ColorTransfer_STD_B67
+            or ct == QVideoFrameFormat.ColorTransfer.ColorTransfer_ST2084
+        )
+        if root_obj.property("isHdrStream") != is_hdr:
+            root_obj.setProperty("isHdrStream", is_hdr)
+
+    if video_out:
+        video_out.videoFrameChanged.connect(_check_hdr_colorspace)
 
     sys.exit(app.exec())
 

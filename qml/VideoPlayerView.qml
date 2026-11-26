@@ -61,6 +61,7 @@ FocusScope {
             sidebarWidth: sidebarItem ? sidebarItem.width : 0
             epgHeight: epgDrawerItem ? epgDrawerItem.height : 0
             cardMargin: scope.cardMargin
+            isHdrStream: Boolean(scope.window && scope.window.isHdrStream)
         }
 
         VideoGesturesLayer {

@@ -111,6 +111,8 @@ QtObject {
         var count = root.model.rowCount();
         index = index < 0 ? count - 1 : (index >= count ? 0 : index);
 
+        // Al cambiar de canal se cancela cualquier pausa previa para reanudar en directo
+        root.isVoluntarilyStopped = false;
         root.currentChannelIndex = index;
         root.osdHoveredChannelName = "";
 
@@ -121,12 +123,7 @@ QtObject {
         root.syncChannelMetadata(index);
 
         if (root.mediaPlayer) {
-            if (root.isVoluntarilyStopped) {
-                root.zappingTimer.stop();
-                root.tunedChannelIndex = index;
-                root.mediaPlayer.stop();
-                root.mediaPlayer.source = "";
-            } else if (immediate) {
+            if (immediate) {
                 root.zappingTimer.stop();
                 root.tunedChannelIndex = index;
                 var directUrl = root.model.get_url_at(index);
@@ -188,6 +185,11 @@ QtObject {
         if (root.isVoluntarilyStopped) {
             root.mediaPlayer.pause();
         } else {
+            // Si estaba detenido o sin source, recargamos el canal actual en directo
+            var currentUrl = root.model.get_url_at(root.currentChannelIndex);
+            if (root.mediaPlayer.source.toString() !== currentUrl) {
+                root.mediaPlayer.source = currentUrl;
+            }
             root.mediaPlayer.play();
         }
     }
