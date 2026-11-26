@@ -6,7 +6,7 @@ import QtQuick.Layouts
 ItemDelegate {
     id: root
     width: ListView.view ? ListView.view.width : 600
-    height: root.isCompact ? root.appThemeItem.px(108) : root.appThemeItem.px(102)
+    height: root.appThemeItem.px((root.isCompact ? 92 : 88) * root.uiScale)
     hoverEnabled: true
 
     required property int index
@@ -16,14 +16,16 @@ ItemDelegate {
 
     required property var channelModel
     required property int currentChannelIndex
+    required property int currentTimestamp
+    property real uiScale: 1.0
     property string viewMode: "NOW"
     required property var appThemeItem
 
     readonly property int itemIndex: root.index
-    readonly property bool isCurrent: ListView.view.currentIndex === root.itemIndex || (root.currentChannelIndex === root.itemIndex && !ListView.view.activeFocus)
-    readonly property bool isCompact: width < root.appThemeItem.px(680)
+    readonly property bool isCurrent: (ListView.view && ListView.view.currentIndex === root.itemIndex)
+                                      || (root.currentChannelIndex === root.itemIndex && (!ListView.view || !ListView.view.activeFocus))
+    readonly property bool isCompact: width < root.appThemeItem.px(640)
 
-    property int currentTimestamp: Math.floor(Date.now() / 1000)
     property var currentEpgObject: null
     property var nextEpgObject: null
 
@@ -31,23 +33,19 @@ ItemDelegate {
         if (root.channelModel && root.channelNameStr !== "") {
             root.currentEpgObject = root.channelModel.fetch_current_epg(root.channelNameStr);
             root.nextEpgObject = root.channelModel.fetch_next_epg(root.channelNameStr);
+        } else {
+            root.currentEpgObject = null;
+            root.nextEpgObject = null;
         }
     }
 
     Component.onCompleted: root.forceRefreshEpgData()
     onChannelNameStrChanged: root.forceRefreshEpgData()
-
-    Timer {
-        id: liveProgressTimer
-        interval: 1000
-        running: root.visible && root.viewMode === "NOW"
-        repeat: true
-        onTriggered: root.currentTimestamp = Math.floor(Date.now() / 1000)
-    }
+    ListView.onReused: root.forceRefreshEpgData()
 
     background: Rectangle {
         color: root.isCurrent ? root.appThemeItem.bgItemActive : (root.hovered ? root.appThemeItem.bgItemHover : root.appThemeItem.bgItemDefault)
-        radius: root.appThemeItem.px(12)
+        radius: root.appThemeItem.px(10)
         border.color: root.isCurrent ? root.appThemeItem.borderActive : (root.hovered ? root.appThemeItem.borderHover : root.appThemeItem.borderDefault)
         border.width: root.isCurrent ? 1.5 : 1
         Behavior on color { ColorAnimation { duration: 120 } }
@@ -76,11 +74,11 @@ ItemDelegate {
 
     contentItem: RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: root.appThemeItem.px(14)
-        anchors.rightMargin: root.appThemeItem.px(18)
-        anchors.topMargin: root.appThemeItem.px(10)
-        anchors.bottomMargin: root.appThemeItem.px(10)
-        spacing: root.isCompact ? root.appThemeItem.px(10) : root.appThemeItem.px(16)
+        anchors.leftMargin: root.appThemeItem.px(12)
+        anchors.rightMargin: root.appThemeItem.px(14)
+        anchors.topMargin: root.appThemeItem.px(8)
+        anchors.bottomMargin: root.appThemeItem.px(8)
+        spacing: root.isCompact ? root.appThemeItem.px(10) : root.appThemeItem.px(14)
 
         EpgBadgeNo {
             textNo: root.chNo ? root.chNo.toString() : root.itemIndex.toString()
@@ -90,8 +88,8 @@ ItemDelegate {
         }
 
         Rectangle {
-            Layout.preferredWidth: root.isCompact ? root.appThemeItem.px(38) : root.appThemeItem.px(44)
-            Layout.preferredHeight: root.isCompact ? root.appThemeItem.px(38) : root.appThemeItem.px(44)
+            Layout.preferredWidth: root.appThemeItem.px((root.isCompact ? 34 : 38) * root.uiScale)
+            Layout.preferredHeight: root.appThemeItem.px((root.isCompact ? 34 : 38) * root.uiScale)
             color: root.appThemeItem.logoBg
             radius: root.appThemeItem.px(8)
             Layout.alignment: Qt.AlignVCenter
@@ -102,7 +100,7 @@ ItemDelegate {
                 text: root.channelNameStr !== "" ? root.channelNameStr.substring(0, 1).toUpperCase() : "📺"
                 color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
                 font.bold: true
-                font.pointSize: root.appThemeItem.pt(12)
+                font.pointSize: root.appThemeItem.pt(11 * root.uiScale)
                 renderType: Text.QtRendering
             }
 
@@ -112,8 +110,8 @@ ItemDelegate {
                 anchors.margins: 3
                 source: root.logo ? root.logo : ""
                 fillMode: Image.PreserveAspectFit
-                sourceSize.width: 88
-                sourceSize.height: 88
+                sourceSize.width: 84
+                sourceSize.height: 84
                 visible: status === Image.Ready && root.logo !== ""
                 cache: true
                 asynchronous: true
@@ -125,16 +123,16 @@ ItemDelegate {
             text: root.channelNameStr
             color: root.isCurrent ? root.appThemeItem.textTitleActive : root.appThemeItem.textTitle
             font.bold: true
-            font.pointSize: root.appThemeItem.pt(11.5)
+            font.pointSize: root.appThemeItem.pt(11 * root.uiScale)
             renderType: Text.NativeRendering
-            Layout.preferredWidth: root.appThemeItem.px(135)
+            Layout.preferredWidth: root.appThemeItem.px(130 * root.uiScale)
             elide: Text.ElideRight
             Layout.alignment: Qt.AlignVCenter
         }
 
         Rectangle {
             visible: !root.isCompact
-            Layout.preferredHeight: root.appThemeItem.px(44)
+            Layout.preferredHeight: root.appThemeItem.px(40 * root.uiScale)
             Layout.preferredWidth: 1
             color: root.appThemeItem.borderHover
             Layout.alignment: Qt.AlignVCenter
@@ -148,6 +146,7 @@ ItemDelegate {
             startTimestamp: root.startTimestamp
             stopTimestamp: root.stopTimestamp
             currentTimestamp: root.currentTimestamp
+            uiScale: root.uiScale
             viewMode: root.viewMode
             isCurrent: root.isCurrent
             themeItem: root.appThemeItem

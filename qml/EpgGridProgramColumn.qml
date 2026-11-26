@@ -15,18 +15,19 @@ ColumnLayout {
     required property string viewMode
     required property bool isCurrent
     required property var themeItem
+    property real uiScale: 1.0
 
     signal programExpired
 
     Layout.fillWidth: true
     Layout.minimumWidth: 0
     Layout.alignment: Qt.AlignVCenter
-    spacing: root.themeItem ? root.themeItem.px(6) : 6
+    spacing: root.themeItem ? root.themeItem.px(4 * root.uiScale) : 4
 
     RowLayout {
         Layout.fillWidth: true
         Layout.minimumWidth: 0
-        spacing: root.themeItem ? root.themeItem.px(10) : 10
+        spacing: root.themeItem ? root.themeItem.px(8 * root.uiScale) : 8
         Layout.alignment: Qt.AlignVCenter
 
         EpgTimePill {
@@ -43,7 +44,7 @@ ColumnLayout {
             text: root.cleanTitle
             color: root.isCurrent ? root.themeItem.textTitleActive : root.themeItem.textTitle
             font.bold: true
-            font.pointSize: root.themeItem ? root.themeItem.pt(11.5) : 11.5
+            font.pointSize: root.themeItem ? root.themeItem.pt(11 * root.uiScale) : 11
             renderType: Text.NativeRendering
             Layout.fillWidth: true
             Layout.minimumWidth: 0
@@ -77,12 +78,12 @@ ColumnLayout {
     Text {
         text: root.finalDesc
         color: root.isCurrent ? root.themeItem.textDescActive : root.themeItem.textDesc
-        font.pointSize: root.themeItem ? root.themeItem.pt(9.5) : 9.5
+        font.pointSize: root.themeItem ? root.themeItem.pt(9.5 * root.uiScale) : 9.5
         renderType: Text.NativeRendering
         Layout.fillWidth: true
         Layout.minimumWidth: 0
-        wrapMode: Text.WordWrap
-        maximumLineCount: 2
+        wrapMode: root.uiScale >= 1.0 ? Text.WordWrap : Text.NoWrap
+        maximumLineCount: root.uiScale >= 1.0 ? 2 : 1
         elide: Text.ElideRight
     }
 }

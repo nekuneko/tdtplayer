@@ -12,31 +12,39 @@ FocusScope {
 
     required property var channelModel
     required property int currentChannelIndex
-    property string currentViewMode: "NOW"
-
-    // Contrato estricto: El tema es obligatorio para el renderizado
     required property var appThemeItem
+    property string currentViewMode: "NOW"
+    property int sharedNowTimestamp: Math.floor(Date.now() / 1000)
 
     signal channelSelected(int realIndex)
     signal closeRequested
 
     readonly property real outerMargin: root.appThemeItem ? root.appThemeItem.px(12) : 12
     readonly property real effectiveWidth: parent ? parent.width : width
-    readonly property bool isCompactHeader: effectiveWidth < (root.appThemeItem ? root.appThemeItem.px(980) : 980)
+    readonly property real uiScale: Math.max(0.84, Math.min(1.18, effectiveWidth / 1280))
+    readonly property bool isCompactHeader: effectiveWidth < (root.appThemeItem ? root.appThemeItem.px(920) : 920)
 
     Behavior on opacity {
-        NumberAnimation {
-            duration: 150
-            easing.type: Easing.OutQuad
-        }
+        NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+    }
+
+    Timer {
+        id: sharedClockTimer
+        interval: 15000
+        running: root.visible && root.currentViewMode === "NOW"
+        repeat: true
+        onTriggered: root.sharedNowTimestamp = Math.floor(Date.now() / 1000)
     }
 
     onVisibleChanged: {
         if (visible) {
+            if (typeof playerView !== "undefined" && playerView) {
+                playerView.resetMouseCursor();
+            }
+            root.sharedNowTimestamp = Math.floor(Date.now() / 1000);
             root.opacity = 0.98;
             root.currentViewMode = "NOW";
             overlayListView.forceActiveFocus();
-            // 🚀 LIMPIEZA: Enlace directo al controlador global sin comprobaciones redundantes
             root.currentChannelIndex = ctrl.currentChannelIndex;
 
             if (root.currentChannelIndex >= 0 && root.currentChannelIndex < root.channelModel.rowCount()) {
@@ -67,6 +75,11 @@ FocusScope {
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true
+        onPositionChanged: {
+            if (typeof playerView !== "undefined" && playerView) {
+                playerView.resetMouseCursor();
+            }
+        }
         onWheel: event => event.accepted = true
     }
 
@@ -81,97 +94,16 @@ FocusScope {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: root.isCompactHeader ? root.appThemeItem.px(16) : root.appThemeItem.px(24)
-            spacing: root.appThemeItem.px(16)
+            anchors.margins: root.isCompactHeader ? root.appThemeItem.px(16) : root.appThemeItem.px(22)
+            spacing: root.appThemeItem.px(14)
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: root.appThemeItem.px(16)
-
-                Text {
-                    text: root.isCompactHeader ? "GUÍA TV" : "GUÍA DE PROGRAMACIÓN"
-                    color: root.appThemeItem.textTitle
-                    font.bold: true
-                    font.pointSize: root.isCompactHeader ? root.appThemeItem.pt(14) : root.appThemeItem.pt(16)
-                    font.letterSpacing: 1.5
-                    elide: Text.ElideRight
-                    Layout.minimumWidth: 0
-                }
-
-                RowLayout {
-                    spacing: root.appThemeItem.px(8)
-
-                    Button {
-                        id: nowTabBtn
-                        text: root.isCompactHeader ? "Ahora" : "Emitiéndose Ahora"
-                        font.bold: true
-                        font.pointSize: root.appThemeItem.pt(10.5)
-                        focusPolicy: Qt.NoFocus
-                        contentItem: Text {
-                            text: nowTabBtn.text
-                            font: nowTabBtn.font
-                            color: root.currentViewMode === "NOW" ? root.appThemeItem.getW3cContrast(root.appThemeItem.bgItemActive) : root.appThemeItem.textDesc
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        background: Rectangle {
-                            implicitWidth: root.isCompactHeader ? root.appThemeItem.px(95) : root.appThemeItem.px(155)
-                            implicitHeight: root.appThemeItem.px(34)
-                            color: root.currentViewMode === "NOW" ? root.appThemeItem.bgItemActive : root.appThemeItem.bgItemDefault
-                            border.color: root.currentViewMode === "NOW" ? root.appThemeItem.borderActive : root.appThemeItem.borderDefault
-                            border.width: 1
-                            radius: root.appThemeItem.px(8)
-                        }
-                        onClicked: root.currentViewMode = "NOW"
-                    }
-
-                    Button {
-                        id: nextTabBtn
-                        text: root.isCompactHeader ? "Siguiente ➔" : "A Continuación ➔"
-                        font.bold: true
-                        font.pointSize: root.appThemeItem.pt(10.5)
-                        focusPolicy: Qt.NoFocus
-                        contentItem: Text {
-                            text: nextTabBtn.text
-                            font: nextTabBtn.font
-                            color: root.currentViewMode === "NEXT" ? root.appThemeItem.getW3cContrast(root.appThemeItem.bgItemActive) : root.appThemeItem.textDesc
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        background: Rectangle {
-                            implicitWidth: root.isCompactHeader ? root.appThemeItem.px(110) : root.appThemeItem.px(155)
-                            implicitHeight: root.appThemeItem.px(34)
-                            color: root.currentViewMode === "NEXT" ? root.appThemeItem.bgItemActive : root.appThemeItem.bgItemDefault
-                            border.color: root.currentViewMode === "NEXT" ? root.appThemeItem.borderActive : root.appThemeItem.borderDefault
-                            border.width: 1
-                            radius: root.appThemeItem.px(8)
-                        }
-                        onClicked: root.currentViewMode = "NEXT"
-                    }
-                }
-
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                Text {
-                    visible: root.effectiveWidth >= (root.appThemeItem ? root.appThemeItem.px(480) : 480)
-                    text: root.isCompactHeader ? "TAB  |  ESC" : "TAB: Alternar  |  E / ESC: Volver"
-                    color: root.appThemeItem.textDesc
-                    font.pointSize: root.appThemeItem.pt(10)
-                    font.bold: true
-                    elide: Text.ElideRight
-                    Layout.minimumWidth: 0
-                }
-
-                ClockWidget {
-                    themeItem: root.appThemeItem
-                    fontPt: root.appThemeItem ? root.appThemeItem.pt(10.5) : 10.5
-                    pillHeight: root.appThemeItem ? root.appThemeItem.px(32) : 32
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-
+            EpgGridHeader {
+                appThemeItem: root.appThemeItem
+                currentViewMode: root.currentViewMode
+                isCompactHeader: root.isCompactHeader
+                containerWidth: root.effectiveWidth - (root.outerMargin * 2)
+                uiScale: root.uiScale
+                onViewModeSelected: mode => root.currentViewMode = mode
             }
 
             Rectangle {
@@ -186,15 +118,18 @@ FocusScope {
                 Layout.fillHeight: true
                 model: root.channelModel
                 clip: true
-                spacing: root.appThemeItem.px(10)
+                spacing: root.appThemeItem.px(8)
                 boundsBehavior: Flickable.StopAtBounds
+                reuseItems: true
                 focus: true
-                rightMargin: root.appThemeItem.px(12)
+                rightMargin: root.appThemeItem.px(10)
 
                 delegate: EpgGridDelegate {
                     width: overlayListView.width - overlayListView.rightMargin
                     channelModel: root.channelModel
                     currentChannelIndex: root.currentChannelIndex
+                    currentTimestamp: root.sharedNowTimestamp
+                    uiScale: root.uiScale
                     viewMode: root.currentViewMode
                     onClicked: root.channelSelected(itemIndex)
                     appThemeItem: root.appThemeItem
