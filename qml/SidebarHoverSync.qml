@@ -14,6 +14,7 @@ Item {
     property string pendingHoverName: ""
 
     function handleHover(name) {
+        exitGraceTimer.stop();
         if (root.ctrl.zappingTimer.running || !name)
             return;
         root.pendingHoverName = name.toString().trim().replace(/[\r\n]/g, "");
@@ -21,17 +22,16 @@ Item {
     }
 
     function handleExit() {
-        // En Windows, Qt dispara onExited en el MouseArea padre cuando un ItemDelegate hijo captura el hover
         if (root.sidebar.containsMouse)
             return;
 
-        // Cancelamos cualquier petición pendiente de inmediato al sacar el ratón de la barra
         debounceHoverTimer.stop();
         root.pendingHoverName = "";
+        exitGraceTimer.restart();
+    }
 
-        // Si había una previsualización por teclado/ratón sin confirmar con Enter/clic, la cancelamos
+    function performFullClose() {
         root.ctrl.cancelPendingZapping();
-
         root.sidebar.sidebarForceOpen = false;
         root.epgDrawer.epgForceOpen = false;
         root.sidebar.forceCenterScrollSync();
@@ -53,8 +53,19 @@ Item {
     }
 
     Timer {
+        id: exitGraceTimer
+        interval: 220
+        repeat: false
+        onTriggered: {
+            if (root.sidebar.containsMouse || (root.epgDrawer && root.epgDrawer.containsMouse))
+                return;
+            root.performFullClose();
+        }
+    }
+
+    Timer {
         id: debounceHoverTimer
-        interval: 150 // Milisegundos de espera para confirmar que el usuario quiere ver el EPG
+        interval: 150
         repeat: false
         onTriggered: {
             if (root.pendingHoverName === "")
@@ -62,7 +73,6 @@ Item {
             root.ctrl.osdHoveredChannelName = root.pendingHoverName;
             var count = root.model.rowCount(), foundLogo = "", foundChNo = "";
 
-            // Ejecución bajo demanda: El bucle pesado solo corre si el ratón se queda quieto
             for (var i = 0; i < count; i++) {
                 var idx = root.model.index(i, 0);
                 var modelName = root.model.data(idx, Qt.UserRole + 1);

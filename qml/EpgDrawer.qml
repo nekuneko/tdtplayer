@@ -44,8 +44,14 @@ Rectangle {
         running: false
         repeat: false
         onTriggered: {
-            if (!epgHoverHandler.hovered) {
+            var onSidebar = Boolean(root.sidebarItem && root.sidebarItem.containsMouse);
+            if (!epgHoverHandler.hovered && !onSidebar) {
                 root.epgForceOpen = false;
+                if (typeof sidebarHoverSync !== "undefined") {
+                    sidebarHoverSync.performFullClose();
+                } else if (root.sidebarItem) {
+                    root.sidebarItem.sidebarForceOpen = false;
+                }
             }
         }
     }

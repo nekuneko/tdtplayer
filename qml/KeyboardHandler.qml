@@ -11,6 +11,29 @@ Item {
 
     readonly property bool isSidebarBrowsing: Boolean(root.controller.sidebar && root.controller.sidebar.visible && root.controller.sidebar.sidebarForceOpen)
 
+    function pageStep() {
+        if (root.controller.sidebar && root.controller.sidebar.visibleRowsCount) {
+            return Math.max(4, root.controller.sidebar.visibleRowsCount() - 1);
+        }
+        return 8;
+    }
+
+    function stepChannel(delta) {
+        if (!root.controller.model)
+            return;
+        var count = root.controller.model.rowCount();
+        if (count === 0)
+            return;
+        var rawTarget = root.controller.currentChannelIndex + delta;
+        var wrapped = ((rawTarget % count) + count) % count;
+
+        if (root.isSidebarBrowsing) {
+            root.controller.previewChannel(wrapped);
+        } else {
+            root.controller.playChannel(wrapped);
+        }
+    }
+
     Keys.onPressed: (event) => {
         if (root.channelNumPopup.opened) {
             return;
@@ -27,20 +50,22 @@ Item {
 
         switch (event.key) {
             case Qt.Key_Up:
-                if (root.isSidebarBrowsing) {
-                    root.controller.previewChannel(root.controller.currentChannelIndex - 1);
-                } else {
-                    root.controller.playChannel(root.controller.currentChannelIndex - 1);
-                }
+                root.stepChannel(-1);
                 event.accepted = true;
                 break;
 
             case Qt.Key_Down:
-                if (root.isSidebarBrowsing) {
-                    root.controller.previewChannel(root.controller.currentChannelIndex + 1);
-                } else {
-                    root.controller.playChannel(root.controller.currentChannelIndex + 1);
-                }
+                root.stepChannel(1);
+                event.accepted = true;
+                break;
+
+            case Qt.Key_PageUp:
+                root.stepChannel(-root.pageStep());
+                event.accepted = true;
+                break;
+
+            case Qt.Key_PageDown:
+                root.stepChannel(root.pageStep());
                 event.accepted = true;
                 break;
 
@@ -115,7 +140,6 @@ Item {
                 }
                 event.accepted = true;
                 break;
-
 
             case Qt.Key_Escape:
                 root.controller.cancelPendingZapping();

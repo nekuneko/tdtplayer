@@ -105,10 +105,6 @@ Item {
                 return;
             }
 
-            if (tracker.sidebarItem.sidebarForceOpen && point.position.x < (tracker.backdropItem.width - tracker.sidebarItem.width)) {
-                tracker.sidebarItem.sidebarForceOpen = false;
-            }
-
             if (tracker.sidebarItem.visible || tracker.configSidebarItem.visible) {
                 tracker.cancelPendingOpen();
                 return;

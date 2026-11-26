@@ -1,7 +1,5 @@
 // qml/ChannelSidebar.qml
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
 
 MouseArea {
     id: root
@@ -14,14 +12,26 @@ MouseArea {
     signal channelSelected(int realIndex)
     signal channelHovered(string channelName)
 
-    readonly property real outerMargin: root.appThemeItem ? root.appThemeItem.px(12) : 12
+    function px(v) { return root.appThemeItem ? root.appThemeItem.px(v) : v; }
+
+    readonly property real outerMargin: px(12)
+    readonly property real itemHeight: px(64)
+    readonly property real itemSpacing: px(8)
+    readonly property real rowStride: itemHeight + itemSpacing
+
+    property int realCount: root.model ? root.model.rowCount() : 0
+
+    Connections {
+        target: root.model
+        function onModelReset() { root.realCount = root.model ? root.model.rowCount() : 0; }
+        function onRowsInserted() { root.realCount = root.model ? root.model.rowCount() : 0; }
+        function onRowsRemoved() { root.realCount = root.model ? root.model.rowCount() : 0; }
+    }
 
     anchors.top: parent.top
     anchors.bottom: parent.bottom
 
-    width: (parent
-           ? Math.min(root.appThemeItem ? root.appThemeItem.px(320) : 320, Math.max(root.appThemeItem ? root.appThemeItem.px(195) : 195, parent.width * 0.44))
-           : (root.appThemeItem ? root.appThemeItem.px(320) : 320)) + outerMargin
+    width: (parent ? Math.min(px(320), Math.max(px(195), parent.width * 0.44)) : px(320)) + outerMargin
 
     visible: root.sidebarForceOpen
     hoverEnabled: true
@@ -68,106 +78,180 @@ MouseArea {
         }
     }
 
-    onExited: {
-        sidebarForceOpen = false;
-        root.forceCenterScrollSync();
+    function visibleRowsCount() {
+        return Math.max(1, Math.floor(channelPathView.height / Math.max(1, root.rowStride)));
     }
 
     function positionListView(index, mode) {
-        if (!sidebarXAnimation.running && root.model && index >= 0 && index < root.model.rowCount()) {
-            channelListView.positionViewAtIndex(index, mode);
+        if (!sidebarXAnimation.running && root.model && index >= 0 && index < root.realCount) {
+            offsetAnim.stop();
+            channelPathView.positionViewAtIndex(index, PathView.Center);
         }
     }
 
     function getCurrentScrollIndex() {
-        return channelListView.indexAt(0, channelListView.contentY);
+        if (root.realCount <= 0)
+            return -1;
+        var idx = Math.round(root.realCount - channelPathView.offset) % root.realCount;
+        return (idx + root.realCount) % root.realCount;
     }
 
     function forceKeyboardScrollSync() {
-        if (sidebarXAnimation.running || !root.model)
+        if (sidebarXAnimation.running || !root.model || root.realCount === 0)
             return;
-        var count = root.model.rowCount();
-        if (count === 0)
-            return;
-        var rowHeight = root.appThemeItem ? root.appThemeItem.px(72) : 72;
-        var visibleCount = Math.floor(channelListView.height / rowHeight);
-        var firstVisible = channelListView.indexAt(0, channelListView.contentY);
-        var lastVisible = firstVisible + visibleCount - 1;
-        var target = root.currentChannelIndex;
-
-        if (target >= 0 && target < count) {
-            if (target > lastVisible)
-                channelListView.positionViewAtIndex(target, ListView.Beginning);
-            else if (target < firstVisible)
-                channelListView.positionViewAtIndex(target, ListView.End);
+        if (root.currentChannelIndex >= 0 && root.currentChannelIndex < root.realCount) {
+            offsetAnim.stop();
+            channelPathView.positionViewAtIndex(root.currentChannelIndex, PathView.Contain);
         }
     }
 
     function forceCenterScrollSync() {
-        if (sidebarXAnimation.running || !root.model)
+        if (sidebarXAnimation.running || !root.model || root.realCount === 0)
             return;
-        var count = root.model.rowCount();
-        if (count === 0)
-            return;
-        if (root.currentChannelIndex >= 0 && root.currentChannelIndex < count) {
-            channelListView.positionViewAtIndex(root.currentChannelIndex, ListView.Center);
+        if (root.currentChannelIndex >= 0 && root.currentChannelIndex < root.realCount) {
+            offsetAnim.stop();
+            channelPathView.positionViewAtIndex(root.currentChannelIndex, PathView.Center);
         }
     }
 
     Rectangle {
         anchors.fill: parent
         anchors.margins: root.outerMargin
-        color: root.appThemeItem ? root.appThemeItem.bgAbsolute : "#0B0F17"
-        radius: root.appThemeItem ? root.appThemeItem.px(16) : 16
-        border.color: root.appThemeItem ? root.appThemeItem.borderDefault : "#1E293B"
+        color: root.appThemeItem.bgAbsolute
+        radius: root.px(16)
+        border.color: root.appThemeItem.borderDefault
         border.width: 1
     }
 
-    ListView {
-        id: channelListView
+    PathView {
+        id: channelPathView
         anchors.fill: parent
-        anchors.margins: root.outerMargin + (root.appThemeItem ? root.appThemeItem.px(10) : 10)
-        spacing: root.appThemeItem ? root.appThemeItem.px(8) : 8
+        anchors.margins: root.outerMargin + root.px(10)
         clip: true
         model: root.model
 
-        reuseItems: true
-        cacheBuffer: 0
-        maximumFlickVelocity: 2000
+        readonly property int visibleSlots: Math.max(3, Math.ceil(height / Math.max(1, root.rowStride)) + 2)
+        pathItemCount: root.realCount > 0 ? Math.min(root.realCount, visibleSlots) : 0
+
+        preferredHighlightBegin: 0.5
+        preferredHighlightEnd: 0.5
+        highlightRangeMode: PathView.NoHighlightRange
+        snapMode: PathView.NoSnap
+        flickDeceleration: 2400
+        maximumFlickVelocity: 3800
+        interactive: true
+
+        NumberAnimation {
+            id: offsetAnim
+            target: channelPathView
+            property: "offset"
+            duration: 180
+            easing.type: Easing.OutCubic
+        }
+
+        path: Path {
+            startX: channelPathView.width * 0.5
+            startY: -root.rowStride * 0.5
+            PathLine {
+                x: channelPathView.width * 0.5
+                y: -root.rowStride * 0.5 + (Math.max(1, channelPathView.pathItemCount - 1) * root.rowStride)
+            }
+        }
 
         WheelHandler {
             id: sidebarExploreWheel
             orientation: Qt.Vertical
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+
+            property real wheelBoost: 1.0
+            property real lastWheelTime: 0
+            property int lastWheelDir: 0
+            property real targetOffset: 0
+
             onWheel: event => {
-                channelListView.flick(0, event.angleDelta.y * 8);
+                if (root.realCount === 0)
+                    return;
+
+                var now = Date.now();
+                var dir = event.angleDelta.y > 0 ? 1 : -1;
+
+                if ((now - lastWheelTime) < 180 && dir === lastWheelDir) {
+                    wheelBoost = Math.min(2.6, wheelBoost + 0.28);
+                } else {
+                    wheelBoost = 1.0;
+                }
+                lastWheelTime = now;
+                lastWheelDir = dir;
+
+                var current = channelPathView.offset;
+                if (!offsetAnim.running) {
+                    targetOffset = current;
+                } else {
+                    // Ajusta targetOffset al mismo ciclo [0..realCount) que current para evitar rebotes circulares
+                    var cycleShift = Math.round((current - targetOffset) / root.realCount) * root.realCount;
+                    targetOffset += cycleShift;
+                }
+
+                var deltaRows = (event.angleDelta.y / 120.0) * 1.4 * wheelBoost;
+                targetOffset += deltaRows;
+
+                offsetAnim.stop();
+                offsetAnim.from = current;
+                offsetAnim.to = targetOffset;
+                offsetAnim.restart();
             }
         }
+
 
         Connections {
             target: ctrl
             function onCurrentChannelIndexChanged() {
-                if (sidebarXAnimation.running || !root.model)
-                    return;
-                var count = root.model.rowCount();
-                if (count === 0)
-                    return;
-                if (ctrl.currentChannelIndex >= 0 && ctrl.currentChannelIndex < count) {
-                    channelListView.positionViewAtIndex(ctrl.currentChannelIndex, ListView.Center);
-                }
+                root.forceCenterScrollSync();
             }
         }
 
         delegate: ChannelSidebarDelegate {
+            width: channelPathView.width
             sidebarModel: root.model
             currentChannelIndex: root.currentChannelIndex
-            onClickedReal: function (realIndex) {
-                root.channelSelected(realIndex);
-            }
-            onHoveredReal: function (channelName) {
-                root.channelHovered(channelName);
-            }
+            onClickedReal: realIndex => root.channelSelected(realIndex)
+            onHoveredReal: channelName => root.channelHovered(channelName)
             appThemeItem: root.appThemeItem
         }
     }
+
+    ChannelSidebarScrollTrack {
+        id: sidebarScrollTrack
+        realCount: root.realCount
+        visibleRows: root.visibleRowsCount()
+        currentPos: {
+            if (root.realCount <= 1)
+                return 0;
+            var centerSlot = (channelPathView.pathItemCount - 1) * 0.5;
+            var centerIdx = ((root.realCount - channelPathView.offset + centerSlot) % root.realCount + root.realCount) % root.realCount;
+            if (centerIdx > (root.realCount - 0.5) || centerIdx < 0.45)
+                return 0;
+            if (centerIdx > (root.realCount - 1.55))
+                return root.realCount - 1;
+            return centerIdx;
+        }
+        appThemeItem: root.appThemeItem
+
+        onScrubRequested: targetIndex => {
+            offsetAnim.stop();
+            if (root.realCount <= 0)
+                return;
+            var centerSlot = (channelPathView.pathItemCount - 1) * 0.5;
+            var targetOffset = ((root.realCount - targetIndex + centerSlot) % root.realCount + root.realCount) % root.realCount;
+            channelPathView.offset = targetOffset;
+        }
+
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.topMargin: root.outerMargin + root.px(16)
+        anchors.bottomMargin: root.outerMargin + root.px(16)
+        anchors.rightMargin: root.px(2)
+    }
+
 }

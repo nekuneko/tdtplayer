@@ -63,6 +63,16 @@ FocusScope {
         } else if (event.key === Qt.Key_Tab) {
             root.currentViewMode = root.currentViewMode === "NOW" ? "NEXT" : "NOW";
             event.accepted = true;
+        } else if (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown) {
+            var count = root.channelModel ? root.channelModel.rowCount() : 0;
+            if (count > 0) {
+                var page = Math.max(4, Math.floor(overlayListView.height / 90));
+                var delta = event.key === Qt.Key_PageUp ? -page : page;
+                var nextIdx = ((overlayListView.currentIndex + delta) % count + count) % count;
+                overlayListView.currentIndex = nextIdx;
+                overlayListView.positionViewAtIndex(nextIdx, ListView.Center);
+            }
+            event.accepted = true;
         }
     }
 
