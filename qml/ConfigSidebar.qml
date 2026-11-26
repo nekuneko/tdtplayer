@@ -16,7 +16,6 @@ MouseArea {
 
     readonly property real outerMargin: root.appThemeItem ? root.appThemeItem.px(12) : 12
 
-    anchors.left: parent.left
     anchors.top: parent.top
     anchors.bottom: parent.bottom
 
@@ -25,6 +24,15 @@ MouseArea {
            ? Math.min(root.appThemeItem ? root.appThemeItem.px(245) : 245, Math.max(root.appThemeItem ? root.appThemeItem.px(185) : 185, parent.width * 0.40))
            : (root.appThemeItem ? root.appThemeItem.px(245) : 245)) + outerMargin
     hoverEnabled: true
+
+    x: root.sidebarForceOpen ? 0 : -width
+
+    Behavior on x {
+        NumberAnimation {
+            duration: 300
+            easing.type: Easing.OutCubic
+        }
+    }
 
     onExited: {
         root.sidebarForceOpen = false;
@@ -90,7 +98,7 @@ MouseArea {
                 if (typeof screenshotHelper !== "undefined") {
                     screenshotHelper.capture_frame(typeof ctrl !== "undefined" ? ctrl.osdChannelName : "");
                 }
-                if (root.isFullScreen) root.sidebarForceOpen = false;
+                root.sidebarForceOpen = false;
             }
         }
 
@@ -100,7 +108,7 @@ MouseArea {
             appThemeItem: root.appThemeItem
             onClicked: {
                 root.importRequested();
-                if (root.isFullScreen) root.sidebarForceOpen = false;
+                root.sidebarForceOpen = false;
             }
         }
 

@@ -18,7 +18,7 @@ Rectangle {
     readonly property bool containsMouse: epgHoverHandler.hovered
     readonly property real outerMargin: appTheme ? appTheme.px(12) : 12
 
-    height: root.isFullScreen ? (appTheme ? appTheme.px(180) : 180) : (appTheme ? appTheme.px(160) : 160)
+    height: appTheme ? appTheme.px(160) : 160
 
     anchors.bottom: parent ? parent.bottom : undefined
     anchors.left: parent ? parent.left : undefined
@@ -28,13 +28,13 @@ Rectangle {
     color: appTheme.bgAbsolute
     opacity: 0.98
     radius: appTheme ? appTheme.px(16) : 16
-    border.color: root.isFullScreen ? appTheme.borderActive : appTheme.borderDefault
-    border.width: root.isFullScreen ? 1.5 : 1
+    border.color: appTheme.borderDefault
+    border.width: 1
 
     Behavior on height {
         NumberAnimation {
-            duration: 250
-            easing.type: Easing.OutQuad
+            duration: 300
+            easing.type: Easing.OutCubic
         }
     }
 
@@ -84,7 +84,7 @@ Rectangle {
 
         EpgHeaderRow {
             id: innerHeaderRow
-            isFullScreen: root.isFullScreen
+            isFullScreen: false
             channelNo: root.channelNo
             channelName: root.channelName
             hoveredChannelName: root.hoveredChannelName
@@ -103,7 +103,7 @@ Rectangle {
         }
 
         EpgProgramContent {
-            isFullScreen: root.isFullScreen
+            isFullScreen: false
             channelLogo: root.channelLogo
             epgTitle: root.epgTitle
             epgDescription: root.epgDescription

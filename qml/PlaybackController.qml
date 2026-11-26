@@ -176,7 +176,6 @@ QtObject {
         }
     }
 
-
     function forceResume() {
         if (root.mediaPlayer && root.model && root.mediaPlayer.playbackState !== MediaPlayer.PlayingState) { root.isVoluntarilyStopped = false; root.mediaPlayer.play() }
     }
@@ -189,6 +188,6 @@ QtObject {
 
     function restorePanelsAfterConfig() {
         root.isConfigMenuOpen = false; if (!root.sidebar || !root.epgDrawer) return
-        root.sidebar.sidebarForceOpen = root.backupSidebarVisible; root.epgDrawer.epgForceOpen = root.isFullScreen ? false : root.backupEpgVisible
+        root.sidebar.sidebarForceOpen = root.backupSidebarVisible; root.epgDrawer.epgForceOpen = root.backupEpgVisible
     }
 }

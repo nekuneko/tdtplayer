@@ -23,7 +23,7 @@ MouseArea {
            ? Math.min(root.appThemeItem ? root.appThemeItem.px(320) : 320, Math.max(root.appThemeItem ? root.appThemeItem.px(195) : 195, parent.width * 0.44))
            : (root.appThemeItem ? root.appThemeItem.px(320) : 320)) + outerMargin
 
-    visible: !root.isFullScreen || root.sidebarForceOpen
+    visible: root.sidebarForceOpen
     hoverEnabled: true
 
     layer.enabled: sidebarXAnimation.running
@@ -63,7 +63,7 @@ MouseArea {
     Behavior on x {
         NumberAnimation {
             id: sidebarXAnimation
-            duration: 220
+            duration: 300
             easing.type: Easing.OutCubic
         }
     }

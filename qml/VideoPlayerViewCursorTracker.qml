@@ -16,6 +16,7 @@ Item {
     required property real cardMargin
 
     property point lastMousePos: Qt.point(-1, -1)
+    property string pendingPanel: ""
 
     function resetCursor() {
         if (typeof cursorHelper !== "undefined") {
@@ -23,6 +24,46 @@ Item {
         }
         if (!tracker.isPip) {
             mouseInactivityTimer.restart();
+        }
+    }
+
+    function scheduleOpen(panelName) {
+        if (tracker.pendingPanel === panelName && hoverIntentTimer.running)
+            return;
+        tracker.pendingPanel = panelName;
+        hoverIntentTimer.restart();
+    }
+
+    function cancelPendingOpen() {
+        tracker.pendingPanel = "";
+        hoverIntentTimer.stop();
+    }
+
+    Timer {
+        id: hoverIntentTimer
+        interval: 350
+        repeat: false
+        onTriggered: {
+            if (tracker.isPip || tracker.window.visibility === Window.Minimized)
+                return;
+
+            if (tracker.pendingPanel === "config"
+                    && !tracker.epgDrawerItem.epgForceOpen
+                    && !tracker.sidebarItem.visible
+                    && !tracker.configSidebarItem.visible) {
+                tracker.controller.openConfigAndCollapseOthers();
+                tracker.configSidebarItem.sidebarForceOpen = true;
+            } else if (tracker.pendingPanel === "channels"
+                    && !tracker.epgDrawerItem.epgForceOpen
+                    && !tracker.configSidebarItem.visible
+                    && !tracker.sidebarItem.visible) {
+                tracker.sidebarItem.sidebarForceOpen = true;
+            } else if (tracker.pendingPanel === "epg"
+                    && !tracker.sidebarItem.visible
+                    && !tracker.configSidebarItem.visible) {
+                tracker.controller.epgDrawer.epgForceOpen = true;
+            }
+            tracker.pendingPanel = "";
         }
     }
 
@@ -49,37 +90,49 @@ Item {
             tracker.lastMousePos = Qt.point(point.position.x, point.position.y);
 
             tracker.resetCursor();
-            if (tracker.isPip || tracker.window.visibility === Window.Minimized)
-                return;
-
-            if (!tracker.epgDrawerItem.epgForceOpen && !tracker.sidebarItem.visible && !tracker.configSidebarItem.visible && point.position.x <= 50) {
-                tracker.controller.openConfigAndCollapseOthers();
-                tracker.configSidebarItem.sidebarForceOpen = true;
+            if (tracker.isPip || tracker.window.visibility === Window.Minimized) {
+                tracker.cancelPendingOpen();
                 return;
             }
 
-            if (!tracker.epgDrawerItem.epgForceOpen && !tracker.configSidebarItem.visible && !tracker.sidebarItem.visible && point.position.x >= (tracker.backdropItem.width - 50)) {
-                tracker.sidebarItem.sidebarForceOpen = true;
+            if (!tracker.epgDrawerItem.epgForceOpen && !tracker.sidebarItem.visible && !tracker.configSidebarItem.visible && point.position.x <= 26) {
+                tracker.scheduleOpen("config");
                 return;
             }
 
-            // Si el ratón vuelve hacia la izquierda fuera del sidebar, ciérralo al instante
+            if (!tracker.epgDrawerItem.epgForceOpen && !tracker.configSidebarItem.visible && !tracker.sidebarItem.visible && point.position.x >= (tracker.backdropItem.width - 26)) {
+                tracker.scheduleOpen("channels");
+                return;
+            }
+
             if (tracker.sidebarItem.sidebarForceOpen && point.position.x < (tracker.backdropItem.width - tracker.sidebarItem.width)) {
                 tracker.sidebarItem.sidebarForceOpen = false;
             }
 
-            if (tracker.sidebarItem.visible || tracker.configSidebarItem.visible)
+            if (tracker.sidebarItem.visible || tracker.configSidebarItem.visible) {
+                tracker.cancelPendingOpen();
                 return;
+            }
 
-            var epgTopBoundary = tracker.backdropItem.height - tracker.controller.epgDrawer.height - tracker.cardMargin;
-            if (point.position.y >= epgTopBoundary) {
-                tracker.controller.epgDrawer.epgForceOpen = true;
-            } else if (point.position.y < (epgTopBoundary - 10)) {
-                tracker.controller.epgDrawer.epgForceOpen = false;
+            var epgOpenBoundary = tracker.backdropItem.height - tracker.controller.epgDrawer.height - tracker.cardMargin;
+            var epgTriggerBoundary = tracker.backdropItem.height - 44;
+
+            if (tracker.controller.epgDrawer.epgForceOpen) {
+                if (point.position.y < (epgOpenBoundary - 10)) {
+                    tracker.controller.epgDrawer.epgForceOpen = false;
+                }
+                tracker.cancelPendingOpen();
+            } else {
+                if (point.position.y >= epgTriggerBoundary) {
+                    tracker.scheduleOpen("epg");
+                } else {
+                    tracker.cancelPendingOpen();
+                }
             }
         }
         onHoveredChanged: {
             if (!hovered) {
+                tracker.cancelPendingOpen();
                 tracker.resetCursor();
             }
         }
